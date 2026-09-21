@@ -1,0 +1,9 @@
+# Copy to .dev.vars (git-ignored) and fill in for local dev.
+# Production values are set with `wrangler secret put <NAME>`.
+
+SESSION_SECRET=change-me-to-a-long-random-string
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+
+# Comma-separated allowlist while single-user (optional)
+ALLOWED_EMAILS=you@example.com

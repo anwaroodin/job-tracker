@@ -1,0 +1,50 @@
+/**
+ * job-tracker — Cloudflare Workers config
+ *
+ * Secrets (set with `wrangler secret put <NAME>`):
+ *   SESSION_SECRET       — random 32+ byte string, signs session cookies
+ *   GOOGLE_CLIENT_ID     — OAuth client id
+ *   GOOGLE_CLIENT_SECRET — OAuth client secret
+ *   GOOGLE_REDIRECT_URI  — e.g. https://job-tracker.<subdomain>.workers.dev/auth/callback
+ *   ALLOWED_EMAILS       — comma-separated allowlist while single-user
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "job-tracker",
+	"compatibility_date": "2026-09-16",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"main": "./workers/app.ts",
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"assets": {
+		"directory": "./build/client",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "job-tracker-db",
+			"database_id": "replace_with_id",
+			"migrations_dir": "./migrations"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "SESSIONS",
+			"id": "replace_with_id"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "CVS",
+			"bucket_name": "job-tracker-cvs"
+		}
+	],
+	"vars": {
+		"APP_URL": "replace_with_url"
+	}
+}
