@@ -6,11 +6,7 @@ export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     return (
       <div
         ref={ref}
-        className={cn(
-          "rounded-16 bg-bg-grouped-primary",
-          "[box-shadow:inset_0_0_0_1px_var(--stroke-secondary),0_1px_2px_rgba(24,24,27,0.03)]",
-          className,
-        )}
+        className={cn("panel", className)}
         {...props}
       />
     );
@@ -37,7 +33,7 @@ export const CardTitle = forwardRef<
   return (
     <h3
       ref={ref}
-      className={cn("text-base font-semibold text-text-primary", className)}
+      className={cn("text-[14px] font-semibold tracking-tight text-text-primary", className)}
       {...props}
     />
   );
@@ -50,7 +46,7 @@ export const CardDescription = forwardRef<
   return (
     <p
       ref={ref}
-      className={cn("text-sm text-text-secondary", className)}
+      className={cn("text-[12px] leading-relaxed text-text-secondary", className)}
       {...props}
     />
   );

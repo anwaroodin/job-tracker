@@ -10,7 +10,7 @@ export function Switch({
   label?: string;
 }) {
   return (
-    <label className="inline-flex cursor-pointer items-center gap-2.5 select-none">
+    <label className="inline-flex cursor-pointer items-center gap-3 select-none">
       <button
         type="button"
         role="switch"
@@ -18,13 +18,13 @@ export function Switch({
         onClick={() => onCheckedChange(!checked)}
         className={cn(
           "relative box-content inline-block h-5 w-9 shrink-0 overflow-hidden rounded-full transition-colors duration-150 ease-out",
-          checked ? "bg-text-primary" : "bg-fill-secondary",
+          checked ? "bg-text-primary" : "bg-fill-primary",
         )}
       >
         <span
           className={cn(
-            "pointer-events-none absolute left-0.5 top-1/2 block size-4 -translate-y-1/2 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.15)] transition-transform duration-150 ease-out",
-            checked && "translate-x-4",
+            "pointer-events-none absolute left-0.5 top-1/2 block size-4 -translate-y-1/2 rounded-full transition-all duration-150 ease-out",
+            checked ? "translate-x-4 bg-bg-primary" : "bg-text-secondary",
           )}
         />
       </button>

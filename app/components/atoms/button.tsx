@@ -5,31 +5,31 @@ import { cn } from "~/lib/cn";
 
 const buttonVariants = cva(
   [
-    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap font-medium",
-    "transition-[background,color,box-shadow] duration-150 ease-out select-none",
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap font-mono font-medium uppercase tracking-[0.06em]",
+    "transition-[background,color,box-shadow] duration-150 ease-out select-none cursor-pointer",
     "disabled:pointer-events-none disabled:opacity-40",
     "[&_svg]:size-3.5 [&_svg]:shrink-0",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/20 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary",
+    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary",
   ].join(" "),
   {
     variants: {
       variant: {
-        primary:
-          "bg-text-primary text-bg-primary hover:opacity-90 active:opacity-80 [box-shadow:inset_0_1px_0_rgba(255,255,255,0.08),0_1px_2px_rgba(0,0,0,0.08)]",
+        primary: "bg-text-primary text-text-inverse hover:bg-white",
         secondary:
-          "bg-bg-primary text-text-primary hover:bg-bg-grouped-tertiary [box-shadow:inset_0_0_0_1px_var(--stroke-primary)]",
-        ghost: "bg-transparent text-text-primary hover:bg-fill-tertiary",
+          "border border-stroke-primary bg-fill-secondary text-text-secondary hover:bg-fill-primary hover:text-text-primary",
+        ghost:
+          "bg-transparent text-text-secondary hover:bg-white/5 hover:text-text-primary",
         destructive:
-          "bg-red-primary text-text-inverse hover:opacity-90 [box-shadow:inset_0_1px_0_rgba(255,255,255,0.10),0_1px_2px_rgba(0,0,0,0.08)]",
-        link: "text-text-primary underline-offset-4 hover:underline",
+          "border border-red-tertiary bg-red-quaternary text-red-primary hover:bg-red-tertiary",
+        link: "text-accent-primary hover:text-accent-secondary",
       },
       size: {
-        tiny: "h-7 rounded-8 px-2.5 text-[12px]",
-        small: "h-8 rounded-8 px-3 text-[13px]",
-        medium: "h-9 rounded-8 px-3.5 text-[13px]",
-        large: "h-10 rounded-8 px-4 text-[14px]",
-        icon: "size-8 rounded-8",
-        "icon-sm": "size-7 rounded-6",
+        tiny: "h-7 px-3 text-[10.5px]",
+        small: "h-8 px-3.5 text-[11px]",
+        medium: "h-9 px-4 text-[11.5px]",
+        large: "h-11 px-6 text-[12.5px]",
+        icon: "size-8",
+        "icon-sm": "size-7",
       },
     },
     defaultVariants: { variant: "primary", size: "medium" },

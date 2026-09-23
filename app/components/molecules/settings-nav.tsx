@@ -1,18 +1,12 @@
 import { useEffect, useState } from "react";
 import { cn } from "~/lib/cn";
 
-export function SettingsNav({
-  items,
-}: {
-  items: { href: string; label: string }[];
-}) {
+export function SettingsNav({ items }: { items: { n: string; href: string; label: string }[] }) {
   const [active, setActive] = useState(items[0]?.href.slice(1));
 
   useEffect(() => {
     const ids = items.map((i) => i.href.slice(1));
-    const nodes = ids
-      .map((id) => document.getElementById(id))
-      .filter((n): n is HTMLElement => !!n);
+    const nodes = ids.map((id) => document.getElementById(id)).filter((n): n is HTMLElement => !!n);
     if (!nodes.length) return;
 
     const io = new IntersectionObserver(
@@ -33,17 +27,17 @@ export function SettingsNav({
     <nav className="sticky top-8 flex flex-col gap-0.5">
       {items.map((item) => {
         const id = item.href.slice(1);
+        const isActive = active === id;
         return (
           <a
             key={item.href}
             href={item.href}
             className={cn(
-              "rounded-6 px-2.5 py-1.5 text-[13px] font-medium transition-colors",
-              active === id
-                ? "bg-fill-secondary text-text-primary"
-                : "text-text-secondary hover:bg-fill-tertiary hover:text-text-primary",
+              "flex items-center gap-3 px-2.5 py-[7px] text-[11.5px] transition-colors duration-150",
+              isActive ? "bg-fill-secondary text-text-primary" : "text-[#c9c9cd] hover:bg-fill-tertiary hover:text-text-primary",
             )}
           >
+            <span className="text-text-tertiary">{item.n}</span>
             {item.label}
           </a>
         );

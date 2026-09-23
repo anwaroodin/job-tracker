@@ -10,10 +10,10 @@ export const Input = forwardRef<
       ref={ref}
       type={type}
       className={cn(
-        "flex h-9 w-full rounded-8 bg-bg-primary px-3 py-2 text-[13px]",
-        "text-text-primary placeholder:text-text-tertiary",
-        "[box-shadow:inset_0_0_0_1px_var(--stroke-primary)]",
-        "focus-visible:outline-none focus-visible:[box-shadow:inset_0_0_0_1px_var(--text-primary)]",
+        "flex h-10 w-full border border-stroke-secondary bg-bg-primary px-3.5 text-[13px]",
+        "text-text-primary placeholder:text-text-tertiary transition-colors",
+        "hover:border-stroke-primary",
+        "focus-visible:border-white/30 focus-visible:outline-none",
         "disabled:cursor-not-allowed disabled:opacity-40",
         className,
       )}

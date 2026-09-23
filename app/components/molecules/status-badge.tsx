@@ -1,20 +1,10 @@
-import { Badge } from "~/components/atoms/badge";
+import { STATUS_COLORS } from "~/components/molecules/terminal";
 
-const STATUS_TO_VARIANT: Record<
-  string,
-  "neutral" | "info" | "success" | "warning" | "error"
-> = {
-  applied: "info",
-  screening: "info",
-  interview: "warning",
-  offer: "success",
-  accepted: "success",
-  rejected: "error",
-  withdrawn: "neutral",
-  ghosted: "neutral",
-};
-
-export function StatusBadge({ status }: { status: string }) {
-  const variant = STATUS_TO_VARIANT[status.toLowerCase()] ?? "neutral";
-  return <Badge variant={variant}>{status}</Badge>;
+/** `[status]` in the colour that status uses everywhere else in the app (bars, dots, log). */
+export function StatusBadge({ status, className }: { status: string; className?: string }) {
+  return (
+    <span className={className} style={{ color: STATUS_COLORS[status] ?? "#a6a7ad" }}>
+      [{status}]
+    </span>
+  );
 }

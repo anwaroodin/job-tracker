@@ -1,6 +1,6 @@
-import { ChevronsUpDown, LogOut } from "lucide-react";
+import { useSelector } from "@legendapp/state/react";
+import { ChevronsUpDown, LogOut, PanelLeft, X } from "lucide-react";
 import { NavLink, useNavigate } from "react-router";
-import type { ReactNode } from "react";
 import { authClient } from "~/lib/auth-client";
 import {
   DropdownMenu,
@@ -10,125 +10,169 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/atoms/dropdown-menu";
+import { sidebarView$ } from "~/lib/state/sidebar-view";
 import { cn } from "~/lib/cn";
-
-const icon = (path: ReactNode) => (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    strokeWidth="1.5"
-    stroke="currentColor"
-    className="size-4"
-  >
-    {path}
-  </svg>
-);
-const IconOverview = icon(
-  <>
-    <rect x="2" y="2" width="5.5" height="5.5" rx="1.5" />
-    <rect x="8.5" y="2" width="5.5" height="5.5" rx="1.5" />
-    <rect x="2" y="8.5" width="5.5" height="5.5" rx="1.5" />
-    <rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1.5" />
-  </>,
-);
-const IconApplications = icon(
-  <>
-    <rect x="2.25" y="4" width="11.5" height="9" rx="1.5" />
-    <path d="M5.5 4V3a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1" />
-    <path d="M2.5 8h11" />
-  </>,
-);
-const IconProfile = icon(
-  <>
-    <circle cx="8" cy="5.75" r="2.5" />
-    <path d="M3 13.5a5 5 0 0 1 10 0" />
-  </>,
-);
+import logo from "~/assets/job-tracker.png";
 
 const NAV = [
-  { to: "/overview", label: "Overview", icon: IconOverview },
-  { to: "/applications", label: "Applications", icon: IconApplications },
-  { to: "/profile", label: "Profile", icon: IconProfile },
+  { to: "/overview", label: "Overview" },
+  { to: "/applications", label: "Applications" },
+  { to: "/profile", label: "Profile" },
 ] as const;
 
 interface SidebarProps {
   user: { name?: string | null; email: string; image?: string | null };
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, mobileOpen, onCloseMobile }: SidebarProps) {
+  const collapsed = useSelector(sidebarView$.collapsed);
   const navigate = useNavigate();
   const signOut = () =>
     authClient.signOut({
       fetchOptions: { onSuccess: () => navigate("/auth/login") },
     });
+
   return (
-    <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col gap-1 p-3">
-      <div className="mb-3 flex items-center gap-2 px-2 pt-1">
-        <div className="flex size-6 items-center justify-center rounded-6 bg-text-primary text-[10px] font-semibold text-black">
-          02
-        </div>
-        <span className="text-[13px] font-semibold tracking-tight text-text-primary">
-          job-tracker
-        </span>
-      </div>
-
-      <nav className="flex flex-col gap-0.5">
-        {NAV.map(({ to, label, icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              cn(
-                "group flex items-center gap-2.5 rounded-8 px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-100",
-                isActive
-                  ? "bg-fill-secondary text-text-primary"
-                  : "text-text-secondary hover:bg-fill-tertiary hover:text-text-primary",
-              )
-            }
+    <>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          onClick={onCloseMobile}
+          aria-hidden
+        />
+      )}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex h-dvh w-[216px] shrink-0 flex-col border-r border-stroke-secondary bg-bg-secondary px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[18px] transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          collapsed && "lg:w-[64px]",
+        )}
+      >
+        <div
+          className={cn(
+            "relative flex items-center gap-2.5 px-2.5 pb-7",
+            collapsed ? "p-0 mx-auto" : "px-2.5",
+          )}
+        >
+          <img
+            src={logo}
+            className="size-8 shrink-0 mix-blend-difference"
+            alt="Logo"
+          />
+          <span
+            className={cn(
+              "truncate text-[16px] font-medium tracking-[-0.03em] text-text-primary",
+              collapsed && "lg:hidden",
+            )}
           >
-            {icon}
-            {label}
-          </NavLink>
-        ))}
-      </nav>
+            job-tracker
+          </span>
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="ml-auto text-text-tertiary transition-colors hover:text-text-primary lg:hidden"
+            aria-label="Close menu"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
 
-      <div className="mt-auto">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="group flex w-full items-center gap-2 rounded-8 p-1.5 text-left transition-colors hover:bg-fill-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/20"
+        <p
+          className={cn(
+            "eyebrow px-2.5 pb-2 !text-[10px]",
+            collapsed && "lg:hidden",
+          )}
+        >
+          Workspace
+        </p>
+        <nav className="flex flex-col gap-0.5">
+          {NAV.map(({ to, label }, idx) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={onCloseMobile}
+              title={collapsed ? label : undefined}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 px-2.5 py-[7px] font-mono text-[11.5px] uppercase tracking-[0.08em] transition-colors duration-150",
+                  collapsed && "lg:justify-center lg:px-0",
+                  isActive
+                    ? "bg-fill-secondary text-text-primary"
+                    : "text-[#c9c9cd] hover:bg-fill-tertiary hover:text-text-primary",
+                )
+              }
             >
-              {user.image ? (
-                <img src={user.image} alt="" className="size-7 rounded-full" />
-              ) : (
-                <div className="flex size-7 items-center justify-center rounded-full bg-fill-secondary text-[11px] font-medium text-text-primary">
-                  {(user.name ?? user.email).slice(0, 1).toUpperCase()}
+              <span className="text-text-tertiary">
+                {String(idx + 1).padStart(2, "0")}
+              </span>
+              <span className={cn(collapsed && "lg:hidden")}>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="mt-auto">
+          <button
+            type="button"
+            onClick={() => sidebarView$.collapsed.set(!collapsed)}
+            className={cn(
+              "flex cursor-pointer w-full items-center gap-3 px-2.5 py-2.5 font-mono text-[11.5px] uppercase tracking-[0.08em] transition-colors duration-150 text-[#c9c9cd] hover:bg-fill-tertiary hover:text-text-primary",
+              collapsed && "lg:justify-center lg:px-0",
+            )}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <PanelLeft className="size-3.5 shrink-0" />
+            <span className={cn(collapsed && "lg:hidden")}>Collapse</span>
+          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "group flex w-full items-center gap-2.5 text-left transition-colors hover:bg-fill-tertiary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary",
+                  collapsed ? "lg:justify-center p-1" : "p-2",
+                )}
+              >
+                {user.image ? (
+                  <img
+                    src={user.image}
+                    alt=""
+                    className="size-7 shrink-0 rounded-full"
+                  />
+                ) : (
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-fill-secondary text-[11px] font-medium text-text-primary">
+                    {(user.name ?? user.email).slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
+                  <p className="truncate text-[12.5px] font-medium text-text-primary">
+                    {user.name ?? user.email}
+                  </p>
+                  <p className="truncate text-[11px] text-text-tertiary">
+                    {user.email}
+                  </p>
                 </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[12.5px] font-medium text-text-primary">
-                  {user.name ?? user.email}
-                </p>
-                <p className="truncate text-[11px] text-text-secondary">
-                  {user.email}
-                </p>
-              </div>
-              <ChevronsUpDown className="size-3.5 text-text-tertiary" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-52">
-            <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={signOut}>
-              <LogOut />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </aside>
+                <ChevronsUpDown
+                  className={cn(
+                    "size-3.5 shrink-0 text-text-tertiary",
+                    collapsed && "lg:hidden",
+                  )}
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-52">
+              <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={signOut}>
+                <LogOut />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </aside>
+    </>
   );
 }

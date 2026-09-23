@@ -30,7 +30,7 @@ export function StatCard({
           {hint && <span className="text-xs text-text-secondary">{hint}</span>}
         </div>
         {icon && (
-          <span className="flex size-10 items-center justify-center rounded-8 bg-fill-tertiary text-text-secondary">
+          <span className="flex size-10 items-center justify-center bg-fill-tertiary text-text-secondary">
             {icon}
           </span>
         )}
