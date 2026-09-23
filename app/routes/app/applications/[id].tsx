@@ -1,6 +1,6 @@
-import { data } from "react-router";
+import { data, Link } from "react-router";
 import type { Route } from "./+types/[id]";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/atoms/card";
+import { Leader, Section, fmtDate, stagger } from "~/components/molecules/terminal";
 import { StatusBadge } from "~/components/molecules/status-badge";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
@@ -19,37 +19,36 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 export default function ApplicationDetail({ loaderData }: Route.ComponentProps) {
   const { row } = loaderData;
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] font-semibold tracking-tight text-text-primary">{row.company}</h1>
-          <p className="mt-0.5 text-[13px] text-text-secondary">{row.role}</p>
-        </div>
-        <StatusBadge status={row.status} />
+    <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
+      {/* ── [02] ─────────────────────────────────────────────────── */}
+      <header className="rise" style={stagger(0)}>
+        <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
+          <Link to="/applications" className="transition-colors hover:text-text-primary">
+            [02] Applications
+          </Link>
+          <span className="mx-2 opacity-50">/</span>
+          {row.company}
+        </p>
+        <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
+          {row.company}
+          <span className="block text-text-tertiary">{row.role}</span>
+        </h1>
+        <p className="mt-5">
+          <StatusBadge status={row.status} />
+        </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Details</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Location" value={row.location || "—"} />
-          <Field label="Work type" value={row.workType || "—"} />
-          <Field label="Salary" value={row.salary || "—"} />
-          <Field label="CV" value={row.cvType} />
-          <Field label="Applied" value={new Date(row.appliedAt).toLocaleString()} />
-          <Field label="Updated" value={new Date(row.updatedAt).toLocaleString()} />
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs uppercase tracking-wide text-text-secondary">{label}</span>
-      <span className="text-sm text-text-primary">{value}</span>
+      {/* ── [02] ─────────────────────────────────────────────────── */}
+      <Section n="02" title="Details" i={1}>
+        <div className="grid grid-cols-1 gap-x-16 sm:grid-cols-2">
+          <Leader label="Location">{row.location || "—"}</Leader>
+          <Leader label="Work type">{row.workType || "—"}</Leader>
+          <Leader label="Salary">{row.salary || "—"}</Leader>
+          <Leader label="CV">{row.cvType}</Leader>
+          <Leader label="Applied">{fmtDate(row.appliedAt)}</Leader>
+          <Leader label="Updated">{fmtDate(row.updatedAt)}</Leader>
+        </div>
+      </Section>
     </div>
   );
 }
