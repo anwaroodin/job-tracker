@@ -1,7 +1,7 @@
 import type { Route } from "./+types/index";
 import { Button } from "~/components/atoms/button";
 import { ApplicationDataTable } from "~/components/organisms/application-data-table";
-import { Divider, Hero, InlineStat } from "~/components/molecules/page";
+import { Section, stagger } from "~/components/molecules/terminal";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
@@ -9,7 +9,6 @@ import {
   createApplication,
   listApplications,
 } from "~/server/db/applications.server";
-import { Plus } from "lucide-react";
 
 const HIDDEN = new Set(["rejected", "ghosted", "withdrawn"]);
 const ACTIVE = new Set(["applied", "screening", "interview", "assessment"]);
@@ -48,34 +47,34 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
   const closed = rows.filter((r) => HIDDEN.has(r.status)).length;
 
   return (
-    <div className="flex flex-col">
-      <Hero
-        eyebrow="Applications"
-        title={total}
-        subtitle={`${active} in flight · ${offers} offer${offers === 1 ? "" : "s"} · ${closed} closed`}
-        aside={
-          <>
-            <InlineStat label="Active" value={active} />
-            <InlineStat
-              label="Offers"
-              value={offers}
-              tone={offers ? "up" : "neutral"}
-            />
-            <InlineStat label="Closed" value={closed} tone="neutral" />
-            <div className="ml-2 self-end">
-              <Button variant="primary" size="small">
-                <Plus /> New application
-              </Button>
-            </div>
-          </>
-        }
-      />
+    <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
+      {/* ── [01] ─────────────────────────────────────────────────── */}
+      <header
+        className="rise flex flex-wrap items-end justify-between gap-6"
+        style={stagger(0)}
+      >
+        <div>
+          <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
+            <b className="mr-2 font-semibold text-text-primary">[02]</b>
+            Applications
+          </p>
+          <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight sm:text-[30px]">
+            <span className="text-text-primary">
+              {total} applications logged.
+            </span>
+            <span className="block text-text-tertiary">
+              {active} in flight, {offers} {offers === 1 ? "offer" : "offers"},{" "}
+              {closed} closed.
+            </span>
+          </h1>
+        </div>
+        <Button type="button">+ New application</Button>
+      </header>
 
-      <Divider />
-
-      <div className="pt-6">
+      {/* ── [02] ─────────────────────────────────────────────────── */}
+      <Section n="02" title="Records" hint="filter, search, sort" i={1}>
         <ApplicationDataTable rows={rows} />
-      </div>
+      </Section>
     </div>
   );
 }

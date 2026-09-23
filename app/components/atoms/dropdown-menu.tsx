@@ -15,7 +15,7 @@ export const DropdownMenuContent = forwardRef<
         ref={ref}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 min-w-40 overflow-hidden rounded-12 border border-stroke-secondary bg-bg-primary/90 p-1 shadow-lg backdrop-blur-xl",
+          "z-50 min-w-40 overflow-hidden border border-stroke-primary bg-bg-grouped-primary p-1 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.7)]",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className,
         )}
@@ -33,8 +33,8 @@ export const DropdownMenuItem = forwardRef<
     <DropdownMenuPrimitive.Item
       ref={ref}
       className={cn(
-        "relative flex cursor-pointer select-none items-center gap-2 rounded-8 px-2.5 py-1.5 text-sm text-text-primary outline-none",
-        "focus:bg-fill-tertiary data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
+        "relative flex cursor-pointer select-none items-center gap-2 px-2.5 py-1.5 text-[13px] text-text-primary outline-none",
+        "focus:bg-fill-secondary data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
         "[&_svg]:size-4 [&_svg]:text-text-secondary",
         className,
       )}
@@ -51,7 +51,7 @@ export const DropdownMenuLabel = forwardRef<
     <DropdownMenuPrimitive.Label
       ref={ref}
       className={cn(
-        "px-2.5 py-1.5 text-xs font-medium text-text-secondary",
+        "eyebrow px-2.5 py-1.5",
         className,
       )}
       {...props}

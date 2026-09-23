@@ -23,6 +23,7 @@ export interface Analytics {
     rejected: number;
     responseRate: number; // % of apps that moved beyond `applied`
     weekly: number; // apps in the last 7 days
+    previousWeekly: number; // apps in the 7 days before that
     streakDays: number; // days since the most recent application
   };
   byStatus: { status: string; count: number }[];
@@ -51,10 +52,12 @@ export async function analyticsFor(db: Db, userId: string): Promise<Analytics> {
   let rejected = 0;
   let responded = 0;
   let weekly = 0;
+  let previousWeekly = 0;
   let mostRecent = 0;
 
   const now = Date.now();
   const weekAgo = now - 7 * DAY_MS;
+  const twoWeeksAgo = now - 14 * DAY_MS;
 
   for (const r of rows) {
     byStatusMap.set(r.status, (byStatusMap.get(r.status) ?? 0) + 1);
@@ -71,6 +74,7 @@ export async function analyticsFor(db: Db, userId: string): Promise<Analytics> {
 
     const t = Date.parse(r.appliedAt);
     if (t >= weekAgo) weekly++;
+    else if (t >= twoWeeksAgo) previousWeekly++;
     if (t > mostRecent) mostRecent = t;
   }
 
@@ -102,6 +106,7 @@ export async function analyticsFor(db: Db, userId: string): Promise<Analytics> {
       rejected,
       responseRate: total ? Math.round((responded / total) * 100) : 0,
       weekly,
+      previousWeekly,
       streakDays: mostRecent
         ? Math.max(0, Math.floor((now - mostRecent) / DAY_MS))
         : 0,

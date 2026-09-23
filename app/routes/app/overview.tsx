@@ -1,27 +1,11 @@
-import { Link } from "react-router";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from "recharts";
 import type { Route } from "./+types/overview";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "~/components/atoms/chart";
-import { StatusBadge } from "~/components/molecules/status-badge";
+import { Link } from "react-router";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { analyticsFor, type Analytics } from "~/server/db/analytics.server";
+import { Bar, BarRow, CV_COLORS, Leader, Section, STATUS_COLORS, fmtDate, pct, stagger, two } from "~/components/molecules/terminal";
+import { StatusBadge } from "~/components/molecules/status-badge";
 import { cn } from "~/lib/cn";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -31,395 +15,183 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   return { analytics };
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  applied: "var(--text-primary)",
-  screening: "var(--text-secondary)",
-  interview: "var(--orange-primary)",
-  assessment: "var(--orange-primary)",
-  offer: "var(--green-primary)",
-  accepted: "var(--green-primary)",
-  rejected: "var(--red-primary)",
-  ghosted: "var(--stroke-primary)",
-  withdrawn: "var(--stroke-primary)",
-};
-
 export default function Overview({ loaderData }: Route.ComponentProps) {
   const a = loaderData.analytics;
-  const priorWeek = a.weekly[a.weekly.length - 2]?.count ?? 0;
-  const thisWeek = a.weekly[a.weekly.length - 1]?.count ?? 0;
-  const delta = thisWeek - priorWeek;
+  const t = a.totals;
+  const delta = t.weekly - t.previousWeekly;
+  const peak = Math.max(1, ...a.weekly.map((w) => w.count));
+  const funnelMax = Math.max(1, a.funnel[0]?.count ?? 0);
+  const statusMax = Math.max(1, ...a.byStatus.map((s) => s.count));
+  const companyMax = Math.max(1, ...a.topCompanies.map((c) => c.count));
+  const last =
+    t.total === 0 ? "NOTHING TRACKED YET" : t.streakDays === 0 ? "LAST ONE TODAY" : `LAST ONE ${t.streakDays}D AGO`;
 
   return (
-    <div className="flex flex-col">
-      {/* ── Hero ────────────────────────────────────────────────────── */}
-      <section className="pb-10">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
-          Overview
+    <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
+      {/* ── [01] ─────────────────────────────────────────────────── */}
+      <header className="rise" style={stagger(0)}>
+        <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
+          <b className="mr-2 font-semibold text-text-primary">[01]</b>Overview
         </p>
-        <div className="mt-3 flex items-end justify-between gap-8 flex-wrap">
-          <div>
-            <h1 className="text-[64px] font-semibold leading-none tracking-[-0.03em] text-text-primary tabular-nums">
-              {a.totals.total}
-            </h1>
-            <p className="mt-3 text-[13px] text-text-secondary">
-              applications tracked · last one {a.totals.streakDays} day{a.totals.streakDays === 1 ? "" : "s"} ago
-            </p>
-          </div>
+        <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight sm:text-[30px]">
+          <span className="text-text-primary">{t.total} applications tracked.</span>
+          <span className="block text-text-tertiary">{last}.</span>
+        </h1>
+        <p className="mt-5 max-w-xl font-sans text-[16px] normal-case tracking-normal text-text-secondary">
+          {t.active} in flight, {t.offers} {t.offers === 1 ? "offer" : "offers"} on the table, and {t.responseRate}% have
+          heard back at all.
+        </p>
+      </header>
 
-          <div className="flex items-stretch gap-8 divide-x divide-stroke-secondary [&>*:not(:first-child)]:pl-8">
-            <InlineStat
-              label="This week"
-              value={a.totals.weekly}
-              trend={
-                delta === 0
-                  ? undefined
-                  : {
-                      value: `${delta > 0 ? "+" : ""}${delta}`,
-                      tone: delta > 0 ? "up" : "down",
-                    }
-              }
+      {/* ── [02] + [03] ──────────────────────────────────────────── */}
+      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-2">
+        <Section n="02" title="Readout" hint="right now" i={1}>
+          <Leader label="Last 7 days">
+            {t.weekly}
+            <span className={cn("ml-3", delta > 0 ? "text-green-primary" : delta < 0 ? "text-red-primary" : "text-text-tertiary")}>
+              {delta > 0 ? "▲" : delta < 0 ? "▼" : "•"} {Math.abs(delta)} vs prev
+            </span>
+          </Leader>
+          <Leader label="Active">{t.active}</Leader>
+          <Leader label="Offers">
+            <span className={t.offers ? "text-green-primary" : undefined}>{t.offers}</span>
+          </Leader>
+          <Leader label="Response rate">{t.responseRate}%</Leader>
+          <Leader label="Rejected">{t.rejected}</Leader>
+        </Section>
+
+        <Section n="03" title="Funnel" hint="stage → stage" i={2}>
+          {a.funnel.map((f, i) => (
+            <BarRow
+              key={f.stage}
+              label={f.stage}
+              value={f.count}
+              share={(f.count / funnelMax) * 100}
+              color={i === a.funnel.length - 1 ? "var(--color-green-primary)" : "#ececec"}
+              note={i === 0 ? "" : `${pct(f.count, funnelMax)}%`}
+              cells={34}
             />
-            <InlineStat label="Active" value={a.totals.active} tone="neutral" />
-            <InlineStat
-              label="Offers"
-              value={a.totals.offers}
-              tone={a.totals.offers ? "up" : "neutral"}
+          ))}
+        </Section>
+      </div>
+
+      {/* ── [04] ─────────────────────────────────────────────────── */}
+      <Section n="04" title="Volume" hint={`12 weeks · peak ${peak}`} i={3}>
+        <VolumeChart data={a.weekly} peak={peak} />
+      </Section>
+
+      {/* ── [05] + [06] + [07] ───────────────────────────────────── */}
+      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-2">
+        <Section n="05" title="Status" hint="where everything sits" i={4}>
+          {a.byStatus.map((s) => (
+            <BarRow
+              key={s.status}
+              label={s.status}
+              value={s.count}
+              share={(s.count / statusMax) * 100}
+              color={STATUS_COLORS[s.status] ?? "#6e6f76"}
+              note={`${pct(s.count, t.total)}%`}
+              cells={34}
             />
-            <InlineStat
-              label="Response rate"
-              value={`${a.totals.responseRate}%`}
-              tone={
-                a.totals.responseRate >= 30 ? "up" : a.totals.responseRate >= 15 ? "neutral" : "down"
-              }
-            />
-          </div>
-        </div>
-      </section>
+          ))}
+        </Section>
 
-      <Divider />
+        <div className="flex flex-col gap-12">
+          <Section n="06" title="Top companies" hint="most applied" i={5}>
+            {a.topCompanies.map((c, i) => (
+              <Leader key={c.company} label={`${two(i + 1)}  ${c.company}`}>
+                <span className="mr-4 hidden text-text-tertiary sm:inline">
+                  <Bar share={(c.count / companyMax) * 100} color="#6e6f76" cells={10} />
+                </span>
+                {two(c.count)}
+              </Leader>
+            ))}
+          </Section>
 
-      {/* ── Hero chart ──────────────────────────────────────────────── */}
-      <section className="py-10">
-        <SectionLabel title="Application volume" sub="Last 12 weeks" />
-        <div className="mt-5">
-          <WeeklyChart data={a.weekly} />
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ── Status + Funnel ─────────────────────────────────────────── */}
-      <section className="grid grid-cols-1 gap-12 py-10 lg:grid-cols-2">
-        <div>
-          <SectionLabel title="Status" sub="Where every application sits" />
-          <div className="mt-5">
-            <StatusBreakdown data={a.byStatus} total={a.totals.total} />
-          </div>
-        </div>
-        <div>
-          <SectionLabel title="Funnel" sub="How far things progressed" />
-          <div className="mt-5">
-            <FunnelChart data={a.funnel} />
-          </div>
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ── Top companies + CV split ────────────────────────────────── */}
-      <section className="grid grid-cols-1 gap-12 py-10 lg:grid-cols-[1fr_320px]">
-        <div>
-          <SectionLabel title="Top companies" sub="Where you've applied most" />
-          <div className="mt-5">
-            <TopCompanies data={a.topCompanies} total={a.totals.total} />
-          </div>
-        </div>
-        <div>
-          <SectionLabel title="CV split" sub="Software vs retail" />
-          <div className="mt-5">
-            <CvDonut data={a.byCv} total={a.totals.total} />
-          </div>
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ── Recent activity ─────────────────────────────────────────── */}
-      <section className="pt-10 pb-4">
-        <SectionLabel title="Recent activity" sub="Latest six applications" />
-        <div className="mt-4">
-          <RecentList rows={a.recent} />
-        </div>
-      </section>
-    </div>
-  );
-}
-
-// ── Primitives ─────────────────────────────────────────────────────────────
-
-function Divider() {
-  return <div className="h-px w-full bg-stroke-secondary" />;
-}
-
-function SectionLabel({ title, sub }: { title: string; sub?: string }) {
-  return (
-    <div className="flex items-baseline gap-3">
-      <h2 className="text-[15px] font-semibold tracking-tight text-text-primary">{title}</h2>
-      {sub && <span className="text-[12px] text-text-tertiary">{sub}</span>}
-    </div>
-  );
-}
-
-function InlineStat({
-  label,
-  value,
-  trend,
-  tone = "neutral",
-}: {
-  label: string;
-  value: React.ReactNode;
-  trend?: { value: string; tone: "up" | "down" };
-  tone?: "up" | "down" | "neutral";
-}) {
-  const toneColor =
-    tone === "up"
-      ? "text-green-primary"
-      : tone === "down"
-      ? "text-red-primary"
-      : "text-text-primary";
-  return (
-    <div className="flex flex-col pr-8">
-      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-tertiary">{label}</p>
-      <p className="mt-1 flex items-baseline gap-2">
-        <span className={cn("text-[22px] font-semibold leading-none tabular-nums", toneColor)}>{value}</span>
-        {trend && (
-          <span
-            className={cn(
-              "text-[12px] font-medium tabular-nums",
-              trend.tone === "up" ? "text-green-primary" : "text-red-primary",
-            )}
-          >
-            {trend.value}
-          </span>
-        )}
-      </p>
-    </div>
-  );
-}
-
-// ── Weekly area chart ─────────────────────────────────────────────────────
-
-function WeeklyChart({ data }: { data: Analytics["weekly"] }) {
-  const config = {
-    count: { label: "Applications", color: "var(--text-primary)" },
-  } satisfies ChartConfig;
-  return (
-    <ChartContainer config={config} className="h-56">
-      <AreaChart data={data} margin={{ top: 4, left: -12, right: 8, bottom: 0 }}>
-        <defs>
-          <linearGradient id="volume" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--text-primary)" stopOpacity={0.16} />
-            <stop offset="95%" stopColor="var(--text-primary)" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid vertical={false} stroke="var(--stroke-secondary)" />
-        <XAxis
-          dataKey="weekLabel"
-          tickLine={false}
-          axisLine={false}
-          tickMargin={12}
-          fontSize={11}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          width={28}
-          tickLine={false}
-          axisLine={false}
-          tickMargin={4}
-          fontSize={11}
-          allowDecimals={false}
-        />
-        <ChartTooltip cursor={{ stroke: "var(--stroke-primary)", strokeDasharray: 4 }} content={<ChartTooltipContent labelKey="weekLabel" />} />
-        <Area
-          type="monotone"
-          dataKey="count"
-          stroke="var(--text-primary)"
-          strokeWidth={1.5}
-          fill="url(#volume)"
-          activeDot={{ r: 4, strokeWidth: 0, fill: "var(--text-primary)" }}
-        />
-      </AreaChart>
-    </ChartContainer>
-  );
-}
-
-// ── Status list (compact bars) ────────────────────────────────────────────
-
-function StatusBreakdown({ data, total }: { data: Analytics["byStatus"]; total: number }) {
-  if (data.length === 0) return <Empty />;
-  const max = Math.max(1, ...data.map((d) => d.count));
-  return (
-    <div className="flex flex-col gap-3">
-      {data.map((d) => (
-        <div key={d.status} className="flex items-center gap-4">
-          <span className="w-24 shrink-0 text-[13px] capitalize text-text-primary">{d.status}</span>
-          <div className="relative h-1 flex-1 overflow-hidden rounded-full bg-fill-tertiary">
-            <div
-              className="absolute inset-y-0 left-0 rounded-full transition-all"
-              style={{
-                width: `${(d.count / max) * 100}%`,
-                background: STATUS_COLORS[d.status] ?? "var(--text-tertiary)",
-              }}
-            />
-          </div>
-          <span className="w-10 text-right text-[12px] font-medium tabular-nums text-text-primary">
-            {d.count}
-          </span>
-          <span className="w-10 text-right text-[11px] tabular-nums text-text-tertiary">
-            {total ? Math.round((d.count / total) * 100) : 0}%
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Funnel ────────────────────────────────────────────────────────────────
-
-function FunnelChart({ data }: { data: Analytics["funnel"] }) {
-  if (data[0]?.count === 0) return <Empty />;
-  const applied = data[0]?.count ?? 0;
-  return (
-    <div className="flex flex-col gap-4">
-      {data.map((d, i) => {
-        const pct = applied ? (d.count / applied) * 100 : 0;
-        return (
-          <div key={d.stage}>
-            <div className="flex items-baseline justify-between text-[13px]">
-              <span className="text-text-primary">{d.stage}</span>
-              <span className="tabular-nums text-text-secondary">
-                <span className="text-text-primary">{d.count}</span>
-                {i > 0 && <span className="ml-2 text-text-tertiary">{Math.round(pct)}%</span>}
-              </span>
-            </div>
-            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-fill-tertiary">
-              <div
-                className="h-full transition-all"
-                style={{
-                  width: `${pct}%`,
-                  background: i === data.length - 1 ? "var(--green-primary)" : "var(--text-primary)",
-                }}
+          <Section n="07" title="CV split" hint="which CV went out" i={6}>
+            {a.byCv.map((c, i) => (
+              <BarRow
+                key={c.cvType}
+                label={c.cvType}
+                value={c.count}
+                share={pct(c.count, t.total)}
+                color={CV_COLORS[i % CV_COLORS.length]}
+                note={`${pct(c.count, t.total)}%`}
+                cells={34}
               />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Top companies ─────────────────────────────────────────────────────────
-
-function TopCompanies({ data, total }: { data: Analytics["topCompanies"]; total: number }) {
-  if (data.length === 0) return <Empty />;
-  const max = Math.max(1, ...data.map((d) => d.count));
-  return (
-    <div className="flex flex-col divide-y divide-stroke-secondary">
-      {data.map((c) => (
-        <div key={c.company} className="flex items-center gap-4 py-2.5 first:pt-0 last:pb-0">
-          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">{c.company}</span>
-          <div className="h-1 w-32 overflow-hidden rounded-full bg-fill-tertiary">
-            <div className="h-full bg-text-primary" style={{ width: `${(c.count / max) * 100}%` }} />
-          </div>
-          <span className="w-8 text-right text-[12px] font-medium tabular-nums text-text-primary">{c.count}</span>
-          <span className="w-10 text-right text-[11px] tabular-nums text-text-tertiary">
-            {total ? Math.round((c.count / total) * 100) : 0}%
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── CV donut ──────────────────────────────────────────────────────────────
-
-function CvDonut({ data, total }: { data: Analytics["byCv"]; total: number }) {
-  if (data.length === 0 || total === 0) return <Empty />;
-  const palette = ["var(--text-primary)", "var(--orange-primary)", "var(--green-primary)", "var(--text-tertiary)"];
-  const config: ChartConfig = Object.fromEntries(
-    data.map((d, i) => [d.cvType, { label: d.cvType, color: palette[i % palette.length] }]),
-  );
-  return (
-    <div className="flex items-center gap-6">
-      <div className="relative h-32 w-32 shrink-0">
-        <ChartContainer config={config} className="h-full w-full">
-          <PieChart>
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-            <Pie
-              data={data}
-              dataKey="count"
-              nameKey="cvType"
-              innerRadius={44}
-              outerRadius={62}
-              strokeWidth={2}
-              stroke="var(--bg-primary)"
-            >
-              {data.map((_, i) => (
-                <Cell key={i} fill={palette[i % palette.length]} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ChartContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[22px] font-semibold leading-none tabular-nums text-text-primary">{total}</span>
-          <span className="mt-1 text-[10px] uppercase tracking-[0.12em] text-text-tertiary">total</span>
+            ))}
+          </Section>
         </div>
       </div>
-      <div className="flex-1 flex flex-col gap-2">
-        {data.map((d, i) => (
-          <div key={d.cvType} className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full" style={{ background: palette[i % palette.length] }} />
-              <span className="text-[13px] capitalize text-text-primary">{d.cvType}</span>
+
+      {/* ── [08] ─────────────────────────────────────────────────── */}
+      <Section
+        n="08"
+        title="Log"
+        hint={
+          <Link to="/applications" className="text-accent-primary transition-colors hover:text-accent-secondary">
+            View all →
+          </Link>
+        }
+        i={7}
+      >
+        <ul className="-mx-3">
+          {a.recent.map((r) => (
+            <li key={r.id}>
+              <Link
+                to={`/applications/${r.id}`}
+                className="group grid grid-cols-[104px_1fr_auto] items-baseline gap-4 px-3 py-2 transition-colors hover:bg-text-primary hover:text-text-inverse"
+              >
+                <span className="text-text-tertiary group-hover:!text-text-inverse/60">{fmtDate(r.appliedAt)}</span>
+                <span className="min-w-0 truncate">
+                  <span className="text-text-primary group-hover:!text-text-inverse">{r.company}</span>
+                  <span className="text-text-tertiary group-hover:!text-text-inverse/60"> / {r.role}</span>
+                </span>
+                <StatusBadge status={r.status} className="group-hover:!text-text-inverse" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Section>
+    </div>
+  );
+}
+
+/** Column chart: bar height by share of peak, count above, week below, faint quartile gridlines. */
+function VolumeChart({ data, peak }: { data: Analytics["weekly"]; peak: number }) {
+  return (
+    <div>
+      <div
+        className="flex h-36 items-end gap-1.5 border-b border-white/15"
+        style={{ backgroundImage: "repeating-linear-gradient(180deg, transparent 0, transparent calc(25% - 1px), rgba(255,255,255,.06) 25%)" }}
+      >
+        {data.map((w, i) => {
+          const latest = i === data.length - 1;
+          return (
+            <div key={w.weekStart} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end" title={`${w.weekLabel}: ${w.count}`}>
+              <span
+                className={cn(
+                  "mb-1.5 text-[10px] tabular-nums",
+                  latest ? "text-text-primary" : "text-text-tertiary group-hover:text-text-secondary",
+                )}
+              >
+                {w.count}
+              </span>
+              <div
+                className={cn("w-full transition-colors", latest ? "bg-text-primary" : "bg-fill-primary group-hover:bg-white/30")}
+                style={{ height: `${Math.max(2, (w.count / peak) * 100)}%` }}
+              />
             </div>
-            <span className="text-[12px] tabular-nums text-text-secondary">
-              <span className="text-text-primary">{d.count}</span>
-              <span className="ml-2 text-text-tertiary">{Math.round((d.count / total) * 100)}%</span>
-            </span>
-          </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex gap-1.5">
+        {data.map((w) => (
+          <span key={w.weekStart} className="min-w-0 flex-1 truncate text-center text-[9.5px] text-text-tertiary">
+            {w.weekLabel.toUpperCase()}
+          </span>
         ))}
       </div>
     </div>
   );
-}
-
-// ── Recent list ───────────────────────────────────────────────────────────
-
-function RecentList({ rows }: { rows: Analytics["recent"] }) {
-  if (rows.length === 0) return <Empty />;
-  return (
-    <ul className="flex flex-col divide-y divide-stroke-secondary">
-      {rows.map((r) => (
-        <li key={r.id} className="group flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-          <div className="min-w-0 flex-1">
-            <Link
-              to={`/applications/${r.id}`}
-              className="text-[13px] font-medium text-text-primary transition-colors group-hover:text-text-secondary"
-            >
-              {r.company}
-            </Link>
-            <p className="mt-0.5 truncate text-[11.5px] text-text-secondary">{r.role}</p>
-          </div>
-          <StatusBadge status={r.status} />
-          <span className="w-24 text-right text-[11.5px] tabular-nums text-text-tertiary">
-            {new Date(r.appliedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Empty() {
-  return <p className="text-[13px] text-text-tertiary">Not enough data yet.</p>;
 }

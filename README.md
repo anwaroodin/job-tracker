@@ -10,11 +10,22 @@
 
 **job-tracker** is a blazingly fast, highly-customizable personal CRM for tracking your job applications, CV files, and upcoming interviews. It utilizes a modern edge-based tech stack, keeping everything serverless and instantly responsive.
 
+<div align="center">
+  <img src="./images/overview.png" alt="dashboard-overview" width="600" />
+  <p>Overview Page</p>
+</div>
+
 The core of the experience revolves around the **companion browser extension** which acts as your personal job hunting assistant:
+
 - **Auto-Fill:** Instantly populates complex application forms with your saved profile and CV data.
 - **One-Click Save:** Automatically detects and saves job descriptions, titles, and company names while you browse.
 - **Email Tracking:** Integrates with your inbox to automatically classify application-related emails, track interview stages, and update application statuses.
 - **Timelines & Analytics:** Creates detailed chronologies of your interactions with companies and provides rich analytics on your application conversion rates.
+
+<div align="center">
+  <img src="./images/extension.png" alt="browser-extension" />
+  <p>Browser Extension</p>
+</div>
 
 ## Tech Stack
 
@@ -35,7 +46,7 @@ job-tracker/
 │   ├── root.tsx                Root layout & font loading
 │   ├── routes.ts               Route table mapping
 │   ├── env.d.ts                Cloudflare Env type definitions
-│   ├── routes/                 
+│   ├── routes/
 │   │   ├── index.tsx           Session-based redirect
 │   │   ├── api/                API Endpoints (Auth splat & browser extension API)
 │   │   ├── auth/               Login & Logout routes
@@ -79,6 +90,7 @@ npm run db:migrate:remote      # Apply to production D1
 ### 3. Set Secrets
 
 Set up your production secrets:
+
 ```bash
 npx wrangler secret put SESSION_SECRET        # any 32+ byte random string
 npx wrangler secret put GOOGLE_CLIENT_ID
