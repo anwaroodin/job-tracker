@@ -45,7 +45,7 @@ export function Sidebar({ user, mobileOpen, onCloseMobile }: SidebarProps) {
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-dvh w-[216px] shrink-0 flex-col border-r border-stroke-secondary bg-bg-secondary px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[18px] transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex h-dvh w-[216px] shrink-0 flex-col border-r border-stroke-secondary bg-bg-secondary px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[18px] transition-transform duration-200 lg:sticky lg:top-0 lg:self-start lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           collapsed && "lg:w-[64px]",
         )}

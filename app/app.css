@@ -102,7 +102,7 @@ body {
 }
 
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 html body[data-scroll-locked] {
