@@ -181,6 +181,40 @@ export const emailLink = sqliteTable(
   }),
 );
 
+export const emailMessage = sqliteTable(
+  "email_message",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    id: text("id").notNull(), // Gmail message id
+    threadId: text("thread_id"),
+    category: text("category").notNull(),
+    subject: text("subject").notNull().default(""),
+    snippet: text("snippet").notNull().default(""),
+    fromName: text("from_name").notNull().default(""),
+    fromAddress: text("from_address").notNull().default(""),
+    receivedAt: text("received_at").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.id] }),
+    byUserReceived: index("email_message_user_received_idx").on(
+      t.userId,
+      t.receivedAt,
+    ),
+  }),
+);
+
+export const gmailSync = sqliteTable("gmail_sync", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  // everything received before this has been synced
+  syncedThrough: text("synced_through"),
+  lastRunAt: text("last_run_at"),
+  lastError: text("last_error"),
+});
+
 // ── Type exports ─────────────────────────────────────────────────────────
 
 export type User = typeof user.$inferSelect;
@@ -190,3 +224,5 @@ export type Cv = typeof cv.$inferSelect;
 export type Application = typeof application.$inferSelect;
 export type NewApplication = typeof application.$inferInsert;
 export type EmailLink = typeof emailLink.$inferSelect;
+export type EmailMessage = typeof emailMessage.$inferSelect;
+export type GmailSync = typeof gmailSync.$inferSelect;
