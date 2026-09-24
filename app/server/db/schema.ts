@@ -150,6 +150,7 @@ export const application = sqliteTable(
       .default(true),
     assessmentDue: text("assessment_due"),
     assessmentCompleted: integer("assessment_completed", { mode: "boolean" }),
+    manualStatusAt: text("manual_status_at"),
     appliedAt: text("applied_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -169,10 +170,6 @@ export const emailLink = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    subject: text("subject"),
-    snippet: text("snippet"),
-    fromAddress: text("from_address"),
-    receivedAt: text("received_at"),
     viewedAt: text("viewed_at"),
   },
   (t) => ({
@@ -213,6 +210,8 @@ export const gmailSync = sqliteTable("gmail_sync", {
   syncedThrough: text("synced_through"),
   lastRunAt: text("last_run_at"),
   lastError: text("last_error"),
+  hasMore: integer("has_more", { mode: "boolean" }).notNull().default(false),
+  classifierVersion: integer("classifier_version").notNull().default(0),
 });
 
 // ── Type exports ─────────────────────────────────────────────────────────

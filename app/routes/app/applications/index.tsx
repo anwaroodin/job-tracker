@@ -11,7 +11,7 @@ import {
   listApplications,
 } from "~/server/db/applications.server";
 import { unreadEmailCounts } from "~/server/db/emails.server";
-import { getGmailStatus, syncGmail, syncGmailIfStale } from "~/server/gmail/sync.server";
+import { getGmailStatus, syncGmail, syncGmailInBackground } from "~/server/gmail/sync.server";
 
 const HIDDEN = new Set(["rejected", "ghosted", "withdrawn"]);
 const ACTIVE = new Set(["applied", "screening", "interview", "assessment"]);
@@ -26,7 +26,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     unreadEmailCounts(db, user.id),
     getGmailStatus(db, user.id),
   ]);
-  await syncGmailIfStale(env, context.get(execContext), user.id);
+  syncGmailInBackground(env, context.get(execContext), user.id, gmail);
   const rows = apps.map((a) => ({ ...a, unread: unread[a.id] ?? 0 }));
   return { rows, gmail };
 }
@@ -35,7 +35,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const env = context.get(envContext);
   const user = await requireUser(request, env);
   const form = await request.formData();
-  if (form.get("intent") === "sync") return { sync: await syncGmail(env, user.id) };
+  if (form.get("intent") === "sync") return { sync: await syncGmail(env, user.id, "manual") };
   const company = String(form.get("company") ?? "").trim();
   const role = String(form.get("role") ?? "").trim();
   if (!company || !role) return { error: "Company and role are required" };

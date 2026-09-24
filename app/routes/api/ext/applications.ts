@@ -36,6 +36,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     url: body.url ?? "",
     cvType: body.cv_type ?? "software",
     status: body.status ?? "applied",
+    manualStatusAt: body.status ? new Date().toISOString() : null,
     category: body.category ?? null,
     autoFilled: body.auto_filled ?? true,
   });

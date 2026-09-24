@@ -22,11 +22,15 @@ export function GmailSync({ status }: { status: GmailStatus }) {
   const error = result?.error ?? (result ? null : status.lastError);
   const message = syncing
     ? "Syncing Gmail…"
-    : result && !result.error
-      ? `${result.fetched} new ${result.fetched === 1 ? "email" : "emails"}, ${result.linked} matched${result.more ? ". More to fetch" : ""}`
-      : status.lastSynced
-        ? `Gmail synced ${status.lastSynced}`
-        : "Gmail not synced yet";
+    : result?.busy
+      ? "Already syncing, check back in a minute"
+      : result && !result.error
+        ? `${result.fetched} new ${result.fetched === 1 ? "email" : "emails"}, ${result.linked} matched${result.more ? ". More to fetch" : ""}`
+        : status.hasMore
+          ? "Catching up on older emails…"
+          : status.lastSynced
+            ? `Gmail synced ${status.lastSynced}`
+            : "Gmail not synced yet";
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

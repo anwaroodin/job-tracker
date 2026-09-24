@@ -1,5 +1,6 @@
 const API = "https://gmail.googleapis.com";
 const BATCH_SIZE = 50;
+const BATCH_GAP_MS = 1100;
 
 export class GmailAuthError extends Error {}
 
@@ -31,7 +32,7 @@ export async function listMessageIds(
       headers: { Authorization: `Bearer ${token}` },
     });
     await throwIfAuthError(res);
-    if (!res.ok) throw new Error(`Gmail list failed: ${res.status}`);
+    if (!res.ok) throw new Error(`Gmail list failed: ${res.status} ${await errorReason(res)}`);
     const body = (await res.json()) as {
       messages?: { id: string }[];
       nextPageToken?: string;
@@ -48,7 +49,13 @@ export async function getMessagesMetadata(
   ids: string[],
 ): Promise<{ messages: GmailMessage[]; missing: string[]; failed: string[] }> {
   const out = { messages: [] as GmailMessage[], missing: [] as string[], failed: [] as string[] };
+  let lastBatchAt = 0;
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    // a full batch is 250 quota units, which is gmail's per user limit per
+    // second. firing them back to back gets a chunk of each one rate limited
+    const wait = lastBatchAt + BATCH_GAP_MS - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    lastBatchAt = Date.now();
     const chunk = ids.slice(i, i + BATCH_SIZE);
     const r = await batchGet(token, chunk);
     out.messages.push(...r.messages);
@@ -89,6 +96,13 @@ async function batchGet(token: string, ids: string[]) {
 }
 
 // google sends 403 for rate limits
+async function errorReason(res: Response) {
+  const body = (await res.json().catch(() => null)) as {
+    error?: { message?: string; errors?: { reason?: string }[] };
+  } | null;
+  return [body?.error?.errors?.[0]?.reason, body?.error?.message].filter(Boolean).join(": ");
+}
+
 async function throwIfAuthError(res: Response) {
   if (res.status === 401) throw new GmailAuthError("Gmail rejected the token (401)");
   if (res.status === 403) {
