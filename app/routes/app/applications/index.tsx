@@ -4,14 +4,14 @@ import { ApplicationDataTable } from "~/components/organisms/application-data-ta
 import { GmailSync } from "~/components/molecules/gmail-sync";
 import { Section, stagger } from "~/components/molecules/terminal";
 import { requireUser } from "~/server/auth.server";
-import { envContext, execContext } from "~/server/context.server";
+import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import {
   createApplication,
   listApplications,
 } from "~/server/db/applications.server";
 import { unreadEmailCounts } from "~/server/db/emails.server";
-import { getGmailStatus, syncGmail, syncGmailInBackground } from "~/server/gmail/sync.server";
+import { getGmailStatus, syncGmail } from "~/server/gmail/sync.server";
 
 const HIDDEN = new Set(["rejected", "ghosted", "withdrawn"]);
 const ACTIVE = new Set(["applied", "screening", "interview", "assessment"]);
@@ -26,7 +26,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     unreadEmailCounts(db, user.id),
     getGmailStatus(db, user.id),
   ]);
-  syncGmailInBackground(env, context.get(execContext), user.id, gmail);
   const rows = apps.map((a) => ({ ...a, unread: unread[a.id] ?? 0 }));
   return { rows, gmail };
 }

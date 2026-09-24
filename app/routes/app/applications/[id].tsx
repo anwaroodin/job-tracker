@@ -6,11 +6,11 @@ import { StatusBadge } from "~/components/molecules/status-badge";
 import { cn } from "~/lib/cn";
 import { gmailMessageUrl } from "~/lib/gmail";
 import { requireUser } from "~/server/auth.server";
-import { envContext, execContext } from "~/server/context.server";
+import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { getApplication } from "~/server/db/applications.server";
 import { getApplicationEmails, markViewed } from "~/server/db/emails.server";
-import { getGmailStatus, syncGmail, syncGmailInBackground } from "~/server/gmail/sync.server";
+import { getGmailStatus, syncGmail } from "~/server/gmail/sync.server";
 
 const STAGES = ["applied", "screening", "assessment", "interview", "offer"] as const;
 const OUTCOMES = new Set(["rejected", "accepted", "withdrawn", "ghosted"]);
@@ -25,7 +25,6 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     getGmailStatus(db, user.id),
   ]);
   if (!row) throw data("Not found", { status: 404 });
-  syncGmailInBackground(env, context.get(execContext), user.id, gmail);
   return { row, emails, gmail, accountEmail: user.email };
 }
 

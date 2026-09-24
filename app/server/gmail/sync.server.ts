@@ -14,6 +14,7 @@ const DAY = 86_400_000;
 
 const AUTO_SYNC_EVERY_MS = 15 * MINUTE;
 const MIN_GAP_BETWEEN_RUNS_MS = MINUTE;
+const STUCK_RUN_MS = 2 * MINUTE;
 
 const MAX_LIST_PAGES = 4;
 const MAX_FETCH_PER_RUN = 150;
@@ -35,6 +36,7 @@ const JOB_EMAIL_SEARCH =
   'recruiter recruiting hiring "coding challenge" "take-home" hackerrank codility codesignal hirevue testgorilla}';
 
 export type SyncTrigger = "auto" | "manual";
+export type SyncStage = "checking" | "downloading" | "classifying";
 
 export interface SyncResult {
   fetched: number;
@@ -46,9 +48,15 @@ export interface SyncResult {
 
 export interface GmailStatus {
   connected: boolean;
+  syncing: boolean;
+  stage: SyncStage | null;
+  stageCount: number | null;
   lastRunAt: string | null;
   lastSynced: string | null;
   lastError: string | null;
+  needsReconnect: boolean;
+  lastFetched: number | null;
+  lastLinked: number | null;
   hasMore: boolean;
 }
 
@@ -85,26 +93,44 @@ const isGmailAccount = and(eq(account.providerId, "google"), like(account.scope,
 
 export async function getGmailStatus(db: Db, userId: string): Promise<GmailStatus> {
   const [row] = await db
-    .select({ lastRunAt: gmailSync.lastRunAt, lastError: gmailSync.lastError, hasMore: gmailSync.hasMore })
+    .select({
+      lastRunAt: gmailSync.lastRunAt,
+      lastError: gmailSync.lastError,
+      hasMore: gmailSync.hasMore,
+      stage: gmailSync.stage,
+      stageCount: gmailSync.stageCount,
+      lastFetched: gmailSync.lastFetched,
+      lastLinked: gmailSync.lastLinked,
+    })
     .from(account)
     .leftJoin(gmailSync, eq(gmailSync.userId, account.userId))
     .where(and(eq(account.userId, userId), isGmailAccount))
     .limit(1);
   const lastRunAt = row?.lastRunAt ?? null;
+  const runIsLive = !!lastRunAt && Date.now() - Date.parse(lastRunAt) < STUCK_RUN_MS;
+  const stage = runIsLive ? ((row?.stage as SyncStage | null) ?? null) : null;
   return {
     connected: !!row,
+    syncing: !!stage,
+    stage,
+    stageCount: stage ? (row?.stageCount ?? null) : null,
     lastRunAt,
     lastSynced: lastRunAt ? fmtAgo(lastRunAt) : null,
     lastError: row?.lastError ?? null,
+    needsReconnect: row?.lastError === AUTH_ERROR,
+    lastFetched: row?.lastFetched ?? null,
+    lastLinked: row?.lastLinked ?? null,
     hasMore: row?.hasMore ?? false,
   };
 }
 
 export function syncGmailInBackground(env: Env, ctx: ExecutionContext, userId: string, status: GmailStatus) {
-  if (!status.connected) return;
+  if (!status.connected || status.syncing) return false;
   const sinceLastRun = status.lastRunAt ? Date.now() - Date.parse(status.lastRunAt) : Infinity;
   const interval = status.hasMore ? MIN_GAP_BETWEEN_RUNS_MS : AUTO_SYNC_EVERY_MS;
-  if (sinceLastRun >= interval) ctx.waitUntil(syncGmail(env, userId, "auto"));
+  if (sinceLastRun < interval) return false;
+  ctx.waitUntil(syncGmail(env, userId, "auto"));
+  return true;
 }
 
 export async function syncAllGmailUsers(env: Env) {
@@ -123,9 +149,12 @@ export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger):
       fetchNewMessages(env, db, run),
       run.needsReclassify ? reclassifyStoredEmails(db, userId) : [],
     ]);
+    if (fetched.messages.length || categoryChanges.length) {
+      await setStage(db, userId, "classifying", fetched.messages.length + categoryChanges.length);
+    }
     const { unlinked, applications, latestStages } = await saveAndLoadForMatching(db, run, fetched, categoryChanges);
     const plan = planLinksAndStatuses(unlinked, applications, latestStages, categoryChanges.length > 0);
-    await finishRun(db, run, plan, fetched.more);
+    await finishRun(db, run, plan, fetched);
     return { fetched: fetched.messages.length, linked: plan.links.length, more: fetched.more };
   } catch (e) {
     return failRun(db, userId, e);
@@ -166,6 +195,7 @@ async function fetchNewMessages(env: Env, db: Db, run: Run): Promise<Fetched> {
   const queue = [...new Set([...run.importedLinkIds, ...unseenOldestFirst])];
   const thisRun = queue.slice(0, MAX_FETCH_PER_RUN);
 
+  if (thisRun.length) await setStage(db, run.userId, "downloading", thisRun.length);
   const { messages, missing, failed } = await getMessagesMetadata(token, thisRun);
   return { messages, missing, more: failed.length > 0 || queue.length > thisRun.length };
 }
@@ -209,7 +239,7 @@ async function saveAndLoadForMatching(db: Db, run: Run, fetched: Fetched, catego
   return { unlinked, applications, latestStages };
 }
 
-async function finishRun(db: Db, run: Run, plan: Plan, more: boolean) {
+async function finishRun(db: Db, run: Run, plan: Plan, fetched: Fetched) {
   await db.batch(
     asBatch([
       ...plan.links.map((link) =>
@@ -228,9 +258,13 @@ async function finishRun(db: Db, run: Run, plan: Plan, more: boolean) {
         .update(gmailSync)
         .set({
           lastError: null,
-          hasMore: more,
+          hasMore: fetched.more,
           classifierVersion: CLASSIFIER_VERSION,
-          ...(more ? {} : { syncedThrough: run.startedAt }),
+          stage: null,
+          stageCount: null,
+          lastFetched: fetched.messages.length,
+          lastLinked: plan.links.length,
+          ...(fetched.more ? {} : { syncedThrough: run.startedAt }),
         })
         .where(eq(gmailSync.userId, run.userId)),
     ]),
@@ -243,7 +277,7 @@ async function failRun(db: Db, userId: string, e: unknown): Promise<SyncResult> 
   else console.error("gmail sync failed", e);
 
   const error = isAuth ? AUTH_ERROR : RETRY_ERROR;
-  await db.update(gmailSync).set({ lastError: error }).where(eq(gmailSync.userId, userId));
+  await db.update(gmailSync).set({ lastError: error, stage: null, stageCount: null }).where(eq(gmailSync.userId, userId));
   return { fetched: 0, linked: 0, more: true, error };
 }
 
@@ -341,10 +375,10 @@ function claimRun(db: Db, userId: string, trigger: SyncTrigger, startedAt: strin
 
   return db
     .insert(gmailSync)
-    .values({ userId, lastRunAt: startedAt })
+    .values({ userId, lastRunAt: startedAt, stage: "checking" })
     .onConflictDoUpdate({
       target: gmailSync.userId,
-      set: { lastRunAt: startedAt },
+      set: { lastRunAt: startedAt, stage: "checking", stageCount: null },
       setWhere: sql`${gmailSync.lastRunAt} is null or (${due})`,
     })
     .returning({ syncedThrough: gmailSync.syncedThrough, classifierVersion: gmailSync.classifierVersion });
@@ -418,6 +452,10 @@ function latestStageEmailPerApplication(db: Db, userId: string) {
     .innerJoin(emailMessage, and(eq(emailMessage.userId, emailLink.userId), eq(emailMessage.id, emailLink.id)))
     .where(and(eq(emailLink.userId, userId), notInArray(emailMessage.category, NON_STAGE_CATEGORIES)))
     .groupBy(emailLink.applicationId);
+}
+
+function setStage(db: Db, userId: string, stage: SyncStage, count: number) {
+  return db.update(gmailSync).set({ stage, stageCount: count }).where(eq(gmailSync.userId, userId));
 }
 
 function setCategory(db: Db, userId: string, change: CategoryChange) {

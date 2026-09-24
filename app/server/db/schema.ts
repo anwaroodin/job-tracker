@@ -212,6 +212,10 @@ export const gmailSync = sqliteTable("gmail_sync", {
   lastError: text("last_error"),
   hasMore: integer("has_more", { mode: "boolean" }).notNull().default(false),
   classifierVersion: integer("classifier_version").notNull().default(0),
+  stage: text("stage"),
+  stageCount: integer("stage_count"),
+  lastFetched: integer("last_fetched"),
+  lastLinked: integer("last_linked"),
 });
 
 // ── Type exports ─────────────────────────────────────────────────────────
