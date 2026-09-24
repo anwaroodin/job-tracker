@@ -10,7 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/atoms/dropdown-menu";
+import { SyncStatus } from "~/components/molecules/sync-status";
 import { sidebarView$ } from "~/lib/state/sidebar-view";
+import type { GmailStatus } from "~/server/gmail/sync.server";
 import { cn } from "~/lib/cn";
 import logo from "~/assets/job-tracker.png";
 
@@ -22,11 +24,12 @@ const NAV = [
 
 interface SidebarProps {
   user: { name?: string | null; email: string; image?: string | null };
+  gmail: GmailStatus;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
 
-export function Sidebar({ user, mobileOpen, onCloseMobile }: SidebarProps) {
+export function Sidebar({ user, gmail, mobileOpen, onCloseMobile }: SidebarProps) {
   const collapsed = useSelector(sidebarView$.collapsed);
   const navigate = useNavigate();
   const signOut = () =>
@@ -53,7 +56,7 @@ export function Sidebar({ user, mobileOpen, onCloseMobile }: SidebarProps) {
         <div
           className={cn(
             "relative flex items-center gap-2.5 px-2.5 pb-7",
-            collapsed ? "p-0 mx-auto" : "px-2.5",
+            collapsed ? "p-0 mx-auto pb-4" : "px-2.5",
           )}
         >
           <img
@@ -113,6 +116,7 @@ export function Sidebar({ user, mobileOpen, onCloseMobile }: SidebarProps) {
         </nav>
 
         <div className="mt-auto">
+          <SyncStatus initial={gmail} collapsed={collapsed} />
           <button
             type="button"
             onClick={() => sidebarView$.collapsed.set(!collapsed)}
