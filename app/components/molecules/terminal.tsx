@@ -21,14 +21,7 @@ export const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return `${two(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 };
-export const fmtAgo = (iso: string, now = Date.now()) => {
-  const min = Math.round((now - Date.parse(iso)) / 60_000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min} min ago`;
-  const h = Math.round(min / 60);
-  return h < 24 ? `${h} h ago` : `${Math.round(h / 24)} d ago`;
-};
-export const stagger =(i: number) => ({ "--i": i }) as React.CSSProperties;
+export const stagger = (i: number) => ({ "--i": i }) as React.CSSProperties;
 export const pct = (n: number, total: number) => (total ? Math.round((n / total) * 100) : 0);
 
 export function Section({
