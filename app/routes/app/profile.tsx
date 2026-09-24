@@ -14,13 +14,20 @@ import {
   saveProfile,
   type ProfileForm,
 } from "~/server/db/profile.server";
+import { authClient } from "~/lib/auth-client";
 import { cn } from "~/lib/cn";
+import { GMAIL_SCOPE } from "~/lib/gmail";
+import { getGmailStatus } from "~/server/gmail/sync.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = await requireUser(request, env);
-  const profile = await getProfile(getDb(env.DB), user.id);
-  return { profile, user };
+  const db = getDb(env.DB);
+  const [profile, gmail] = await Promise.all([
+    getProfile(db, user.id),
+    getGmailStatus(db, user.id),
+  ]);
+  return { profile, user, gmail };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -379,13 +386,14 @@ export default function ProfilePage({
                 <div>
                   <p className="text-text-primary">Gmail</p>
                   <p className="mt-0.5 font-sans text-[11.5px] normal-case tracking-normal text-text-secondary">
-                    Auto-match emails to job applications
+                    {gmailStatusText(loaderData.gmail)}
                   </p>
                 </div>
               </div>
-              <Button variant="secondary" size="small" disabled>
-                Connect
-              </Button>
+              <GmailConnectButton
+                connected={loaderData.gmail.connected}
+                broken={!!loaderData.gmail.lastError}
+              />
             </div>
           </Section>
         </main>
@@ -395,6 +403,40 @@ export default function ProfilePage({
 }
 
 // ── Local primitives ────────────────────────────────────────────────────
+
+function gmailStatusText(g: Route.ComponentProps["loaderData"]["gmail"]) {
+  if (!g.connected) return "Auto-match emails to job applications (read-only access)";
+  if (g.lastError) return g.lastError;
+  return g.lastSynced ? `Connected · synced ${g.lastSynced}` : "Connected · first sync pending";
+}
+
+function GmailConnectButton({ connected, broken }: { connected: boolean; broken: boolean }) {
+  const [pending, setPending] = useState(false);
+  if (connected && !broken) {
+    return <span className="text-[11px] tracking-[0.08em] text-green-primary">Connected</span>;
+  }
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="small"
+      disabled={pending}
+      onClick={async () => {
+        setPending(true);
+        // google only hands out a refresh token when the consent screen is shown
+        const { error } = await authClient.linkSocial({
+          provider: "google",
+          scopes: [GMAIL_SCOPE],
+          callbackURL: "/profile#integrations",
+          additionalParams: { prompt: "consent" },
+        });
+        if (error) setPending(false);
+      }}
+    >
+      {pending ? "Redirecting…" : connected ? "Reconnect" : "Connect"}
+    </Button>
+  );
+}
 
 function Field({
   label,
