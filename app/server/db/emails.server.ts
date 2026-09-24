@@ -6,6 +6,7 @@ export async function getApplicationEmails(db: Db, userId: string, applicationId
   const rows = await db
     .select({
       id: emailLink.id,
+      threadId: emailMessage.threadId,
       viewedAt: emailLink.viewedAt,
       category: emailMessage.category,
       subject: emailMessage.subject,

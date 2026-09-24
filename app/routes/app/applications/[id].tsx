@@ -4,7 +4,7 @@ import { GmailSync } from "~/components/molecules/gmail-sync";
 import { Leader, STATUS_COLORS, Section, fmtDate, stagger } from "~/components/molecules/terminal";
 import { StatusBadge } from "~/components/molecules/status-badge";
 import { cn } from "~/lib/cn";
-import { gmailMessageUrl } from "~/lib/gmail";
+import { gmailThreadUrl } from "~/lib/gmail";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
@@ -112,7 +112,7 @@ export default function ApplicationDetail({ loaderData }: Route.ComponentProps) 
             href={row.url || undefined}
           />
           {emails.map((e) => (
-            <EmailItem key={e.id} email={e} href={gmailMessageUrl(accountEmail, e.id)} />
+            <EmailItem key={e.id} email={e} href={gmailThreadUrl(accountEmail, e.threadId || e.id)} />
           ))}
         </ol>
         {emails.length === 0 && (
