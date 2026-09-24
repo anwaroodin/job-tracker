@@ -1,6 +1,7 @@
 import type { Route } from "./+types/index";
 import { Button } from "~/components/atoms/button";
 import { ApplicationDataTable } from "~/components/organisms/application-data-table";
+import { GmailSync } from "~/components/molecules/gmail-sync";
 import { Section, stagger } from "~/components/molecules/terminal";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
@@ -9,6 +10,8 @@ import {
   createApplication,
   listApplications,
 } from "~/server/db/applications.server";
+import { unreadEmailCounts } from "~/server/db/emails.server";
+import { getGmailStatus, syncGmail } from "~/server/gmail/sync.server";
 
 const HIDDEN = new Set(["rejected", "ghosted", "withdrawn"]);
 const ACTIVE = new Set(["applied", "screening", "interview", "assessment"]);
@@ -18,14 +21,20 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = await requireUser(request, env);
   const db = getDb(env.DB);
-  const rows = await listApplications(db, user.id);
-  return { rows };
+  const [apps, unread, gmail] = await Promise.all([
+    listApplications(db, user.id),
+    unreadEmailCounts(db, user.id),
+    getGmailStatus(db, user.id),
+  ]);
+  const rows = apps.map((a) => ({ ...a, unread: unread[a.id] ?? 0 }));
+  return { rows, gmail };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
   const env = context.get(envContext);
   const user = await requireUser(request, env);
   const form = await request.formData();
+  if (form.get("intent") === "sync") return { sync: await syncGmail(env, user.id, "manual") };
   const company = String(form.get("company") ?? "").trim();
   const role = String(form.get("role") ?? "").trim();
   if (!company || !role) return { error: "Company and role are required" };
@@ -68,7 +77,10 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
             </span>
           </h1>
         </div>
-        <Button type="button">+ New application</Button>
+        <div className="flex flex-wrap items-center gap-4">
+          <GmailSync status={loaderData.gmail} />
+          <Button type="button">+ New application</Button>
+        </div>
       </header>
 
       {/* ── [02] ─────────────────────────────────────────────────── */}

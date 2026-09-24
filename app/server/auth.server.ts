@@ -4,12 +4,16 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { redirect } from "react-router";
+import { eq } from "drizzle-orm";
+import { GMAIL_SCOPE } from "~/lib/gmail";
 import { getDb } from "./db/client.server";
+import { gmailSync } from "./db/schema";
 
 export function createAuth(env: Env, request?: Request) {
   const origin = request ? new URL(request.url).origin : env.APP_URL;
+  const db = getDb(env.DB);
   return betterAuth({
-    database: drizzleAdapter(getDb(env.DB), { provider: "sqlite" }),
+    database: drizzleAdapter(db, { provider: "sqlite" }),
     secret: env.SESSION_SECRET,
     baseURL: origin,
     trustedOrigins: [env.APP_URL, "http://localhost:5173"],
@@ -20,6 +24,7 @@ export function createAuth(env: Env, request?: Request) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
+        accessType: "offline",
       },
     },
 
@@ -40,6 +45,14 @@ export function createAuth(env: Env, request?: Request) {
               throw new Error("This email is not authorised to sign in");
             }
             return { data };
+          },
+        },
+      },
+      account: {
+        update: {
+          after: async (acc) => {
+            if (acc.providerId !== "google" || !acc.scope?.includes(GMAIL_SCOPE)) return;
+            await db.update(gmailSync).set({ lastError: null }).where(eq(gmailSync.userId, acc.userId));
           },
         },
       },

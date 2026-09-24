@@ -150,6 +150,7 @@ export const application = sqliteTable(
       .default(true),
     assessmentDue: text("assessment_due"),
     assessmentCompleted: integer("assessment_completed", { mode: "boolean" }),
+    manualStatusAt: text("manual_status_at"),
     appliedAt: text("applied_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -169,10 +170,6 @@ export const emailLink = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    subject: text("subject"),
-    snippet: text("snippet"),
-    fromAddress: text("from_address"),
-    receivedAt: text("received_at"),
     viewedAt: text("viewed_at"),
   },
   (t) => ({
@@ -180,6 +177,46 @@ export const emailLink = sqliteTable(
     byApp: index("email_link_app_idx").on(t.applicationId),
   }),
 );
+
+export const emailMessage = sqliteTable(
+  "email_message",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    id: text("id").notNull(), // Gmail message id
+    threadId: text("thread_id"),
+    category: text("category").notNull(),
+    subject: text("subject").notNull().default(""),
+    snippet: text("snippet").notNull().default(""),
+    fromName: text("from_name").notNull().default(""),
+    fromAddress: text("from_address").notNull().default(""),
+    receivedAt: text("received_at").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.id] }),
+    byUserReceived: index("email_message_user_received_idx").on(
+      t.userId,
+      t.receivedAt,
+    ),
+  }),
+);
+
+export const gmailSync = sqliteTable("gmail_sync", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  // everything received before this has been synced
+  syncedThrough: text("synced_through"),
+  lastRunAt: text("last_run_at"),
+  lastError: text("last_error"),
+  hasMore: integer("has_more", { mode: "boolean" }).notNull().default(false),
+  classifierVersion: integer("classifier_version").notNull().default(0),
+  stage: text("stage"),
+  stageCount: integer("stage_count"),
+  lastFetched: integer("last_fetched"),
+  lastLinked: integer("last_linked"),
+});
 
 // ── Type exports ─────────────────────────────────────────────────────────
 
@@ -190,3 +227,5 @@ export type Cv = typeof cv.$inferSelect;
 export type Application = typeof application.$inferSelect;
 export type NewApplication = typeof application.$inferInsert;
 export type EmailLink = typeof emailLink.$inferSelect;
+export type EmailMessage = typeof emailMessage.$inferSelect;
+export type GmailSync = typeof gmailSync.$inferSelect;

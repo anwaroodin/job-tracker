@@ -23,6 +23,8 @@ import { StatusBadge } from "~/components/molecules/status-badge";
 import { fmtDate } from "~/components/molecules/terminal";
 import { applicationsView$ } from "~/lib/state/applications-view";
 import type { Application } from "~/server/db/schema";
+
+export type ApplicationRow = Application & { unread?: number };
 import { cn } from "~/lib/cn";
 
 const HIDDEN_STATUSES = new Set(["rejected", "ghosted"]);
@@ -34,13 +36,16 @@ function SortIcon({ dir }: { dir: false | "asc" | "desc" }) {
   return <span className="text-[9px]">{dir === "asc" ? "▲" : dir === "desc" ? "▼" : "◆"}</span>;
 }
 
-const columns: ColumnDef<Application>[] = [
+const columns: ColumnDef<ApplicationRow>[] = [
   {
     accessorKey: "company",
     header: "Company",
     cell: ({ row }) => (
       <div className="min-w-0">
-        <p className="truncate text-text-primary group-hover:!text-text-inverse">{row.original.company}</p>
+        <p className="flex min-w-0 items-baseline gap-2">
+          <span className="truncate text-text-primary group-hover:!text-text-inverse">{row.original.company}</span>
+          <UnreadMark count={row.original.unread} />
+        </p>
         {row.original.location && (
           <p className="mt-0.5 truncate text-[10px] text-text-tertiary group-hover:!text-text-inverse/60">{row.original.location}</p>
         )}
@@ -84,7 +89,7 @@ const columns: ColumnDef<Application>[] = [
   },
 ];
 
-export function ApplicationDataTable({ rows }: { rows: Application[] }) {
+export function ApplicationDataTable({ rows }: { rows: ApplicationRow[] }) {
   const search = useSelector(applicationsView$.search);
   const status = useSelector(applicationsView$.status);
   const sorting = useSelector(applicationsView$.sorting);
@@ -92,8 +97,8 @@ export function ApplicationDataTable({ rows }: { rows: Application[] }) {
 
   // Split rows before feeding TanStack — visible bucket + hidden (ghosted/rejected).
   const { visible, hidden } = useMemo(() => {
-    const filterByStatus = (r: Application) => (status === "all" ? true : r.status === status);
-    const filterBySearch = (r: Application) => {
+    const filterByStatus = (r: ApplicationRow) => (status === "all" ? true : r.status === status);
+    const filterBySearch = (r: ApplicationRow) => {
       if (!search) return true;
       const q = search.toLowerCase();
       return r.company.toLowerCase().includes(q) || r.role.toLowerCase().includes(q) || r.location.toLowerCase().includes(q);
@@ -173,7 +178,7 @@ function Toolbar({ total, shown }: { total: number; shown: number }) {
   );
 }
 
-function TableBucket({ rows, sorting }: { rows: Application[]; sorting: any }) {
+function TableBucket({ rows, sorting }: { rows: ApplicationRow[]; sorting: any }) {
   const table = useReactTable({
     data: rows,
     columns,
@@ -230,7 +235,7 @@ function TableBucket({ rows, sorting }: { rows: Application[]; sorting: any }) {
   );
 }
 
-function MobileCard({ app }: { app: Application }) {
+function MobileCard({ app }: { app: ApplicationRow }) {
   return (
     <Link
       to={`/applications/${app.id}`}
@@ -238,7 +243,10 @@ function MobileCard({ app }: { app: Application }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-text-primary group-hover:!text-text-inverse">{app.company}</p>
+          <p className="flex min-w-0 items-baseline gap-2">
+            <span className="truncate text-text-primary group-hover:!text-text-inverse">{app.company}</span>
+            <UnreadMark count={app.unread} />
+          </p>
           <p className="mt-0.5 truncate text-text-secondary group-hover:!text-text-inverse/80">{app.role}</p>
         </div>
         <StatusBadge status={app.status} className="shrink-0 group-hover:!text-text-inverse" />
@@ -255,5 +263,14 @@ function MobileCard({ app }: { app: Application }) {
         )}
       </div>
     </Link>
+  );
+}
+
+function UnreadMark({ count }: { count?: number }) {
+  if (!count) return null;
+  return (
+    <span className="shrink-0 text-[10px] tracking-[0.08em] text-green-primary group-hover:!text-text-inverse">
+      {count} new
+    </span>
   );
 }

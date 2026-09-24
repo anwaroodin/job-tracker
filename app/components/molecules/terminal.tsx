@@ -16,7 +16,7 @@ export const CV_COLORS = ["#ececec", "#6e6f76", "#4a4c53"];
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 export const two = (n: number) => String(n).padStart(2, "0");
-/** UTC parts so server and browser render identical text. */
+
 export const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return `${two(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;

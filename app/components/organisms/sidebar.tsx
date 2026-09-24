@@ -10,7 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/atoms/dropdown-menu";
+import { SyncStatus } from "~/components/molecules/sync-status";
 import { sidebarView$ } from "~/lib/state/sidebar-view";
+import type { GmailStatus } from "~/server/gmail/sync.server";
 import { cn } from "~/lib/cn";
 import logo from "~/assets/job-tracker.png";
 
@@ -22,11 +24,12 @@ const NAV = [
 
 interface SidebarProps {
   user: { name?: string | null; email: string; image?: string | null };
+  gmail: GmailStatus;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
 
-export function Sidebar({ user, mobileOpen, onCloseMobile }: SidebarProps) {
+export function Sidebar({ user, gmail, mobileOpen, onCloseMobile }: SidebarProps) {
   const collapsed = useSelector(sidebarView$.collapsed);
   const navigate = useNavigate();
   const signOut = () =>
@@ -45,7 +48,7 @@ export function Sidebar({ user, mobileOpen, onCloseMobile }: SidebarProps) {
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-dvh w-[216px] shrink-0 flex-col border-r border-stroke-secondary bg-bg-secondary px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[18px] transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex h-dvh w-[216px] shrink-0 flex-col border-r border-stroke-secondary bg-bg-secondary px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[18px] transition-transform duration-200 lg:sticky lg:top-0 lg:self-start lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           collapsed && "lg:w-[64px]",
         )}
@@ -53,7 +56,7 @@ export function Sidebar({ user, mobileOpen, onCloseMobile }: SidebarProps) {
         <div
           className={cn(
             "relative flex items-center gap-2.5 px-2.5 pb-7",
-            collapsed ? "p-0 mx-auto" : "px-2.5",
+            collapsed ? "p-0 mx-auto pb-4" : "px-2.5",
           )}
         >
           <img
@@ -113,6 +116,7 @@ export function Sidebar({ user, mobileOpen, onCloseMobile }: SidebarProps) {
         </nav>
 
         <div className="mt-auto">
+          <SyncStatus initial={gmail} collapsed={collapsed} />
           <button
             type="button"
             onClick={() => sidebarView$.collapsed.set(!collapsed)}
