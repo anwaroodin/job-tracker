@@ -13,6 +13,8 @@ export interface EmailInput {
   from?: string;
 }
 
+export const CLASSIFIER_VERSION = 1;
+
 // first match wins, so order matters. rejections tend to say things like
 // "thanks for interviewing" which would otherwise land in interview
 const RULES: Array<[Exclude<EmailCategory, "other">, RegExp[]]> = [
@@ -38,12 +40,14 @@ const RULES: Array<[Exclude<EmailCategory, "other">, RegExp[]]> = [
       /position has been filled/i,
       /will not be (moving|proceeding|progressing)/i,
       /not (been )?successful/i,
+      /\bunsuccessful\b/i,
     ],
   ],
   [
     "assessment",
     [
       /complete (the|an|our|your) (\w+ )?(assessment|test)/i,
+      /online assessment/i,
       /assessment (link|invitation|invite)/i,
       /coding (challenge|test|exercise)/i,
       /take[- ]home/i,
@@ -72,6 +76,7 @@ const RULES: Array<[Exclude<EmailCategory, "other">, RegExp[]]> = [
       /phone screen/i,
       /recruiter (call|chat)/i,
       /(intro|introductory|initial) (call|chat|conversation)/i,
+      /(would|'d) (like|love) to (talk|speak|chat) (to|with) you/i,
     ],
   ],
   [
@@ -81,6 +86,12 @@ const RULES: Array<[Exclude<EmailCategory, "other">, RegExp[]]> = [
       /application (has been )?(received|submitted)/i,
       /we('ve| have) received your application/i,
       /successfully (applied|submitted)/i,
+      /\bsuccessful application/i,
+      /application confirmation/i,
+      // job board confirmations: linkedin, indeed
+      /your application was sent to/i,
+      /your application to .+ at /i,
+      /indeed application:/i,
     ],
   ],
 ];
