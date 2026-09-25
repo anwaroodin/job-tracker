@@ -22,6 +22,16 @@ The core of the experience revolves around the **companion browser extension** w
 - **Email Tracking:** Integrates with your inbox to automatically classify application-related emails, track interview stages, and update application statuses.
 - **Timelines & Analytics:** Creates detailed chronologies of your interactions with companies and provides rich analytics on your application conversion rates.
 
+### Gmail integration
+
+Connect Gmail (read-only) and job-tracker syncs application emails in the background:
+
+- **Classification:** each email is labelled as applied, screening, interview, assessment, offer, rejected or other, and application statuses follow along. Uses built-in keyword rules by default, or [TypeSafe's Jev model](https://docs.typesafe.ai) when an API key is set. Low-confidence answers are marked *unsure* and don't change a status until you confirm them.
+- **Corrections:** re-label, confirm or unlink any email from an application's timeline.
+- **Dates, links and replies (Jev):** pulls out interview times and deadlines, adds a button to join the meeting or open the assessment, and flags emails waiting on your reply. These show on the timeline and in the overview's *Up next*.
+- **Untracked applications:** confirmation emails for jobs you haven't added are suggested on the Applications page, with the company and role filled in where they can be found.
+- **Usage & settings:** a usage page tracks Jev spend against an optional monthly budget, and a settings page controls the classifier, confidence threshold and syncing.
+
 <div align="center">
   <img src="./images/extension.png" alt="browser-extension" />
   <p>Browser Extension</p>
@@ -50,11 +60,14 @@ job-tracker/
 │   │   ├── index.tsx           Session-based redirect
 │   │   ├── api/                API Endpoints (Auth splat & browser extension API)
 │   │   ├── auth/               Login & Logout routes
-│   │   └── app/                Authed App Shell (Overview, Applications, Profile)
+│   │   └── app/                Authed App Shell (Overview, Applications, Profile, Usage, Settings)
 │   ├── components/             Atomic design system (Atoms, Molecules, Organisms)
 │   ├── lib/                    Client-side utilities & global state
 │   └── server/                 Backend configuration
 │       ├── db/                 Drizzle schema, clients, and data access layer
+│       ├── email/              Email classification, detail and suggestion candidates
+│       ├── gmail/              Gmail API client and background sync
+│       ├── jev/                TypeSafe Jev questions (optional AI classification)
 │       └── *.server.ts         Auth, R2, and Extension API utilities
 ├── workers/
 │   └── app.ts                  Cloudflare Worker entry point
@@ -96,7 +109,10 @@ npx wrangler secret put SESSION_SECRET        # any 32+ byte random string
 npx wrangler secret put GOOGLE_CLIENT_ID
 npx wrangler secret put GOOGLE_CLIENT_SECRET
 npx wrangler secret put ALLOWED_EMAILS        # optional, comma-separated list
+npx wrangler secret put TYPESAFE_API_KEY      # optional, enables Jev classification
 ```
+
+Without `TYPESAFE_API_KEY`, emails are classified with the built-in keyword rules and the Jev-only features (dates, links, reply flags) are skipped. To keep a key set but turn Jev off, add `"EMAIL_CLASSIFIER": "regex"` to `vars` in `wrangler.jsonc`.
 
 For **local development**, create a `.dev.vars` file in the root directory:
 
@@ -105,6 +121,7 @@ SESSION_SECRET=dev-secret-please-change
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 ALLOWED_EMAILS=you@example.com
+TYPESAFE_API_KEY=                 # optional
 ```
 
 ### 4. Configure Google OAuth
@@ -126,7 +143,7 @@ npm run deploy    # Build and deploy to Cloudflare Workers
 ## Roadmap
 
 - [ ] Support CV upload/download via R2 signed URLs
-- [ ] Gmail integration for automatic follow-up tracking
+- [x] Gmail integration for automatic follow-up tracking
 - [ ] Browser extension companion app interacting with the Workers API
 - [ ] Data importer for legacy JSON job tracking formats
 
