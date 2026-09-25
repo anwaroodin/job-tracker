@@ -12,6 +12,7 @@ export interface GmailMessage {
   fromName: string;
   fromAddress: string;
   receivedAt: string;
+  sent: boolean;
 }
 
 export async function listMessageIds(
@@ -44,11 +45,58 @@ export async function listMessageIds(
   return { ids, truncated: true };
 }
 
-export async function getMessagesMetadata(
+const METADATA_QUERY =
+  "format=metadata&metadataHeaders=From&metadataHeaders=Subject" +
+  "&fields=id,threadId,snippet,internalDate,labelIds,payload/headers";
+const BODY_QUERY = "format=full&fields=id,payload(mimeType,body/data,parts)";
+const MAX_BODY_CHARS = 6000;
+const MAX_LINKS = 40;
+const INVISIBLE_CHARS = /[\u034f\u200b-\u200d\u2060\ufeff\u00ad]/g;
+
+export interface BodyLink {
+  url: string;
+  text: string;
+}
+
+export interface EmailBody {
+  text: string;
+  links: BodyLink[];
+}
+
+interface Batched<T> {
+  messages: T[];
+  missing: string[];
+  failed: string[];
+}
+
+export function getMessagesMetadata(token: string, ids: string[]) {
+  return getInBatches(token, ids, METADATA_QUERY, toMessage);
+}
+
+export async function getMessageBodies(token: string, ids: string[]) {
+  const { messages } = await getInBatches(token, ids, BODY_QUERY, toBody);
+  return new Map<string, EmailBody>(
+    messages.filter((m) => m.text || m.links.length).map(({ id, text, links }) => [id, { text, links }]),
+  );
+}
+
+export async function getMailboxAddress(token: string) {
+  const res = await fetch(`${API}/gmail/v1/users/me/profile?fields=emailAddress`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  await throwIfAuthError(res);
+  if (!res.ok) throw new Error(`Gmail profile failed: ${res.status} ${await errorReason(res)}`);
+  const { emailAddress } = (await res.json()) as { emailAddress: string };
+  return emailAddress.toLowerCase();
+}
+
+async function getInBatches<T>(
   token: string,
   ids: string[],
-): Promise<{ messages: GmailMessage[]; missing: string[]; failed: string[] }> {
-  const out = { messages: [] as GmailMessage[], missing: [] as string[], failed: [] as string[] };
+  query: string,
+  parse: (raw: RawMessage) => T,
+): Promise<Batched<T>> {
+  const out: Batched<T> = { messages: [], missing: [], failed: [] };
   let lastBatchAt = 0;
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     // a full batch is 250 quota units, which is gmail's per user limit per
@@ -57,7 +105,7 @@ export async function getMessagesMetadata(
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     lastBatchAt = Date.now();
     const chunk = ids.slice(i, i + BATCH_SIZE);
-    const r = await batchGet(token, chunk);
+    const r = await batchGet(token, chunk, query, parse);
     out.messages.push(...r.messages);
     out.missing.push(...r.missing);
     out.failed.push(...r.failed);
@@ -65,11 +113,8 @@ export async function getMessagesMetadata(
   return out;
 }
 
-async function batchGet(token: string, ids: string[]) {
+async function batchGet<T>(token: string, ids: string[], query: string, parse: (raw: RawMessage) => T) {
   const boundary = `batch_${crypto.randomUUID()}`;
-  const query =
-    "format=metadata&metadataHeaders=From&metadataHeaders=Subject" +
-    "&fields=id,threadId,snippet,internalDate,payload/headers";
   const body =
     ids
       .map(
@@ -92,7 +137,7 @@ async function batchGet(token: string, ids: string[]) {
 
   const resBoundary = /boundary=("?)([^";]+)\1/.exec(res.headers.get("content-type") ?? "")?.[2];
   if (!resBoundary) return { messages: [], missing: [], failed: ids };
-  return parseBatchResponse(await res.text(), resBoundary, ids);
+  return parseBatchResponse(await res.text(), resBoundary, ids, parse);
 }
 
 // google sends 403 for rate limits
@@ -113,8 +158,13 @@ async function throwIfAuthError(res: Response) {
   }
 }
 
-export function parseBatchResponse(text: string, boundary: string, ids: string[]) {
-  const messages: GmailMessage[] = [];
+export function parseBatchResponse<T>(
+  text: string,
+  boundary: string,
+  ids: string[],
+  parse: (raw: RawMessage) => T,
+): Batched<T> {
+  const messages: T[] = [];
   const missing: string[] = [];
   const answered = new Set<string>();
 
@@ -133,7 +183,7 @@ export function parseBatchResponse(text: string, boundary: string, ids: string[]
     if (status !== 200) continue;
     const json = part.slice(part.indexOf("{"), part.lastIndexOf("}") + 1);
     try {
-      messages.push(toMessage(JSON.parse(json)));
+      messages.push(parse(JSON.parse(json)));
       answered.add(id);
     } catch {
       // not marked answered, so it gets retried next run
@@ -142,12 +192,19 @@ export function parseBatchResponse(text: string, boundary: string, ids: string[]
   return { messages, missing, failed: ids.filter((id) => !answered.has(id)) };
 }
 
+interface RawPart {
+  mimeType?: string;
+  body?: { data?: string };
+  parts?: RawPart[];
+}
+
 interface RawMessage {
   id: string;
   threadId?: string;
   snippet?: string;
   internalDate?: string;
-  payload?: { headers?: { name: string; value: string }[] };
+  labelIds?: string[];
+  payload?: RawPart & { headers?: { name: string; value: string }[] };
 }
 
 function toMessage(raw: RawMessage): GmailMessage {
@@ -162,7 +219,64 @@ function toMessage(raw: RawMessage): GmailMessage {
     fromName: name,
     fromAddress: address,
     receivedAt: new Date(Number(raw.internalDate ?? Date.now())).toISOString(),
+    sent: raw.labelIds?.includes("SENT") ?? false,
   };
+}
+
+function toBody(raw: RawMessage) {
+  const plainData = findPart(raw.payload, "text/plain");
+  const htmlData = findPart(raw.payload, "text/html");
+  const plain = plainData ? decodeBase64Url(plainData) : "";
+  const html = htmlData ? decodeBase64Url(htmlData) : "";
+  const text = withoutQuotedReply(plain || htmlToText(html)).replace(INVISIBLE_CHARS, "");
+  return {
+    id: raw.id,
+    text: text.replace(/\s+/g, " ").trim().slice(0, MAX_BODY_CHARS),
+    links: extractLinks(html, plain),
+  };
+}
+
+function extractLinks(html: string, plain: string): BodyLink[] {
+  const links = new Map<string, string>();
+  const add = (url: string, text: string) => {
+    if (!/^https?:\/\//i.test(url) || links.size >= MAX_LINKS) return;
+    const label = text.replace(/\s+/g, " ").trim().slice(0, 80);
+    if (!links.get(url)) links.set(url, label);
+  };
+  for (const [, href, inner] of html.matchAll(/<a\b[^>]*?href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    add(decodeEntities(href), htmlToText(inner));
+  }
+  for (const [url] of plain.matchAll(/https?:\/\/[^\s<>()"']+/g)) add(url.replace(/[.,;:!?]+$/, ""), "");
+  return [...links].map(([url, text]) => ({ url, text }));
+}
+
+function findPart(part: RawPart | undefined, mimeType: string): string | undefined {
+  if (!part) return undefined;
+  if (part.mimeType === mimeType && part.body?.data) return part.body.data;
+  for (const child of part.parts ?? []) {
+    const found = findPart(child, mimeType);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function decodeBase64Url(data: string) {
+  const binary = atob(data.replace(/-/g, "+").replace(/_/g, "/"));
+  return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+}
+
+function htmlToText(html: string) {
+  return decodeEntities(
+    html
+      .replace(/<(style|script|head)[^>]*>[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, "\n")
+      .replace(/<[^>]+>/g, " "),
+  );
+}
+
+function withoutQuotedReply(text: string) {
+  const quoteStart = /^(On [^\n]{1,200}(\n[^\n]{0,100})?wrote:$|-{2,} ?Original Message ?-{2,}|From: .+\nSent: )/im.exec(text);
+  return quoteStart ? text.slice(0, quoteStart.index) : text;
 }
 
 export function parseFrom(from: string) {

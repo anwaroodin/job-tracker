@@ -1,11 +1,6 @@
-export type EmailCategory =
-  | "applied"
-  | "screening"
-  | "interview"
-  | "assessment"
-  | "offer"
-  | "rejected"
-  | "other";
+import type { EmailCategory } from "~/lib/email";
+
+export type { EmailCategory };
 
 export interface EmailInput {
   subject: string;

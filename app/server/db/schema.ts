@@ -9,6 +9,7 @@ import {
   index,
   integer,
   primaryKey,
+  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -171,6 +172,7 @@ export const emailLink = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     viewedAt: text("viewed_at"),
+    dismissedAt: text("dismissed_at"),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.id, t.applicationId] }),
@@ -187,6 +189,22 @@ export const emailMessage = sqliteTable(
     id: text("id").notNull(), // Gmail message id
     threadId: text("thread_id"),
     category: text("category").notNull(),
+    confidence: real("confidence"),
+    manualCategoryAt: text("manual_category_at"),
+    manualKind: text("manual_kind"),
+    detailsAt: text("details_at"),
+    eventAt: text("event_at"),
+    eventText: text("event_text"),
+    actionUrl: text("action_url"),
+    actionText: text("action_text"),
+    needsReply: real("needs_reply"),
+    replyDoneAt: text("reply_done_at"),
+    suggestionAt: text("suggestion_at"),
+    isApplication: real("is_application"),
+    suggestedCompany: text("suggested_company"),
+    suggestedRole: text("suggested_role"),
+    suggestionConfidence: real("suggestion_confidence"),
+    suggestionDismissedAt: text("suggestion_dismissed_at"),
     subject: text("subject").notNull().default(""),
     snippet: text("snippet").notNull().default(""),
     fromName: text("from_name").notNull().default(""),
@@ -211,12 +229,44 @@ export const gmailSync = sqliteTable("gmail_sync", {
   lastRunAt: text("last_run_at"),
   lastError: text("last_error"),
   hasMore: integer("has_more", { mode: "boolean" }).notNull().default(false),
-  classifierVersion: integer("classifier_version").notNull().default(0),
+  classifier: text("classifier"),
   stage: text("stage"),
   stageCount: integer("stage_count"),
   lastFetched: integer("last_fetched"),
   lastLinked: integer("last_linked"),
 });
+
+export const userSettings = sqliteTable("user_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  classifier: text("classifier").notNull().default("jev"),
+  minConfidence: real("min_confidence").notNull().default(0.8),
+  readBodies: integer("read_bodies", { mode: "boolean" }).notNull().default(true),
+  extractDetails: integer("extract_details", { mode: "boolean" }).notNull().default(true),
+  suggestApplications: integer("suggest_applications", { mode: "boolean" }).notNull().default(true),
+  monthlyBudget: real("monthly_budget"),
+  autoSync: integer("auto_sync", { mode: "boolean" }).notNull().default(true),
+  updatedAt: text("updated_at"),
+});
+
+export const jevUsage = sqliteTable(
+  "jev_usage",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: text("created_at").notNull(),
+    source: text("source").notNull(),
+    emails: integer("emails").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    model: text("model").notNull(),
+  },
+  (t) => ({
+    byUserCreated: index("jev_usage_user_created_idx").on(t.userId, t.createdAt),
+  }),
+);
 
 // ── Type exports ─────────────────────────────────────────────────────────
 
@@ -229,3 +279,5 @@ export type NewApplication = typeof application.$inferInsert;
 export type EmailLink = typeof emailLink.$inferSelect;
 export type EmailMessage = typeof emailMessage.$inferSelect;
 export type GmailSync = typeof gmailSync.$inferSelect;
+export type UserSettings = typeof userSettings.$inferSelect;
+export type JevUsage = typeof jevUsage.$inferSelect;

@@ -1,12 +1,35 @@
-import { and, eq, gte, inArray, like, ne, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, like, ne, notInArray, or, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
+import { chunk } from "~/lib/array";
 import { GMAIL_SCOPE } from "~/lib/gmail";
 import { fmtAgo } from "~/lib/time";
 import { createAuth } from "../auth.server";
 import { getDb, type Db } from "../db/client.server";
-import { account, application, emailLink, emailMessage, gmailSync } from "../db/schema";
-import { CLASSIFIER_VERSION, classifyEmail } from "../email/classify.server";
-import { GmailAuthError, getMessagesMetadata, listMessageIds, type GmailMessage } from "./api.server";
+import { account, application, emailLink, emailMessage, gmailSync, jevUsage, userSettings } from "../db/schema";
+import { settingsRowFor, withDefaults } from "../db/settings.server";
+import { dollars, monthStart, tokensSince, usageRows } from "../db/usage.server";
+import {
+  activeClassifier,
+  classifyEmails,
+  isConfident,
+  type ClassifiableEmail,
+  type Classification,
+} from "../email/classifier.server";
+import type { StageUsage } from "../jev/email-stage.server";
+import { findDates, findLinks } from "../email/details.server";
+import { extractDetailsWithJev } from "../jev/email-details.server";
+import { suggestionCandidates, SUGGESTION_LOOKBACK_MS } from "../email/suggestions.server";
+import { suggestApplicationsWithJev, suggestWithoutJev } from "../jev/application-suggestion.server";
+import { DETAIL_CATEGORIES } from "~/lib/email";
+import type { Settings } from "~/lib/settings";
+import {
+  GmailAuthError,
+  getMailboxAddress,
+  getMessageBodies,
+  getMessagesMetadata,
+  listMessageIds,
+  type GmailMessage,
+} from "./api.server";
 import { matchApplication } from "./match.server";
 
 const MINUTE = 60_000;
@@ -23,6 +46,9 @@ const FIRST_SYNC_LOOKBACK_MS = 90 * DAY;
 const LOOKBACK_BEFORE_FIRST_APPLICATION_MS = 14 * DAY;
 const LATE_DELIVERY_OVERLAP_MS = DAY;
 const MAX_IDS_PER_UPDATE = 90;
+const DETAILS_PER_RUN = 20;
+const DETAILS_LOOKBACK_MS = 60 * DAY;
+const SUGGESTIONS_PER_RUN = 25;
 
 const LOCKED_STATUSES = new Set(["accepted", "withdrawn"]);
 const NON_STAGE_CATEGORIES = ["other", "applied", "deleted"];
@@ -58,6 +84,7 @@ export interface GmailStatus {
   lastFetched: number | null;
   lastLinked: number | null;
   hasMore: boolean;
+  autoSync: boolean;
 }
 
 interface Run {
@@ -66,7 +93,11 @@ interface Run {
   accountId: string | null;
   since: number;
   importedLinkIds: string[];
+  settings: Settings;
+  useJev: boolean;
   needsReclassify: boolean;
+  classifier: string;
+  previousClassifier: string | null;
 }
 
 interface Fetched {
@@ -75,9 +106,8 @@ interface Fetched {
   more: boolean;
 }
 
-interface CategoryChange {
+interface CategoryChange extends Classification {
   id: string;
-  category: string;
 }
 
 interface Plan {
@@ -86,6 +116,7 @@ interface Plan {
 }
 
 type StoredEmail = typeof emailMessage.$inferSelect;
+type ReclassifiableEmail = Awaited<ReturnType<typeof storedEmails>>[number];
 type TrackedApplication = Awaited<ReturnType<typeof applicationsFor>>[number];
 type LatestStage = Awaited<ReturnType<typeof latestStageEmailPerApplication>>[number];
 
@@ -101,9 +132,11 @@ export async function getGmailStatus(db: Db, userId: string): Promise<GmailStatu
       stageCount: gmailSync.stageCount,
       lastFetched: gmailSync.lastFetched,
       lastLinked: gmailSync.lastLinked,
+      autoSync: userSettings.autoSync,
     })
     .from(account)
     .leftJoin(gmailSync, eq(gmailSync.userId, account.userId))
+    .leftJoin(userSettings, eq(userSettings.userId, account.userId))
     .where(and(eq(account.userId, userId), isGmailAccount))
     .limit(1);
   const lastRunAt = row?.lastRunAt ?? null;
@@ -121,11 +154,12 @@ export async function getGmailStatus(db: Db, userId: string): Promise<GmailStatu
     lastFetched: row?.lastFetched ?? null,
     lastLinked: row?.lastLinked ?? null,
     hasMore: row?.hasMore ?? false,
+    autoSync: row?.autoSync ?? true,
   };
 }
 
 export function syncGmailInBackground(env: Env, ctx: ExecutionContext, userId: string, status: GmailStatus) {
-  if (!status.connected || status.syncing) return false;
+  if (!status.connected || status.syncing || !status.autoSync) return false;
   const sinceLastRun = status.lastRunAt ? Date.now() - Date.parse(status.lastRunAt) : Infinity;
   const interval = status.hasMore ? MIN_GAP_BETWEEN_RUNS_MS : AUTO_SYNC_EVERY_MS;
   if (sinceLastRun < interval) return false;
@@ -135,41 +169,75 @@ export function syncGmailInBackground(env: Env, ctx: ExecutionContext, userId: s
 
 export async function syncAllGmailUsers(env: Env) {
   const db = getDb(env.DB);
-  const users = await db.selectDistinct({ userId: account.userId }).from(account).where(isGmailAccount);
+  const users = await db
+    .selectDistinct({ userId: account.userId })
+    .from(account)
+    .leftJoin(userSettings, eq(userSettings.userId, account.userId))
+    .where(and(isGmailAccount, or(isNull(userSettings.autoSync), eq(userSettings.autoSync, true))));
   for (const { userId } of users) await syncGmail(env, userId, "auto");
 }
 
 export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger): Promise<SyncResult> {
   const db = getDb(env.DB);
-  const run = await startRun(db, userId, trigger);
+  const run = await startRun(db, env, userId, trigger);
   if (!run) return { fetched: 0, linked: 0, more: false, busy: true };
 
   try {
-    const [fetched, categoryChanges] = await Promise.all([
-      fetchNewMessages(env, db, run),
-      run.needsReclassify ? reclassifyStoredEmails(db, userId) : [],
+    if (!run.accountId) throw new GmailAuthError("Gmail not connected");
+    const token = await getAccessToken(env, run.userId, run.accountId);
+    const [fetched, stored] = await Promise.all([
+      fetchNewMessages(token, db, run),
+      run.needsReclassify ? storedEmails(db, userId) : [],
     ]);
-    if (fetched.messages.length || categoryChanges.length) {
-      await setStage(db, userId, "classifying", fetched.messages.length + categoryChanges.length);
-    }
-    const { unlinked, applications, latestStages } = await saveAndLoadForMatching(db, run, fetched, categoryChanges);
-    const plan = planLinksAndStatuses(unlinked, applications, latestStages, categoryChanges.length > 0);
-    await finishRun(db, run, plan, fetched);
+
+    const toClassify = await withSentByUser(token, fetched.messages, stored);
+    if (toClassify.length) await setStage(db, userId, "classifying", toClassify.length);
+    const { classifications, usage, fellBack } = await classifyEmails(env, toClassify, (ids) => getMessageBodies(token, ids), {
+      useJev: run.useJev,
+      minConfidence: run.settings.minConfidence,
+      readBodies: run.settings.readBodies,
+    });
+    const reclassified = stored.filter((e) => !fellBack.has(e.id));
+    const categoryChanges = changedCategories(reclassified, classifications);
+    const reclassifyComplete = reclassified.length === stored.length;
+
+    const { unlinked, applications, latestStages } = await saveAndLoadForMatching(
+      db,
+      run,
+      fetched,
+      classifications,
+      categoryChanges,
+    );
+    const plan = planLinksAndStatuses(unlinked, applications, latestStages, run.settings.minConfidence);
+    await finishRun(db, run, plan, fetched, usage, reclassifyComplete);
+    if (categoryChanges.length) await refreshApplicationStatus(db, userId);
+    await extractPendingDetails(env, db, run, token).catch((e) => console.error("email details failed", e));
+    await suggestUntrackedApplications(env, db, run, token).catch((e) => console.error("suggestions failed", e));
     return { fetched: fetched.messages.length, linked: plan.links.length, more: fetched.more };
   } catch (e) {
     return failRun(db, userId, e);
   }
 }
 
-async function startRun(db: Db, userId: string, trigger: SyncTrigger): Promise<Run | null> {
+async function startRun(db: Db, env: Env, userId: string, trigger: SyncTrigger): Promise<Run | null> {
   const startedAt = new Date().toISOString();
-  const [claimed, [gmailAccount], importedLinks, [firstApplication]] = await db.batch([
+  const [claimed, [gmailAccount], importedLinks, [firstApplication], [settingsRow], [spent]] = await db.batch([
     claimRun(db, userId, trigger, startedAt),
     gmailAccountFor(db, userId),
     importedLinksMissingDetails(db, userId),
     earliestApplication(db, userId),
+    settingsRowFor(db, userId),
+    tokensSince(db, userId, monthStart()),
   ]);
   if (!claimed.length) return null;
+
+  const settings = withDefaults(settingsRow);
+  const classifier = activeClassifier(env, settings);
+  const wantsJev = classifier.startsWith("jev");
+  const overBudget = settings.monthlyBudget !== null && dollars(Number(spent?.tokens ?? 0)) >= settings.monthlyBudget;
+  const useJev = wantsJev && !overBudget;
+  const classifierChanged = claimed[0].classifier !== classifier;
+  const needsReclassify = classifierChanged && (useJev || !wantsJev);
 
   return {
     userId,
@@ -177,18 +245,19 @@ async function startRun(db: Db, userId: string, trigger: SyncTrigger): Promise<R
     accountId: gmailAccount?.id ?? null,
     since: searchWindowStart(claimed[0].syncedThrough, firstApplication?.appliedAt),
     importedLinkIds: importedLinks.map((l) => l.id),
-    needsReclassify: claimed[0].classifierVersion < CLASSIFIER_VERSION,
+    settings,
+    useJev,
+    needsReclassify,
+    classifier,
+    previousClassifier: claimed[0].classifier,
   };
 }
 
-async function fetchNewMessages(env: Env, db: Db, run: Run): Promise<Fetched> {
-  if (!run.accountId) throw new GmailAuthError("Gmail not connected");
-
-  const [token, storedIds] = await Promise.all([
-    getAccessToken(env, run.userId, run.accountId),
+async function fetchNewMessages(token: string, db: Db, run: Run): Promise<Fetched> {
+  const [storedIds, listed] = await Promise.all([
     storedEmailIdsSince(db, run.userId, run.since - LATE_DELIVERY_OVERLAP_MS),
+    listMessageIds(token, `after:${Math.floor(run.since / 1000)} ${JOB_EMAIL_SEARCH}`, MAX_LIST_PAGES),
   ]);
-  const listed = await listMessageIds(token, `after:${Math.floor(run.since / 1000)} ${JOB_EMAIL_SEARCH}`, MAX_LIST_PAGES);
 
   const known = new Set(storedIds.map((r) => r.id));
   const unseenOldestFirst = listed.ids.filter((id) => !known.has(id)).reverse();
@@ -200,26 +269,41 @@ async function fetchNewMessages(env: Env, db: Db, run: Run): Promise<Fetched> {
   return { messages, missing, more: failed.length > 0 || queue.length > thisRun.length };
 }
 
-async function reclassifyStoredEmails(db: Db, userId: string): Promise<CategoryChange[]> {
-  const stored = await db
-    .select({ id: emailMessage.id, category: emailMessage.category, subject: emailMessage.subject, snippet: emailMessage.snippet })
-    .from(emailMessage)
-    .where(and(eq(emailMessage.userId, userId), ne(emailMessage.category, "deleted")));
+async function withSentByUser(
+  token: string,
+  messages: GmailMessage[],
+  stored: ReclassifiableEmail[],
+): Promise<ClassifiableEmail[]> {
+  if (!messages.length && !stored.length) return [];
+  const mailbox = await getMailboxAddress(token).catch(() => "");
+  return [
+    ...messages.map((m) => ({ ...m, sentByUser: m.sent || m.fromAddress === mailbox })),
+    ...stored.map((e) => ({ ...e, sentByUser: e.fromAddress === mailbox })),
+  ];
+}
 
-  return stored.flatMap((email) => {
-    const category = classifyEmail({ subject: email.subject, body: email.snippet });
-    return category === email.category ? [] : [{ id: email.id, category }];
+function changedCategories(stored: ReclassifiableEmail[], classifications: Map<string, Classification>) {
+  return stored.flatMap((email): CategoryChange[] => {
+    const next = classifications.get(email.id);
+    if (!next || (next.category === email.category && next.confidence === email.confidence)) return [];
+    return [{ id: email.id, ...next }];
   });
 }
 
-async function saveAndLoadForMatching(db: Db, run: Run, fetched: Fetched, categoryChanges: CategoryChange[]) {
-  const rows = toEmailRows(run.userId, fetched.messages, fetched.missing);
+async function saveAndLoadForMatching(
+  db: Db,
+  run: Run,
+  fetched: Fetched,
+  classifications: Map<string, Classification>,
+  categoryChanges: CategoryChange[],
+) {
+  const rows = toEmailRows(run.userId, fetched.messages, fetched.missing, classifications);
   const savedIds = new Set(rows.map((r) => r.id));
   const importedNowSaved = run.importedLinkIds.filter((id) => savedIds.has(id));
 
   const unlinkedQuery = unlinkedStageEmails(db, run.userId, Math.min(run.since, Date.now() - MAX_LOOKBACK_MS));
   const applicationsQuery = applicationsFor(db, run.userId);
-  const latestStagesQuery = latestStageEmailPerApplication(db, run.userId);
+  const latestStagesQuery = latestStageEmailPerApplication(db, run.userId, run.settings.minConfidence);
 
   const results = await db.batch(
     asBatch([
@@ -239,9 +323,18 @@ async function saveAndLoadForMatching(db: Db, run: Run, fetched: Fetched, catego
   return { unlinked, applications, latestStages };
 }
 
-async function finishRun(db: Db, run: Run, plan: Plan, fetched: Fetched) {
+async function finishRun(
+  db: Db,
+  run: Run,
+  plan: Plan,
+  fetched: Fetched,
+  usage: StageUsage[],
+  reclassifyComplete: boolean,
+) {
+  const classifierUpToDate = run.classifier === run.previousClassifier || (run.needsReclassify && reclassifyComplete);
   await db.batch(
     asBatch([
+      ...usageRows(run.userId, usage, run.startedAt).map((row) => db.insert(jevUsage).values(row)),
       ...plan.links.map((link) =>
         db
           .insert(emailLink)
@@ -259,7 +352,7 @@ async function finishRun(db: Db, run: Run, plan: Plan, fetched: Fetched) {
         .set({
           lastError: null,
           hasMore: fetched.more,
-          classifierVersion: CLASSIFIER_VERSION,
+          classifier: classifierUpToDate ? run.classifier : run.previousClassifier,
           stage: null,
           stageCount: null,
           lastFetched: fetched.messages.length,
@@ -285,10 +378,10 @@ function planLinksAndStatuses(
   unlinked: StoredEmail[],
   applications: TrackedApplication[],
   latestStages: LatestStage[],
-  recheckEveryStatus: boolean,
+  minConfidence: number,
 ): Plan {
   const latestByApplication = new Map(latestStages.map((stage) => [stage.applicationId, stage]));
-  const needsStatusCheck = new Set(recheckEveryStatus ? applications.map((a) => a.id) : []);
+  const needsStatusCheck = new Set<string>();
   const links: Plan["links"] = [];
 
   for (const email of unlinked) {
@@ -297,7 +390,8 @@ function planLinksAndStatuses(
     if (!match) continue;
 
     links.push({ emailId: email.id, applicationId: match.id });
-    if (NON_STAGE_CATEGORIES.includes(email.category)) continue;
+    const unsure = !email.manualCategoryAt && !isConfident(email.confidence, minConfidence);
+    if (NON_STAGE_CATEGORIES.includes(email.category) || unsure) continue;
 
     const current = latestByApplication.get(match.id);
     if (!current || email.receivedAt > current.receivedAt) {
@@ -327,6 +421,174 @@ function applicationsStillOpenFor(
   });
 }
 
+export async function refreshApplicationStatus(db: Db, userId: string, applicationId?: string) {
+  const [settingsRow] = await settingsRowFor(db, userId);
+  const { minConfidence } = withDefaults(settingsRow);
+  const [apps, latestStages, evidence] = await db.batch([
+    applicationsFor(db, userId, applicationId),
+    latestStageEmailPerApplication(db, userId, minConfidence, applicationId),
+    lastStageEvidencePerApplication(db, userId, applicationId),
+  ]);
+  const latestByApplication = new Map(latestStages.map((stage) => [stage.applicationId, stage]));
+  const lastEvidenceAt = new Map(evidence.map((row) => [row.applicationId, row.receivedAt]));
+  const updatedAt = new Date().toISOString();
+
+  const updates = apps.flatMap((app) => {
+    const evidenceAt = lastEvidenceAt.get(app.id);
+    if (!evidenceAt || LOCKED_STATUSES.has(app.status)) return [];
+    const setByHandSinceLastEmail = app.manualStatusAt !== null && app.manualStatusAt >= evidenceAt;
+    if (setByHandSinceLastEmail) return [];
+    const status = latestByApplication.get(app.id)?.category ?? "applied";
+    if (status === app.status) return [];
+    return [
+      db
+        .update(application)
+        .set({ status, updatedAt })
+        .where(and(eq(application.id, app.id), eq(application.userId, userId))),
+    ];
+  });
+  if (updates.length) await db.batch(asBatch(updates));
+}
+
+async function extractPendingDetails(env: Env, db: Db, run: Run, token: string) {
+  const apiKey = env.TYPESAFE_API_KEY;
+  if (!apiKey || !run.useJev || !run.settings.extractDetails) return;
+  const pending = await emailsNeedingDetails(db, run.userId);
+  if (!pending.length) return;
+
+  const bodies = await getMessageBodies(token, pending.map((e) => e.id));
+  const inputs = pending.map((email) => {
+    const body = bodies.get(email.id);
+    const text = body?.text || email.snippet;
+    return {
+      id: email.id,
+      category: email.category,
+      from: `${email.fromName} <${email.fromAddress}>`,
+      subject: email.subject,
+      text,
+      dates: findDates(text, email.receivedAt),
+      links: findLinks(body?.links ?? []),
+    };
+  });
+  const { results, usage } = await extractDetailsWithJev(apiKey, inputs);
+
+  const detailsAt = new Date().toISOString();
+  const updates = pending.flatMap((email) => {
+    const details = results.get(email.id);
+    if (!details) return [];
+    return [
+      db
+        .update(emailMessage)
+        .set({ detailsAt, ...details })
+        .where(and(eq(emailMessage.userId, run.userId), eq(emailMessage.id, email.id))),
+    ];
+  });
+  const inserts = usageRows(run.userId, usage, detailsAt).map((row) => db.insert(jevUsage).values(row));
+  if (updates.length || inserts.length) await db.batch(asBatch([...inserts, ...updates]));
+}
+
+async function suggestUntrackedApplications(env: Env, db: Db, run: Run, token: string) {
+  if (!run.settings.suggestApplications) return;
+  const pending = await emailsNeedingSuggestion(db, run.userId);
+  if (!pending.length) return;
+
+  const bodies = await getMessageBodies(token, pending.map((e) => e.id));
+  const inputs = pending.map((email) => {
+    const source = {
+      subject: email.subject,
+      fromName: email.fromName,
+      fromAddress: email.fromAddress,
+      text: bodies.get(email.id)?.text || email.snippet,
+      links: bodies.get(email.id)?.links ?? [],
+    };
+    return {
+      id: email.id,
+      from: `${email.fromName} <${email.fromAddress}>`,
+      subject: email.subject,
+      text: source.text,
+      ...suggestionCandidates(source),
+    };
+  });
+
+  const apiKey = env.TYPESAFE_API_KEY;
+  const { results, usage } =
+    apiKey && run.useJev
+      ? await suggestApplicationsWithJev(apiKey, inputs)
+      : { results: new Map(inputs.map((input) => [input.id, suggestWithoutJev(input)])), usage: [] };
+
+  const suggestionAt = new Date().toISOString();
+  const updates = pending.flatMap((email) => {
+    const result = results.get(email.id);
+    if (!result) return [];
+    return [
+      db
+        .update(emailMessage)
+        .set({
+          suggestionAt,
+          isApplication: result.isApplication,
+          suggestedCompany: result.company,
+          suggestedRole: result.role,
+          suggestionConfidence: result.confidence,
+        })
+        .where(and(eq(emailMessage.userId, run.userId), eq(emailMessage.id, email.id))),
+    ];
+  });
+  const inserts = usageRows(run.userId, usage, suggestionAt).map((row) => db.insert(jevUsage).values(row));
+  if (updates.length || inserts.length) await db.batch(asBatch([...inserts, ...updates]));
+}
+
+function emailsNeedingSuggestion(db: Db, userId: string) {
+  return db
+    .select({
+      id: emailMessage.id,
+      subject: emailMessage.subject,
+      snippet: emailMessage.snippet,
+      fromName: emailMessage.fromName,
+      fromAddress: emailMessage.fromAddress,
+    })
+    .from(emailMessage)
+    .where(
+      and(
+        eq(emailMessage.userId, userId),
+        eq(emailMessage.category, "applied"),
+        isNull(emailMessage.suggestionAt),
+        gte(emailMessage.receivedAt, new Date(Date.now() - SUGGESTION_LOOKBACK_MS).toISOString()),
+        sql`not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})`,
+      ),
+    )
+    .orderBy(desc(emailMessage.receivedAt))
+    .limit(SUGGESTIONS_PER_RUN);
+}
+
+function emailsNeedingDetails(db: Db, userId: string) {
+  return db
+    .select({
+      id: emailMessage.id,
+      category: emailMessage.category,
+      subject: emailMessage.subject,
+      snippet: emailMessage.snippet,
+      fromName: emailMessage.fromName,
+      fromAddress: emailMessage.fromAddress,
+      receivedAt: emailMessage.receivedAt,
+    })
+    .from(emailMessage)
+    .where(
+      and(
+        eq(emailMessage.userId, userId),
+        inArray(emailMessage.category, [...DETAIL_CATEGORIES]),
+        isNull(emailMessage.detailsAt),
+        gte(emailMessage.receivedAt, new Date(Date.now() - DETAILS_LOOKBACK_MS).toISOString()),
+        sql`exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id} and ${emailLink.dismissedAt} is null)`,
+      ),
+    )
+    .orderBy(desc(emailMessage.receivedAt))
+    .limit(DETAILS_PER_RUN);
+}
+
+export async function requestReclassify(db: Db, userId: string) {
+  await db.update(gmailSync).set({ classifier: null }).where(eq(gmailSync.userId, userId));
+}
+
 function shouldFollowEmail(app: TrackedApplication, latest: LatestStage) {
   if (latest.category === app.status || LOCKED_STATUSES.has(app.status)) return false;
   const setByHandAfterEmail = app.manualStatusAt !== null && latest.receivedAt <= app.manualStatusAt;
@@ -339,12 +601,17 @@ function searchWindowStart(syncedThrough: string | null, firstAppliedAt: string 
   return Math.max(Date.parse(firstAppliedAt) - LOOKBACK_BEFORE_FIRST_APPLICATION_MS, Date.now() - MAX_LOOKBACK_MS);
 }
 
-function toEmailRows(userId: string, messages: GmailMessage[], deletedIds: string[]) {
+function toEmailRows(
+  userId: string,
+  messages: GmailMessage[],
+  deletedIds: string[],
+  classifications: Map<string, Classification>,
+) {
   const received = messages.map((m) => ({
     userId,
     id: m.id,
     threadId: m.threadId,
-    category: classifyEmail({ subject: m.subject, body: m.snippet }),
+    ...classifications.get(m.id)!,
     subject: m.subject,
     snippet: m.snippet,
     fromName: m.fromName,
@@ -381,7 +648,7 @@ function claimRun(db: Db, userId: string, trigger: SyncTrigger, startedAt: strin
       set: { lastRunAt: startedAt, stage: "checking", stageCount: null },
       setWhere: sql`${gmailSync.lastRunAt} is null or (${due})`,
     })
-    .returning({ syncedThrough: gmailSync.syncedThrough, classifierVersion: gmailSync.classifierVersion });
+    .returning({ syncedThrough: gmailSync.syncedThrough, classifier: gmailSync.classifier });
 }
 
 function gmailAccountFor(db: Db, userId: string) {
@@ -393,7 +660,7 @@ function importedLinksMissingDetails(db: Db, userId: string) {
     .selectDistinct({ id: emailLink.id })
     .from(emailLink)
     .leftJoin(emailMessage, and(eq(emailMessage.userId, emailLink.userId), eq(emailMessage.id, emailLink.id)))
-    .where(and(eq(emailLink.userId, userId), sql`${emailMessage.id} is null`));
+    .where(and(eq(emailLink.userId, userId), isNull(emailLink.dismissedAt), sql`${emailMessage.id} is null`));
 }
 
 function earliestApplication(db: Db, userId: string) {
@@ -403,6 +670,27 @@ function earliestApplication(db: Db, userId: string) {
     .where(eq(application.userId, userId))
     .orderBy(application.appliedAt)
     .limit(1);
+}
+
+function storedEmails(db: Db, userId: string) {
+  return db
+    .select({
+      id: emailMessage.id,
+      category: emailMessage.category,
+      confidence: emailMessage.confidence,
+      subject: emailMessage.subject,
+      snippet: emailMessage.snippet,
+      fromName: emailMessage.fromName,
+      fromAddress: emailMessage.fromAddress,
+    })
+    .from(emailMessage)
+    .where(
+      and(
+        eq(emailMessage.userId, userId),
+        ne(emailMessage.category, "deleted"),
+        isNull(emailMessage.manualCategoryAt),
+      ),
+    );
 }
 
 function storedEmailIdsSince(db: Db, userId: string, since: number) {
@@ -427,7 +715,7 @@ function unlinkedStageEmails(db: Db, userId: string, since: number) {
     .orderBy(emailMessage.receivedAt);
 }
 
-function applicationsFor(db: Db, userId: string) {
+function applicationsFor(db: Db, userId: string, applicationId?: string) {
   return db
     .select({
       id: application.id,
@@ -438,10 +726,25 @@ function applicationsFor(db: Db, userId: string) {
       manualStatusAt: application.manualStatusAt,
     })
     .from(application)
-    .where(eq(application.userId, userId));
+    .where(and(eq(application.userId, userId), applicationId ? eq(application.id, applicationId) : undefined));
 }
 
-function latestStageEmailPerApplication(db: Db, userId: string) {
+function lastStageEvidencePerApplication(db: Db, userId: string, applicationId?: string) {
+  return db
+    .select({ applicationId: emailLink.applicationId, receivedAt: sql<string>`max(${emailMessage.receivedAt})` })
+    .from(emailLink)
+    .innerJoin(emailMessage, and(eq(emailMessage.userId, emailLink.userId), eq(emailMessage.id, emailLink.id)))
+    .where(
+      and(
+        eq(emailLink.userId, userId),
+        applicationId ? eq(emailLink.applicationId, applicationId) : undefined,
+        or(notInArray(emailMessage.category, NON_STAGE_CATEGORIES), isNotNull(emailMessage.manualCategoryAt)),
+      ),
+    )
+    .groupBy(emailLink.applicationId);
+}
+
+function latestStageEmailPerApplication(db: Db, userId: string, minConfidence: number, applicationId?: string) {
   return db
     .select({
       applicationId: emailLink.applicationId,
@@ -450,7 +753,19 @@ function latestStageEmailPerApplication(db: Db, userId: string) {
     })
     .from(emailLink)
     .innerJoin(emailMessage, and(eq(emailMessage.userId, emailLink.userId), eq(emailMessage.id, emailLink.id)))
-    .where(and(eq(emailLink.userId, userId), notInArray(emailMessage.category, NON_STAGE_CATEGORIES)))
+    .where(
+      and(
+        eq(emailLink.userId, userId),
+        applicationId ? eq(emailLink.applicationId, applicationId) : undefined,
+        isNull(emailLink.dismissedAt),
+        notInArray(emailMessage.category, NON_STAGE_CATEGORIES),
+        or(
+          isNull(emailMessage.confidence),
+          gte(emailMessage.confidence, minConfidence),
+          isNotNull(emailMessage.manualCategoryAt),
+        ),
+      ),
+    )
     .groupBy(emailLink.applicationId);
 }
 
@@ -461,7 +776,11 @@ function setStage(db: Db, userId: string, stage: SyncStage, count: number) {
 function setCategory(db: Db, userId: string, change: CategoryChange) {
   return db
     .update(emailMessage)
-    .set({ category: change.category })
+    .set({
+      category: change.category,
+      confidence: change.confidence,
+      detailsAt: sql`case when ${emailMessage.category} = ${change.category} then ${emailMessage.detailsAt} else null end`,
+    })
     .where(and(eq(emailMessage.userId, userId), eq(emailMessage.id, change.id)));
 }
 
@@ -470,12 +789,6 @@ function markLinksViewed(db: Db, userId: string, ids: string[], viewedAt: string
     .update(emailLink)
     .set({ viewedAt })
     .where(and(eq(emailLink.userId, userId), inArray(emailLink.id, ids), sql`${emailLink.viewedAt} is null`));
-}
-
-function chunk<T>(items: T[], size: number) {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
-  return chunks;
 }
 
 function asBatch(items: BatchItem<"sqlite">[]) {
