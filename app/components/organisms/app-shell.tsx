@@ -7,14 +7,21 @@ import { Sidebar } from "./sidebar";
 interface AppShellProps {
   user: { name?: string | null; email: string; image?: string | null };
   gmail: GmailStatus;
+  unread: number;
   children: ReactNode;
 }
 
-export function AppShell({ user, gmail, children }: AppShellProps) {
+export function AppShell({ user, gmail, unread, children }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   return (
     <div className="flex min-h-dvh w-full bg-bg-primary text-text-primary">
-      <Sidebar user={user} gmail={gmail} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+      <Sidebar
+        user={user}
+        gmail={gmail}
+        unread={unread}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
+      />
       <main className="min-w-0 flex-1">
         <PathBar onOpenMobile={() => setMobileOpen(true)} />
         <div className="mr-auto w-auto max-w-[1200px] px-4 pb-[max(4rem,env(safe-area-inset-bottom))] pt-4 sm:px-6 lg:ml-16 lg:px-8 lg:pb-20">

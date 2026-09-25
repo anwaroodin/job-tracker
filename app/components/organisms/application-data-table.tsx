@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/atoms/dropdown-menu";
 import { Input } from "~/components/atoms/input";
+import { NewBadge } from "~/components/molecules/new-badge";
 import { StatusBadge } from "~/components/molecules/status-badge";
 import { fmtDate } from "~/components/molecules/terminal";
 import { applicationsView$ } from "~/lib/state/applications-view";
@@ -30,7 +31,7 @@ import { cn } from "~/lib/cn";
 const HIDDEN_STATUSES = new Set(["rejected", "ghosted"]);
 const STATUS_FILTERS = ["all", "applied", "interview", "offer", "rejected", "ghosted"] as const;
 /** Company | Role | Status | CV | Applied — shared by the header row and every data row. */
-const GRID_COLS = "grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_100px_74px_108px]";
+const GRID_COLS = "grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_100px_74px_108px]";
 
 function SortIcon({ dir }: { dir: false | "asc" | "desc" }) {
   return <span className="text-[9px]">{dir === "asc" ? "▲" : dir === "desc" ? "▼" : "◆"}</span>;
@@ -43,7 +44,9 @@ const columns: ColumnDef<ApplicationRow>[] = [
     cell: ({ row }) => (
       <div className="min-w-0">
         <p className="flex min-w-0 items-baseline gap-2">
-          <span className="truncate text-text-primary group-hover:!text-text-inverse">{row.original.company}</span>
+          <span title={row.original.company} className="truncate text-text-primary group-hover:!text-text-inverse">
+            {row.original.company}
+          </span>
           <UnreadMark count={row.original.unread} />
         </p>
         {row.original.location && (
@@ -55,7 +58,11 @@ const columns: ColumnDef<ApplicationRow>[] = [
   {
     accessorKey: "role",
     header: "Role",
-    cell: ({ row }) => <span className="truncate text-text-secondary group-hover:!text-text-inverse/80">{row.original.role}</span>,
+    cell: ({ row }) => (
+      <span title={row.original.role} className="block truncate text-text-secondary group-hover:!text-text-inverse/80">
+        {row.original.role}
+      </span>
+    ),
   },
   {
     accessorKey: "status",
@@ -219,6 +226,7 @@ function TableBucket({ rows, sorting }: { rows: ApplicationRow[]; sorting: any }
               to={`/applications/${row.original.id}`}
               className={cn(
                 "group grid items-center gap-4 border-b border-stroke-secondary px-1 py-3 transition-colors last:border-0 hover:bg-text-primary",
+                row.original.unread && "shadow-[inset_2px_0_0_var(--color-green-primary)]",
                 GRID_COLS,
               )}
             >
@@ -239,7 +247,10 @@ function MobileCard({ app }: { app: ApplicationRow }) {
   return (
     <Link
       to={`/applications/${app.id}`}
-      className="group flex flex-col gap-2 border-b border-stroke-secondary px-1 py-3 transition-colors last:border-0 hover:bg-text-primary hover:text-text-inverse"
+      className={cn(
+        "group flex flex-col gap-2 border-b border-stroke-secondary px-1 py-3 transition-colors last:border-0 hover:bg-text-primary hover:text-text-inverse",
+        app.unread && "pl-3 shadow-[inset_2px_0_0_var(--color-green-primary)]",
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -268,9 +279,5 @@ function MobileCard({ app }: { app: ApplicationRow }) {
 
 function UnreadMark({ count }: { count?: number }) {
   if (!count) return null;
-  return (
-    <span className="shrink-0 text-[10px] tracking-[0.08em] text-green-primary group-hover:!text-text-inverse">
-      {count} new
-    </span>
-  );
+  return <NewBadge count={count} className="self-center" />;
 }
