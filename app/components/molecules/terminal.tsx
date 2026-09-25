@@ -106,3 +106,67 @@ export function BarRow({
     </div>
   );
 }
+
+export interface Column {
+  key: string;
+  label: string;
+  value: number;
+  display: string;
+}
+
+/** Column chart: bar height by share of peak, value above, label below, faint quartile gridlines. */
+export function ColumnChart({
+  columns,
+  peak,
+  showValues = true,
+  labelEvery = 1,
+}: {
+  columns: Column[];
+  peak: number;
+  showValues?: boolean;
+  labelEvery?: number;
+}) {
+  return (
+    <div>
+      <div
+        className="flex h-36 items-end gap-1.5 border-b border-white/15"
+        style={{ backgroundImage: "repeating-linear-gradient(180deg, transparent 0, transparent calc(25% - 1px), rgba(255,255,255,.06) 25%)" }}
+      >
+        {columns.map((c, i) => {
+          const latest = i === columns.length - 1;
+          return (
+            <div key={c.key} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end" title={`${c.label}: ${c.display}`}>
+              {showValues && (
+                <span
+                  className={cn(
+                    "mb-1.5 text-[10px] tabular-nums",
+                    latest ? "text-text-primary" : "text-text-tertiary group-hover:text-text-secondary",
+                  )}
+                >
+                  {c.display}
+                </span>
+              )}
+              <div
+                className={cn("w-full transition-colors", latest ? "bg-text-primary" : "bg-fill-primary group-hover:bg-white/30")}
+                style={{ height: `${Math.max(2, (c.value / peak) * 100)}%` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex gap-1.5">
+        {columns.map((c, i) => (
+          <span
+            key={c.key}
+            className={cn(
+              "min-w-0 flex-1 text-center text-[9.5px] text-text-tertiary",
+              labelEvery > 1 ? "overflow-visible whitespace-nowrap" : "truncate",
+            )}
+          >
+            {i % labelEvery === 0 ? c.label.toUpperCase() : ""}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}

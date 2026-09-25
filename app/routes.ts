@@ -30,5 +30,7 @@ export default [
     route("applications", "routes/app/applications/index.tsx"),
     route("applications/:id", "routes/app/applications/[id].tsx"),
     route("profile", "routes/app/profile.tsx"),
+    route("usage", "routes/app/usage.tsx"),
+    route("settings", "routes/app/settings.tsx"),
   ]),
 ] satisfies RouteConfig;
