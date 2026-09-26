@@ -7,6 +7,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { motion } from "motion/react";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { Button } from "~/components/atoms/button";
@@ -23,10 +24,14 @@ import { NewBadge } from "~/components/molecules/new-badge";
 import { StatusBadge } from "~/components/molecules/status-badge";
 import { fmtDate } from "~/components/molecules/terminal";
 import { applicationsView$ } from "~/lib/state/applications-view";
+import { useArrivals } from "~/lib/use-arrivals";
 import type { Application } from "~/server/db/schema";
 
 export type ApplicationRow = Application & { unread?: number };
 import { cn } from "~/lib/cn";
+
+const MotionLink = motion.create(Link);
+const ARRIVE = { initial: { opacity: 0, y: -6 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 } };
 
 const HIDDEN_STATUSES = new Set(["rejected", "ghosted"]);
 const STATUS_FILTERS = ["all", "applied", "interview", "offer", "rejected", "ghosted"] as const;
@@ -97,6 +102,7 @@ const columns: ColumnDef<ApplicationRow>[] = [
 ];
 
 export function ApplicationDataTable({ rows }: { rows: ApplicationRow[] }) {
+  const isArrival = useArrivals(rows.map((r) => r.id));
   const search = useSelector(applicationsView$.search);
   const status = useSelector(applicationsView$.status);
   const sorting = useSelector(applicationsView$.sorting);
@@ -121,7 +127,7 @@ export function ApplicationDataTable({ rows }: { rows: ApplicationRow[] }) {
     <div className="flex flex-col gap-5">
       <Toolbar total={rows.length} shown={visible.length + (showHidden ? hidden.length : 0)} />
 
-      <TableBucket rows={visible} sorting={sorting} />
+      <TableBucket rows={visible} sorting={sorting} isArrival={isArrival} />
 
       {hidden.length > 0 && (
         <div>
@@ -135,7 +141,7 @@ export function ApplicationDataTable({ rows }: { rows: ApplicationRow[] }) {
           </button>
           {showHidden && (
             <div className="mt-3 opacity-70">
-              <TableBucket rows={hidden} sorting={sorting} />
+              <TableBucket rows={hidden} sorting={sorting} isArrival={isArrival} />
             </div>
           )}
         </div>
@@ -185,7 +191,15 @@ function Toolbar({ total, shown }: { total: number; shown: number }) {
   );
 }
 
-function TableBucket({ rows, sorting }: { rows: ApplicationRow[]; sorting: any }) {
+function TableBucket({
+  rows,
+  sorting,
+  isArrival,
+}: {
+  rows: ApplicationRow[];
+  sorting: any;
+  isArrival: (id: string) => boolean;
+}) {
   const table = useReactTable({
     data: rows,
     columns,
@@ -205,7 +219,7 @@ function TableBucket({ rows, sorting }: { rows: ApplicationRow[]; sorting: any }
       {/* Stacked cards below `sm` — a fixed-column grid can't fit five columns on a phone. */}
       <div className="flex flex-col sm:hidden">
         {table.getRowModel().rows.map((row) => (
-          <MobileCard key={row.id} app={row.original} />
+          <MobileCard key={row.id} app={row.original} arrived={isArrival(row.original.id)} />
         ))}
       </div>
 
@@ -221,10 +235,13 @@ function TableBucket({ rows, sorting }: { rows: ApplicationRow[]; sorting: any }
           ))}
 
           {table.getRowModel().rows.map((row) => (
-            <Link
-              key={row.id}
+            <MotionLink
+              key={row.original.id}
               to={`/applications/${row.original.id}`}
+              layout="position"
+              {...(isArrival(row.original.id) ? ARRIVE : { initial: false })}
               className={cn(
+                isArrival(row.original.id) && "arrive",
                 "group grid items-center gap-4 border-b border-stroke-secondary px-1 py-3 transition-colors last:border-0 hover:bg-text-primary",
                 row.original.unread && "shadow-[inset_2px_0_0_var(--color-green-primary)]",
                 GRID_COLS,
@@ -235,7 +252,7 @@ function TableBucket({ rows, sorting }: { rows: ApplicationRow[]; sorting: any }
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </div>
               ))}
-            </Link>
+            </MotionLink>
           ))}
         </div>
       </div>
@@ -243,11 +260,14 @@ function TableBucket({ rows, sorting }: { rows: ApplicationRow[]; sorting: any }
   );
 }
 
-function MobileCard({ app }: { app: ApplicationRow }) {
+function MobileCard({ app, arrived }: { app: ApplicationRow; arrived: boolean }) {
   return (
-    <Link
+    <MotionLink
       to={`/applications/${app.id}`}
+      layout="position"
+      {...(arrived ? ARRIVE : { initial: false })}
       className={cn(
+        arrived && "arrive",
         "group flex flex-col gap-2 border-b border-stroke-secondary px-1 py-3 transition-colors last:border-0 hover:bg-text-primary hover:text-text-inverse",
         app.unread && "pl-3 shadow-[inset_2px_0_0_var(--color-green-primary)]",
       )}
@@ -273,7 +293,7 @@ function MobileCard({ app }: { app: ApplicationRow }) {
           </>
         )}
       </div>
-    </Link>
+    </MotionLink>
   );
 }
 

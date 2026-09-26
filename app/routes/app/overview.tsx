@@ -7,6 +7,8 @@ import { analyticsFor } from "~/server/db/analytics.server";
 import { upNext, type UpNext } from "~/server/db/emails.server";
 import { eventLabel, formatEventAt } from "~/lib/email";
 import { fmtAgo } from "~/lib/time";
+import { useArrivals } from "~/lib/use-arrivals";
+import { motion } from "motion/react";
 import { Bar, BarRow, CV_COLORS, ColumnChart, Leader, Section, STATUS_COLORS, fmtDate, pct, stagger, two } from "~/components/molecules/terminal";
 import { StatusBadge } from "~/components/molecules/status-badge";
 import { cn } from "~/lib/cn";
@@ -169,6 +171,10 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
 
 function UpNextSection({ next }: { next: UpNext }) {
   const total = next.replies.length + next.upcoming.length;
+  const isArrival = useArrivals([
+    ...next.replies.map((r) => `reply-${r.emailId}`),
+    ...next.upcoming.map((r) => `event-${r.emailId}`),
+  ]);
   return (
     <Section n="02" title="Up next" hint={total ? `${total} ${total === 1 ? "thing" : "things"}` : "all clear"} i={1}>
       {total === 0 ? (
@@ -180,6 +186,7 @@ function UpNextSection({ next }: { next: UpNext }) {
           {next.replies.map((r) => (
             <UpNextRow
               key={`reply-${r.emailId}`}
+              arrived={isArrival(`reply-${r.emailId}`)}
               to={`/applications/${r.applicationId}`}
               when={<span className="text-text-primary group-hover:!text-text-inverse">Reply needed</span>}
               company={r.company}
@@ -190,6 +197,7 @@ function UpNextSection({ next }: { next: UpNext }) {
           {next.upcoming.map((r) => (
             <UpNextRow
               key={`event-${r.emailId}`}
+              arrived={isArrival(`event-${r.emailId}`)}
               to={`/applications/${r.applicationId}`}
               when={formatEventAt(r.eventAt!)}
               company={r.company}
@@ -209,7 +217,9 @@ function UpNextRow({
   company,
   detail,
   note,
+  arrived,
 }: {
+  arrived: boolean;
   to: string;
   when: React.ReactNode;
   company: string;
@@ -217,7 +227,13 @@ function UpNextRow({
   note: string;
 }) {
   return (
-    <li>
+    <motion.li
+      layout="position"
+      initial={arrived ? { opacity: 0, y: -6 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className={cn(arrived && "arrive")}
+    >
       <Link
         to={to}
         className="group grid grid-cols-[124px_1fr] items-baseline gap-4 px-3 py-2 transition-colors hover:bg-text-primary hover:text-text-inverse sm:grid-cols-[150px_1fr_auto]"
@@ -229,6 +245,6 @@ function UpNextRow({
         </span>
         <span className="hidden text-text-tertiary group-hover:!text-text-inverse/60 sm:block">{note}</span>
       </Link>
-    </li>
+    </motion.li>
   );
 }

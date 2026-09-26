@@ -1,4 +1,5 @@
 import { ArrowUpRight, CalendarClock, Check, Ellipsis, Link2, Reply, Unlink } from "lucide-react";
+import { motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
 import { data, Link, useFetcher } from "react-router";
 import type { Route } from "./+types/[id]";
@@ -18,6 +19,7 @@ import { StatusBadge } from "~/components/molecules/status-badge";
 import { cn } from "~/lib/cn";
 import { actionLabel, EMAIL_CATEGORIES, eventLabel, formatEventAt, isEmailCategory } from "~/lib/email";
 import { gmailThreadUrl } from "~/lib/gmail";
+import { useArrivals } from "~/lib/use-arrivals";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
@@ -79,6 +81,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 export default function ApplicationDetail({ loaderData }: Route.ComponentProps) {
   const { row, gmail, accountEmail } = loaderData;
   const isNew = useNewOnArrival(row.id, loaderData.emails);
+  const isArrival = useArrivals(
+    loaderData.emails.map((e) => e.id),
+    row.id,
+  );
   const emails = loaderData.emails.filter((e) => !e.dismissedAt);
   const unlinked = loaderData.emails.filter((e) => e.dismissedAt);
   const reached = new Set<string>([
@@ -158,6 +164,7 @@ export default function ApplicationDetail({ loaderData }: Route.ComponentProps) 
               key={e.id}
               email={e}
               isNew={isNew(e)}
+              arrived={isArrival(e.id)}
               href={gmailThreadUrl(accountEmail, e.threadId || e.id)}
             />
           ))}
@@ -195,17 +202,31 @@ type TimelineEmail = Route.ComponentProps["loaderData"]["emails"][number];
 
 function useNewOnArrival(applicationId: string, emails: TimelineEmail[]) {
   const arrivals = useRef<{ applicationId: string; ids: Set<string> } | null>(null);
-  if (arrivals.current?.applicationId !== applicationId) {
-    arrivals.current = { applicationId, ids: new Set(emails.filter((e) => !e.viewedAt).map((e) => e.id)) };
-  }
+  if (arrivals.current?.applicationId !== applicationId) arrivals.current = { applicationId, ids: new Set() };
   const arrived = arrivals.current.ids;
+  for (const email of emails) if (!email.viewedAt) arrived.add(email.id);
   return (email: TimelineEmail) => arrived.has(email.id) || !email.viewedAt;
 }
 
-function EmailItem({ email, href, isNew }: { email: TimelineEmail; href: string; isNew: boolean }) {
+function EmailItem({
+  email,
+  href,
+  isNew,
+  arrived,
+}: {
+  email: TimelineEmail;
+  href: string;
+  isNew: boolean;
+  arrived: boolean;
+}) {
   if (email.category === "deleted") {
     return (
-      <TimelineItem category="deleted" title="Deleted from Gmail" actions={<EmailActions email={email} unlinkOnly />} />
+      <TimelineItem
+        category="deleted"
+        title="Deleted from Gmail"
+        arrived={arrived}
+        actions={<EmailActions email={email} unlinkOnly />}
+      />
     );
   }
   if (!email.category) {
@@ -213,6 +234,7 @@ function EmailItem({ email, href, isNew }: { email: TimelineEmail; href: string;
       <TimelineItem
         category="pending"
         title="Email details not synced yet"
+        arrived={arrived}
         meta="Open in Gmail"
         href={href}
         actions={<EmailActions email={email} unlinkOnly />}
@@ -229,6 +251,7 @@ function EmailItem({ email, href, isNew }: { email: TimelineEmail; href: string;
       meta="Open in Gmail"
       href={href}
       unread={isNew}
+      arrived={arrived}
       unsure={email.unsure}
       edited={email.edited}
       confirmed={email.confirmed}
@@ -406,6 +429,7 @@ function TimelineItem({
   meta,
   href,
   unread,
+  arrived,
   unsure,
   edited,
   confirmed,
@@ -421,6 +445,7 @@ function TimelineItem({
   meta?: string;
   href?: string;
   unread?: boolean;
+  arrived?: boolean;
   unsure?: boolean;
   edited?: boolean;
   confirmed?: boolean;
@@ -470,7 +495,13 @@ function TimelineItem({
   );
 
   return (
-    <li className="grid grid-cols-[14px_1fr] gap-x-4 sm:grid-cols-[96px_14px_1fr]">
+    <motion.li
+      layout="position"
+      initial={arrived ? { opacity: 0, y: -8 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="grid grid-cols-[14px_1fr] gap-x-4 sm:grid-cols-[96px_14px_1fr]"
+    >
       <span className="hidden pt-[13px] text-[11px] tracking-[0.08em] text-text-tertiary sm:block">
         {date ? fmtDate(date) : "—"}
       </span>
@@ -481,6 +512,7 @@ function TimelineItem({
       <div
         className={cn(
           "-mx-3 my-1 flex min-w-0 items-start gap-1 px-3 transition-colors",
+          arrived && "arrive",
           unread && "bg-green-quaternary shadow-[inset_2px_0_0_var(--color-green-primary)]",
           href && "hover:bg-white/[0.04] has-[a:focus-visible]:bg-white/[0.04] has-[[data-state=open]]:bg-white/[0.04]",
         )}
@@ -502,6 +534,6 @@ function TimelineItem({
         </div>
         {actions}
       </div>
-    </li>
+    </motion.li>
   );
 }
