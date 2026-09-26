@@ -1,11 +1,13 @@
 import { Link2, Plus, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/atoms/button";
 import { Input } from "~/components/atoms/input";
-import { fmtDate } from "~/components/molecules/terminal";
+import { fmtDate, STATUS_COLORS } from "~/components/molecules/terminal";
 import { cn } from "~/lib/cn";
 import { gmailThreadUrl } from "~/lib/gmail";
+import { useArrivals } from "~/lib/use-arrivals";
 import type { Suggestion } from "~/server/db/emails.server";
 
 const SHOWN_AT_FIRST = 5;
@@ -20,13 +22,21 @@ export function ApplicationSuggestions({
   const [showAll, setShowAll] = useState(false);
   const shown = showAll ? suggestions : suggestions.slice(0, SHOWN_AT_FIRST);
   const hidden = suggestions.length - shown.length;
+  const isArrival = useArrivals(suggestions.map((s) => s.key));
 
   return (
     <div className="flex flex-col">
       <ul className="flex flex-col">
-        {shown.map((suggestion) => (
-          <SuggestionRow key={suggestion.key} suggestion={suggestion} accountEmail={accountEmail} />
-        ))}
+        <AnimatePresence initial={false}>
+          {shown.map((suggestion) => (
+            <SuggestionRow
+              key={suggestion.key}
+              suggestion={suggestion}
+              accountEmail={accountEmail}
+              arrived={isArrival(suggestion.key)}
+            />
+          ))}
+        </AnimatePresence>
       </ul>
       {suggestions.length > SHOWN_AT_FIRST && (
         <button
@@ -41,7 +51,15 @@ export function ApplicationSuggestions({
   );
 }
 
-function SuggestionRow({ suggestion, accountEmail }: { suggestion: Suggestion; accountEmail: string }) {
+function SuggestionRow({
+  suggestion,
+  accountEmail,
+  arrived,
+}: {
+  suggestion: Suggestion;
+  accountEmail: string;
+  arrived: boolean;
+}) {
   const fetcher = useFetcher<{ error?: string }>();
   const [company, setCompany] = useState(suggestion.company);
   const [role, setRole] = useState(suggestion.role);
@@ -51,10 +69,21 @@ function SuggestionRow({ suggestion, accountEmail }: { suggestion: Suggestion; a
   const submit = (fields: Record<string, string>) =>
     fetcher.submit({ emailIds: suggestion.emailIds.join(","), ...fields }, { method: "post" });
 
-  if (busy && intent === "dismiss-suggestion") return null;
+  const leaving = busy && (intent === "dismiss-suggestion" || intent === "track" || intent === "link-suggestion");
 
   return (
-    <li className="border-b border-stroke-secondary py-3.5 last:border-0">
+    <motion.li
+      layout="position"
+      initial={arrived ? { opacity: 0, y: -8 } : false}
+      animate={{ opacity: leaving ? 0.4 : 1, y: 0 }}
+      exit={{ opacity: 0, x: 24, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.3 }}
+      className={cn(
+        "border-b border-stroke-secondary py-3.5 last:border-0",
+        arrived && "arrive",
+        leaving && "pointer-events-none",
+      )}
+    >
       <div className="grid gap-x-3 gap-y-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_300px] md:items-center">
         <SuggestionInput label="Company" value={company} onChange={setCompany} />
         <SuggestionInput label="Role" value={role} onChange={setRole} />
@@ -99,6 +128,7 @@ function SuggestionRow({ suggestion, accountEmail }: { suggestion: Suggestion; a
 
       <div className="mt-2 flex min-w-0 items-baseline gap-3 text-[10.5px] tracking-[0.08em] text-text-tertiary">
         <p className="min-w-0 flex-1 truncate">
+          <span style={{ color: STATUS_COLORS[suggestion.category] ?? undefined }}>[{suggestion.category}]</span>{" "}
           {fmtDate(suggestion.appliedAt)} · {suggestion.from}
           {suggestion.emailIds.length > 1 && ` · ${suggestion.emailIds.length} emails`} ·{" "}
           <span className="font-sans normal-case tracking-normal">{suggestion.subject}</span>
@@ -122,7 +152,7 @@ function SuggestionRow({ suggestion, accountEmail }: { suggestion: Suggestion; a
       {fetcher.data?.error && (
         <p className="mt-1.5 font-sans text-[12px] normal-case tracking-normal text-red-primary">{fetcher.data.error}</p>
       )}
-    </li>
+    </motion.li>
   );
 }
 

@@ -68,10 +68,13 @@ function questionsFor(batch: SuggestionInput[]) {
 function appliedQuestion(i: number): NoulQuestion {
   return {
     type: "noul",
-    instructions: `Does \`emails[${i}]\` show that the job seeker submitted an application for a specific job?`,
+    instructions:
+      `Is \`emails[${i}]\` about a specific job the job seeker has applied for or is being considered for, ` +
+      "such as a confirmation, interview or assessment invitation, offer or rejection?",
     criteria: {
-      true: "It confirms, acknowledges or follows up on an application the job seeker sent, even if it is a rejection.",
-      false: "It is a job alert, recommendation, newsletter, marketing, or an invitation to apply that they have not acted on.",
+      true: "It is part of the hiring process for a specific job the job seeker applied to or is in the running for.",
+      false:
+        "It is a job alert, recommendation, newsletter, marketing, or unsolicited outreach about a role they have not applied for.",
     },
   };
 }

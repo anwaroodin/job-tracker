@@ -1,7 +1,9 @@
 import { and, asc, desc, eq, gte, inArray, isNull, ne, notInArray, or, sql } from "drizzle-orm";
-import type { EmailCategory } from "~/lib/email";
+import { APPLICATION_CATEGORIES, NEEDS_REPLY_PROBABILITY, type EmailCategory } from "~/lib/email";
 import { isConfident } from "../email/classifier.server";
 import {
+  isCompany,
+  isRole,
   MIN_APPLICATION_PROBABILITY,
   normalizeCompany,
   SUGGESTION_LOOKBACK_MS,
@@ -9,7 +11,6 @@ import {
 import type { Db } from "./client.server";
 import { application, emailLink, emailMessage } from "./schema";
 
-const NEEDS_REPLY_PROBABILITY = 0.6;
 const REPLY_WINDOW_MS = 30 * 86_400_000;
 const CLOSED_STATUSES = ["rejected", "withdrawn", "ghosted", "accepted"];
 const UP_NEXT_LIMIT = 8;
@@ -176,6 +177,7 @@ export async function applicationSuggestions(db: Db, userId: string) {
       .select({
         id: emailMessage.id,
         threadId: emailMessage.threadId,
+        category: emailMessage.category,
         company: emailMessage.suggestedCompany,
         role: emailMessage.suggestedRole,
         subject: emailMessage.subject,
@@ -187,7 +189,7 @@ export async function applicationSuggestions(db: Db, userId: string) {
       .where(
         and(
           eq(emailMessage.userId, userId),
-          eq(emailMessage.category, "applied"),
+          inArray(emailMessage.category, [...APPLICATION_CATEGORIES]),
           gte(emailMessage.isApplication, MIN_APPLICATION_PROBABILITY),
           isNull(emailMessage.suggestionDismissedAt),
           gte(emailMessage.receivedAt, new Date(Date.now() - SUGGESTION_LOOKBACK_MS).toISOString()),
@@ -208,45 +210,73 @@ export async function applicationSuggestions(db: Db, userId: string) {
     if (key && !existingByCompany.has(key)) existingByCompany.set(key, app);
   }
 
-  const groups = new Map<string, Suggestion>();
+  const byThread = new Map<string, typeof emails>();
   for (const email of emails) {
-    const companyKey = email.company ? normalizeCompany(email.company) : "";
-    const key = companyKey ? `${companyKey}|${(email.role ?? "").toLowerCase()}` : email.id;
-    const group = groups.get(key);
-    if (group) {
-      group.emailIds.push(email.id);
-      group.latestThreadId = email.threadId || email.id;
-      group.subject = email.subject;
-      group.company ||= email.company ?? "";
-      group.role ||= email.role ?? "";
-      continue;
-    }
-    groups.set(key, {
-      key,
-      company: email.company ?? "",
-      role: email.role ?? "",
-      appliedAt: email.receivedAt,
-      emailIds: [email.id],
-      latestThreadId: email.threadId || email.id,
-      subject: email.subject,
-      from: email.fromName || email.fromAddress,
-      existing: (companyKey && existingByCompany.get(companyKey)) || null,
-    });
+    const thread = email.threadId || email.id;
+    byThread.set(thread, [...(byThread.get(thread) ?? []), email]);
   }
-  return mergeRolelessIntoSibling([...groups.values()]).reverse();
+  const threads = [...byThread.entries()].map(([thread, threadEmails]) => {
+    const first = threadEmails[0];
+    const last = threadEmails[threadEmails.length - 1];
+    const company = mostCommon(threadEmails.map((e) => e.company).filter(isCompany), normalizeCompany);
+    const role = mostCommon(threadEmails.map((e) => e.role).filter(isRole), (r) => r.toLowerCase());
+    return {
+      key: thread,
+      company,
+      role,
+      appliedAt: first.receivedAt,
+      lastReceivedAt: last.receivedAt,
+      emailIds: threadEmails.map((e) => e.id),
+      latestThreadId: thread,
+      category: last.category,
+      subject: last.subject,
+      from: last.fromName || last.fromAddress,
+      existing: (company && existingByCompany.get(normalizeCompany(company))) || null,
+    } satisfies Suggestion;
+  });
+
+  const merged = mergeWhere(threads, (s) => (s.company && s.role ? `${normalizeCompany(s.company)}|${s.role.toLowerCase()}` : null));
+  const withRole = new Map(merged.filter((s) => s.company && s.role).map((s) => [normalizeCompany(s.company), s]));
+  const result = merged.filter((s) => {
+    const sibling = s.company && !s.role ? withRole.get(normalizeCompany(s.company)) : undefined;
+    if (sibling) absorb(sibling, s);
+    return !sibling;
+  });
+  return result.sort((a, b) => b.lastReceivedAt.localeCompare(a.lastReceivedAt));
 }
 
-function mergeRolelessIntoSibling(suggestions: Suggestion[]) {
-  const withRole = new Map<string, Suggestion>();
-  for (const s of suggestions) if (s.role && s.company) withRole.set(normalizeCompany(s.company), s);
+function mostCommon(values: string[], keyOf: (value: string) => string) {
+  const counts = new Map<string, { value: string; count: number }>();
+  for (const value of values) {
+    const key = keyOf(value);
+    const entry = counts.get(key) ?? { value, count: 0 };
+    entry.count++;
+    counts.set(key, entry);
+  }
+  return [...counts.values()].sort((a, b) => b.count - a.count)[0]?.value ?? "";
+}
+
+function mergeWhere(suggestions: Suggestion[], keyOf: (s: Suggestion) => string | null) {
+  const byKey = new Map<string, Suggestion>();
   return suggestions.filter((s) => {
-    const sibling = !s.role && s.company ? withRole.get(normalizeCompany(s.company)) : undefined;
-    if (!sibling) return true;
-    sibling.emailIds.push(...s.emailIds);
-    if (s.appliedAt < sibling.appliedAt) sibling.appliedAt = s.appliedAt;
-    if (s.appliedAt > sibling.appliedAt) sibling.latestThreadId = s.latestThreadId;
-    return false;
+    const key = keyOf(s);
+    const target = key ? byKey.get(key) : undefined;
+    if (target) absorb(target, s);
+    else if (key) byKey.set(key, s);
+    return !target;
   });
+}
+
+function absorb(target: Suggestion, other: Suggestion) {
+  target.emailIds.push(...other.emailIds);
+  if (other.appliedAt < target.appliedAt) target.appliedAt = other.appliedAt;
+  if (other.lastReceivedAt > target.lastReceivedAt) {
+    target.lastReceivedAt = other.lastReceivedAt;
+    target.latestThreadId = other.latestThreadId;
+    target.category = other.category;
+    target.subject = other.subject;
+    target.from = other.from;
+  }
 }
 
 export interface Suggestion {
@@ -254,8 +284,10 @@ export interface Suggestion {
   company: string;
   role: string;
   appliedAt: string;
+  lastReceivedAt: string;
   emailIds: string[];
   latestThreadId: string;
+  category: string;
   subject: string;
   from: string;
   existing: { id: string; company: string; role: string } | null;

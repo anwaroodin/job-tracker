@@ -14,13 +14,19 @@ const JOB_BOARD_WORDS =
 const SENDER_NOISE =
   /\b(do[_ ]?not[_ ]?reply|no[_-]?reply|noreply|notifications?|notify|hr|workday|talent|acquisition|team|careers?|recruit(?:ing|ment|er)?|jobs?|hiring|apply|people|admin|mail)\b/gi;
 const NOT_A_NAME =
-  /^(the|a|an|we|our|your|you|this|that|hi|hello|dear|thank|thanks|application|applications|position|role|job|team|us|it|all|any|interest|review|information|request|confirmation|received)$/i;
+  /^(the|a|an|we|our|your|you|this|that|hi|hello|dear|thank|thanks|application|applications|position|role|job|team|us|it|all|any|interest|review|information|request|confirmation|received|re|fw|fwd)$/i;
 const SENTENCE_WORDS =
   /\b(application|confirmation|received|review|request|thank|update|next steps?|we|you|your|our|has|have|been|will|was|is|please|this|that|shortly|soon)\b/i;
 
 const JOB_LINK = /linkedin\.com\/(?:comm\/)?jobs\/view|\/(?:jobs?|careers?|vacanc(?:y|ies)|positions?|postings?|opportunit(?:y|ies))\//i;
 const LINKEDIN_JOB_LINK = /linkedin\.com\/(?:comm\/)?jobs\/view/i;
 const GENERIC_LINK_TEXT = /^(view|see|apply|open|click|learn|more|here|search|find|explore|browse|similar|recommended)\b/i;
+
+const NOT_A_ROLE = /\b(invitation|invite|interview|assessment|offer|confirmation|reminder|update|regarding|re|fwd?)\b/i;
+const ROLE_FILLER = /^(?:the\s+)?(?:above|below|following|same|said|mentioned|aforementioned|relevant|advertised|open|new)(?:\s+(?:role|position|job|vacancy))?$/i;
+const SUBJECT_PARTS = /\s[|–—&-]\s?|\s?[|–—&-]\s|:|\|/;
+const TIME_OR_NUMBER = /^\d+(?:[:.]\d+)?\s*(?:am|pm)?$/i;
+const REPLY_PREFIX = /^\s*(?:(?:re|fwd?|aw|sv)\s*:\s*)+/i;
 
 const KNOWN_FORMATS: { pattern: RegExp; company?: number; role?: number; trusted?: false }[] = [
   { pattern: new RegExp(String.raw`application was sent to (${NAME})`, "i"), company: 1 },
@@ -50,7 +56,8 @@ export interface SuggestionCandidates {
   knownRole: string | null;
 }
 
-export function suggestionCandidates(source: SuggestionSource): SuggestionCandidates {
+export function suggestionCandidates(original: SuggestionSource): SuggestionCandidates {
+  const source = { ...original, subject: original.subject.replace(REPLY_PREFIX, "") };
   const trusted = knownFormat(source, true);
   const hinted = knownFormat(source, false);
   const companies = companyCandidates(source, [trusted.company, hinted.company]);
@@ -102,10 +109,10 @@ function companyCandidates({ subject, fromName, fromAddress, text }: SuggestionS
     new RegExp(String.raw`[–—-]\s+(${NAME})\s*$`, "gm"),
   ];
   for (const pattern of patterns) for (const [, name] of haystack.matchAll(pattern)) found.push(name);
-  found.push(...subject.split(/\s[|–—&-]\s|:|\|/).filter((part) => part.trim().split(/\s+/).length <= 4));
+  found.push(...subject.split(SUBJECT_PARTS).filter((part) => part.trim().split(/\s+/).length <= 4));
   found.push(fromName.replace(/([a-z])([A-Z])|([A-Z])([A-Z][a-z])/g, "$1$3 $2$4").replace(SENDER_NOISE, " "));
   found.push(...domainNames(fromAddress));
-  return tidy(found, cleanCompany, isCompany);
+  return tidy(found, cleanCompany, isCompany, normalizeCompany);
 }
 
 function roleCandidates({ subject, text, links = [] }: SuggestionSource, known: (string | null)[]) {
@@ -121,6 +128,7 @@ function roleCandidates({ subject, text, links = [] }: SuggestionSource, known: 
     new RegExp(String.raw`\binterest in (?:the |our )?(.{3,90}?)\s+(?:at|with)\s`, "gi"),
   ];
   for (const pattern of patterns) for (const [, role] of haystack.matchAll(pattern)) found.push(role);
+  found.push(...subject.split(SUBJECT_PARTS));
   return tidy(found, cleanRole, isRole);
 }
 
@@ -131,13 +139,25 @@ function jobLinkTexts(links: { url: string; text: string }[], pattern: RegExp) {
     .filter(isRole);
 }
 
-function isCompany(name: string | null): name is string {
-  return !!name && !SENTENCE_WORDS.test(name) && !JOB_BOARD_WORDS.test(name) && !NOT_A_NAME.test(name);
+export function isCompany(name: string | null): name is string {
+  return (
+    !!name &&
+    !SENTENCE_WORDS.test(name) &&
+    !JOB_BOARD_WORDS.test(name) &&
+    !NOT_A_NAME.test(name) &&
+    !TIME_OR_NUMBER.test(name)
+  );
 }
 
-function isRole(role: string | null): role is string {
+export function isRole(role: string | null): role is string {
   if (!role) return false;
-  return role.split(/\s+/).length <= MAX_ROLE_WORDS && !SENTENCE_WORDS.test(role) && !JOB_BOARD_WORDS.test(role);
+  return (
+    role.split(/\s+/).length <= MAX_ROLE_WORDS &&
+    !SENTENCE_WORDS.test(role) &&
+    !JOB_BOARD_WORDS.test(role) &&
+    !NOT_A_ROLE.test(role) &&
+    !ROLE_FILLER.test(role)
+  );
 }
 
 function domainNames(address: string) {
@@ -154,6 +174,7 @@ function cleanCompany(name: string) {
     .replace(/^(the|to|at|with)\s+/i, "")
     .replace(/[\s.,!:;'’-]+$/, "")
     .replace(/\s+(team|careers|recruiting|talent|and|&)$/i, "")
+    .replace(/\s+(?:interview|invitation|invite|application|assessment|offer|update|confirmation|next steps)\b.*$/i, "")
     .trim();
 }
 
@@ -166,17 +187,23 @@ function cleanRole(role: string) {
     .replace(/\s+/g, " ")
     .replace(/^(the|a|an|our|position of)\s+/i, "")
     .replace(/^(?:[A-Z]{1,3}\d{4,}|\d{5,})\s+/, "")
+    .replace(/\s+\(?(?:[A-Z]{1,4}-?\d{4,}|\d{5,})\)?$/, "")
     .replace(/\s*\((?:ID|ref|req)[^)]*\)?$/i, "")
     .replace(/[\s.,!:;-]+$/, "")
     .trim();
 }
 
-function tidy(values: string[], clean: (value: string) => string, keep: (value: string) => boolean) {
+function tidy(
+  values: string[],
+  clean: (value: string) => string,
+  keep: (value: string) => boolean,
+  keyOf: (value: string) => string = (value) => value.toLowerCase(),
+) {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of values) {
     const value = clean(raw);
-    const key = value.toLowerCase();
+    const key = keyOf(value);
     if (value.length < 2 || value.length > 90 || !keep(value) || seen.has(key)) continue;
     seen.add(key);
     out.push(value);
