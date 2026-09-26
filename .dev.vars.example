@@ -7,3 +7,7 @@ GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 
 # Comma-separated allowlist while single-user (optional)
 ALLOWED_EMAILS=you@example.com
+
+# Optional: classify emails with Jev (https://typesafe.ai). Without it the regex classifier is used.
+# Set EMAIL_CLASSIFIER=regex to turn Jev off while keeping the key.
+TYPESAFE_API_KEY=

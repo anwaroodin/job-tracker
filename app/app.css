@@ -163,3 +163,29 @@ html body[data-scroll-locked] {
     background-color: var(--fill-primary);
   }
 }
+
+@keyframes arrive {
+  from {
+    background-color: var(--color-green-tertiary);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.arrive {
+  animation: arrive 2.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrive {
+    animation: none;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

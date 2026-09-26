@@ -3,16 +3,22 @@ import { Link } from "react-router";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { analyticsFor, type Analytics } from "~/server/db/analytics.server";
-import { Bar, BarRow, CV_COLORS, Leader, Section, STATUS_COLORS, fmtDate, pct, stagger, two } from "~/components/molecules/terminal";
+import { analyticsFor } from "~/server/db/analytics.server";
+import { upNext, type UpNext } from "~/server/db/emails.server";
+import { eventLabel, formatEventAt } from "~/lib/email";
+import { fmtAgo } from "~/lib/time";
+import { useArrivals } from "~/lib/use-arrivals";
+import { motion } from "motion/react";
+import { Bar, BarRow, CV_COLORS, ColumnChart, Leader, Section, STATUS_COLORS, fmtDate, pct, stagger, two } from "~/components/molecules/terminal";
 import { StatusBadge } from "~/components/molecules/status-badge";
 import { cn } from "~/lib/cn";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = await requireUser(request, env);
-  const analytics = await analyticsFor(getDb(env.DB), user.id);
-  return { analytics };
+  const db = getDb(env.DB);
+  const [analytics, next] = await Promise.all([analyticsFor(db, user.id), upNext(db, user.id)]);
+  return { analytics, next };
 }
 
 export default function Overview({ loaderData }: Route.ComponentProps) {
@@ -43,9 +49,12 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
         </p>
       </header>
 
-      {/* ── [02] + [03] ──────────────────────────────────────────── */}
-      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-2">
-        <Section n="02" title="Readout" hint="right now" i={1}>
+      {/* ── [02] ─────────────────────────────────────────────────── */}
+      <UpNextSection next={loaderData.next} />
+
+      {/* ── [03] + [04] ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-x-16 gap-y-12 lg:grid-cols-2">
+        <Section n="03" title="Readout" hint="right now" i={2}>
           <Leader label="Last 7 days">
             {t.weekly}
             <span className={cn("ml-3", delta > 0 ? "text-green-primary" : delta < 0 ? "text-red-primary" : "text-text-tertiary")}>
@@ -60,7 +69,7 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
           <Leader label="Rejected">{t.rejected}</Leader>
         </Section>
 
-        <Section n="03" title="Funnel" hint="stage → stage" i={2}>
+        <Section n="04" title="Funnel" hint="stage → stage" i={3}>
           {a.funnel.map((f, i) => (
             <BarRow
               key={f.stage}
@@ -75,14 +84,17 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
         </Section>
       </div>
 
-      {/* ── [04] ─────────────────────────────────────────────────── */}
-      <Section n="04" title="Volume" hint={`12 weeks · peak ${peak}`} i={3}>
-        <VolumeChart data={a.weekly} peak={peak} />
+      {/* ── [05] ─────────────────────────────────────────────────── */}
+      <Section n="05" title="Volume" hint={`12 weeks · peak ${peak}`} i={4}>
+        <ColumnChart
+          peak={peak}
+          columns={a.weekly.map((w) => ({ key: w.weekStart, label: w.weekLabel, value: w.count, display: String(w.count) }))}
+        />
       </Section>
 
-      {/* ── [05] + [06] + [07] ───────────────────────────────────── */}
-      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-2">
-        <Section n="05" title="Status" hint="where everything sits" i={4}>
+      {/* ── [06] + [07] + [08] ───────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-x-16 gap-y-12 lg:grid-cols-2">
+        <Section n="06" title="Status" hint="where everything sits" i={5}>
           {a.byStatus.map((s) => (
             <BarRow
               key={s.status}
@@ -97,7 +109,7 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
         </Section>
 
         <div className="flex flex-col gap-12">
-          <Section n="06" title="Top companies" hint="most applied" i={5}>
+          <Section n="07" title="Top companies" hint="most applied" i={6}>
             {a.topCompanies.map((c, i) => (
               <Leader key={c.company} label={`${two(i + 1)}  ${c.company}`}>
                 <span className="mr-4 hidden text-text-tertiary sm:inline">
@@ -108,7 +120,7 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
             ))}
           </Section>
 
-          <Section n="07" title="CV split" hint="which CV went out" i={6}>
+          <Section n="08" title="CV split" hint="which CV went out" i={7}>
             {a.byCv.map((c, i) => (
               <BarRow
                 key={c.cvType}
@@ -124,16 +136,16 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
         </div>
       </div>
 
-      {/* ── [08] ─────────────────────────────────────────────────── */}
+      {/* ── [09] ─────────────────────────────────────────────────── */}
       <Section
-        n="08"
+        n="09"
         title="Log"
         hint={
           <Link to="/applications" className="text-accent-primary transition-colors hover:text-accent-secondary">
             View all →
           </Link>
         }
-        i={7}
+        i={8}
       >
         <ul className="-mx-3">
           {a.recent.map((r) => (
@@ -157,41 +169,82 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
   );
 }
 
-/** Column chart: bar height by share of peak, count above, week below, faint quartile gridlines. */
-function VolumeChart({ data, peak }: { data: Analytics["weekly"]; peak: number }) {
+function UpNextSection({ next }: { next: UpNext }) {
+  const total = next.replies.length + next.upcoming.length;
+  const isArrival = useArrivals([
+    ...next.replies.map((r) => `reply-${r.emailId}`),
+    ...next.upcoming.map((r) => `event-${r.emailId}`),
+  ]);
   return (
-    <div>
-      <div
-        className="flex h-36 items-end gap-1.5 border-b border-white/15"
-        style={{ backgroundImage: "repeating-linear-gradient(180deg, transparent 0, transparent calc(25% - 1px), rgba(255,255,255,.06) 25%)" }}
+    <Section n="02" title="Up next" hint={total ? `${total} ${total === 1 ? "thing" : "things"}` : "all clear"} i={1}>
+      {total === 0 ? (
+        <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
+          Nothing waiting on you. Replies and upcoming interviews or deadlines from your emails show up here.
+        </p>
+      ) : (
+        <ul className="-mx-3">
+          {next.replies.map((r) => (
+            <UpNextRow
+              key={`reply-${r.emailId}`}
+              arrived={isArrival(`reply-${r.emailId}`)}
+              to={`/applications/${r.applicationId}`}
+              when={<span className="text-text-primary group-hover:!text-text-inverse">Reply needed</span>}
+              company={r.company}
+              detail={r.subject}
+              note={fmtAgo(r.receivedAt)}
+            />
+          ))}
+          {next.upcoming.map((r) => (
+            <UpNextRow
+              key={`event-${r.emailId}`}
+              arrived={isArrival(`event-${r.emailId}`)}
+              to={`/applications/${r.applicationId}`}
+              when={formatEventAt(r.eventAt!)}
+              company={r.company}
+              detail={r.role}
+              note={eventLabel(r.category)}
+            />
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
+function UpNextRow({
+  to,
+  when,
+  company,
+  detail,
+  note,
+  arrived,
+}: {
+  arrived: boolean;
+  to: string;
+  when: React.ReactNode;
+  company: string;
+  detail: string;
+  note: string;
+}) {
+  return (
+    <motion.li
+      layout="position"
+      initial={arrived ? { opacity: 0, y: -6 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className={cn(arrived && "arrive")}
+    >
+      <Link
+        to={to}
+        className="group grid grid-cols-[124px_1fr] items-baseline gap-4 px-3 py-2 transition-colors hover:bg-text-primary hover:text-text-inverse sm:grid-cols-[150px_1fr_auto]"
       >
-        {data.map((w, i) => {
-          const latest = i === data.length - 1;
-          return (
-            <div key={w.weekStart} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end" title={`${w.weekLabel}: ${w.count}`}>
-              <span
-                className={cn(
-                  "mb-1.5 text-[10px] tabular-nums",
-                  latest ? "text-text-primary" : "text-text-tertiary group-hover:text-text-secondary",
-                )}
-              >
-                {w.count}
-              </span>
-              <div
-                className={cn("w-full transition-colors", latest ? "bg-text-primary" : "bg-fill-primary group-hover:bg-white/30")}
-                style={{ height: `${Math.max(2, (w.count / peak) * 100)}%` }}
-              />
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-2 flex gap-1.5">
-        {data.map((w) => (
-          <span key={w.weekStart} className="min-w-0 flex-1 truncate text-center text-[9.5px] text-text-tertiary">
-            {w.weekLabel.toUpperCase()}
-          </span>
-        ))}
-      </div>
-    </div>
+        <span className="text-text-tertiary group-hover:!text-text-inverse/60">{when}</span>
+        <span className="min-w-0 truncate">
+          <span className="text-text-primary group-hover:!text-text-inverse">{company}</span>
+          <span className="text-text-tertiary group-hover:!text-text-inverse/60"> / {detail}</span>
+        </span>
+        <span className="hidden text-text-tertiary group-hover:!text-text-inverse/60 sm:block">{note}</span>
+      </Link>
+    </motion.li>
   );
 }

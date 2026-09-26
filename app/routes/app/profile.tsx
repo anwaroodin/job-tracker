@@ -14,9 +14,8 @@ import {
   saveProfile,
   type ProfileForm,
 } from "~/server/db/profile.server";
-import { authClient } from "~/lib/auth-client";
+import { GmailConnectButton, gmailStatusText } from "~/components/molecules/gmail-connect";
 import { cn } from "~/lib/cn";
-import { GMAIL_SCOPE } from "~/lib/gmail";
 import { getGmailStatus } from "~/server/gmail/sync.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -403,40 +402,6 @@ export default function ProfilePage({
 }
 
 // ── Local primitives ────────────────────────────────────────────────────
-
-function gmailStatusText(g: Route.ComponentProps["loaderData"]["gmail"]) {
-  if (!g.connected) return "Auto-match emails to job applications (read-only access)";
-  if (g.lastError) return g.lastError;
-  return g.lastSynced ? `Connected · synced ${g.lastSynced}` : "Connected · first sync pending";
-}
-
-function GmailConnectButton({ connected, broken }: { connected: boolean; broken: boolean }) {
-  const [pending, setPending] = useState(false);
-  if (connected && !broken) {
-    return <span className="text-[11px] tracking-[0.08em] text-green-primary">Connected</span>;
-  }
-  return (
-    <Button
-      type="button"
-      variant="secondary"
-      size="small"
-      disabled={pending}
-      onClick={async () => {
-        setPending(true);
-        // google only hands out a refresh token when the consent screen is shown
-        const { error } = await authClient.linkSocial({
-          provider: "google",
-          scopes: [GMAIL_SCOPE],
-          callbackURL: "/profile#integrations",
-          additionalParams: { prompt: "consent" },
-        });
-        if (error) setPending(false);
-      }}
-    >
-      {pending ? "Redirecting…" : connected ? "Reconnect" : "Connect"}
-    </Button>
-  );
-}
 
 function Field({
   label,

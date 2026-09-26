@@ -1,5 +1,6 @@
 import { useSelector } from "@legendapp/state/react";
 import { ChevronsUpDown, LogOut, PanelLeft, X } from "lucide-react";
+import { motion } from "motion/react";
 import { NavLink, useNavigate } from "react-router";
 import { authClient } from "~/lib/auth-client";
 import {
@@ -20,16 +21,19 @@ const NAV = [
   { to: "/overview", label: "Overview" },
   { to: "/applications", label: "Applications" },
   { to: "/profile", label: "Profile" },
+  { to: "/usage", label: "Usage" },
+  { to: "/settings", label: "Settings" },
 ] as const;
 
 interface SidebarProps {
   user: { name?: string | null; email: string; image?: string | null };
   gmail: GmailStatus;
+  unread: number;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
 
-export function Sidebar({ user, gmail, mobileOpen, onCloseMobile }: SidebarProps) {
+export function Sidebar({ user, gmail, unread, mobileOpen, onCloseMobile }: SidebarProps) {
   const collapsed = useSelector(sidebarView$.collapsed);
   const navigate = useNavigate();
   const signOut = () =>
@@ -99,7 +103,7 @@ export function Sidebar({ user, gmail, mobileOpen, onCloseMobile }: SidebarProps
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 px-2.5 py-[7px] font-mono text-[11.5px] uppercase tracking-[0.08em] transition-colors duration-150",
+                  "relative flex items-center gap-3 px-2.5 py-[7px] font-mono text-[11.5px] uppercase tracking-[0.08em] transition-colors duration-150",
                   collapsed && "lg:justify-center lg:px-0",
                   isActive
                     ? "bg-fill-secondary text-text-primary"
@@ -111,6 +115,26 @@ export function Sidebar({ user, gmail, mobileOpen, onCloseMobile }: SidebarProps
                 {String(idx + 1).padStart(2, "0")}
               </span>
               <span className={cn(collapsed && "lg:hidden")}>{label}</span>
+              {to === "/applications" && unread > 0 && (
+                <>
+                  <motion.span
+                    key={unread}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 26 }}
+                    className={cn(
+                      "ml-auto bg-green-quaternary px-1.5 text-[10px] leading-4 tabular-nums text-green-primary",
+                      collapsed && "lg:hidden",
+                    )}
+                    aria-label={`${unread} new ${unread === 1 ? "email" : "emails"}`}
+                  >
+                    {unread}
+                  </motion.span>
+                  {collapsed && (
+                    <span aria-hidden className="absolute right-3 top-1.5 hidden size-1.5 rounded-full bg-green-primary lg:block" />
+                  )}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>

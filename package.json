@@ -13,6 +13,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply job-tracker-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply job-tracker-db --remote",
+    "db:seed:local": "npm run db:migrate:local && node db/seed-local.mjs",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@tanstack/react-table": "^8.20.5",
     "better-auth": "^1.7.5",
+    "chrono-node": "^2.10.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
