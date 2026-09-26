@@ -1,5 +1,6 @@
 import { useSelector } from "@legendapp/state/react";
 import { ChevronsUpDown, LogOut, PanelLeft, X } from "lucide-react";
+import { motion } from "motion/react";
 import { NavLink, useNavigate } from "react-router";
 import { authClient } from "~/lib/auth-client";
 import {
@@ -116,7 +117,11 @@ export function Sidebar({ user, gmail, unread, mobileOpen, onCloseMobile }: Side
               <span className={cn(collapsed && "lg:hidden")}>{label}</span>
               {to === "/applications" && unread > 0 && (
                 <>
-                  <span
+                  <motion.span
+                    key={unread}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 26 }}
                     className={cn(
                       "ml-auto bg-green-quaternary px-1.5 text-[10px] leading-4 tabular-nums text-green-primary",
                       collapsed && "lg:hidden",
@@ -124,7 +129,7 @@ export function Sidebar({ user, gmail, unread, mobileOpen, onCloseMobile }: Side
                     aria-label={`${unread} new ${unread === 1 ? "email" : "emails"}`}
                   >
                     {unread}
-                  </span>
+                  </motion.span>
                   {collapsed && (
                     <span aria-hidden className="absolute right-3 top-1.5 hidden size-1.5 rounded-full bg-green-primary lg:block" />
                   )}

@@ -2,10 +2,10 @@ import { and, desc, eq, gte, inArray, isNotNull, isNull, like, ne, notInArray, o
 import type { BatchItem } from "drizzle-orm/batch";
 import { chunk } from "~/lib/array";
 import { GMAIL_SCOPE } from "~/lib/gmail";
-import { fmtAgo } from "~/lib/time";
 import { createAuth } from "../auth.server";
 import { getDb, type Db } from "../db/client.server";
 import { account, application, emailLink, emailMessage, gmailSync, jevUsage, userSettings } from "../db/schema";
+import { activityInserts, unseenActivityCount, type NewActivity } from "../db/activity.server";
 import { settingsRowFor, withDefaults } from "../db/settings.server";
 import { dollars, monthStart, tokensSince, usageRows } from "../db/usage.server";
 import {
@@ -18,9 +18,9 @@ import {
 import type { StageUsage } from "../jev/email-stage.server";
 import { findDates, findLinks } from "../email/details.server";
 import { extractDetailsWithJev } from "../jev/email-details.server";
-import { suggestionCandidates, SUGGESTION_LOOKBACK_MS } from "../email/suggestions.server";
+import { MIN_APPLICATION_PROBABILITY, suggestionCandidates, SUGGESTION_LOOKBACK_MS } from "../email/suggestions.server";
 import { suggestApplicationsWithJev, suggestWithoutJev } from "../jev/application-suggestion.server";
-import { DETAIL_CATEGORIES } from "~/lib/email";
+import { APPLICATION_CATEGORIES, DETAIL_CATEGORIES, NEEDS_REPLY_PROBABILITY } from "~/lib/email";
 import type { Settings } from "~/lib/settings";
 import {
   GmailAuthError,
@@ -38,6 +38,7 @@ const DAY = 86_400_000;
 const AUTO_SYNC_EVERY_MS = 15 * MINUTE;
 const MIN_GAP_BETWEEN_RUNS_MS = MINUTE;
 const STUCK_RUN_MS = 2 * MINUTE;
+const RECENT_FOR_ACTIVITY_MS = 7 * DAY;
 
 const MAX_LIST_PAGES = 4;
 const MAX_FETCH_PER_RUN = 150;
@@ -62,7 +63,7 @@ const JOB_EMAIL_SEARCH =
   'recruiter recruiting hiring "coding challenge" "take-home" hackerrank codility codesignal hirevue testgorilla}';
 
 export type SyncTrigger = "auto" | "manual";
-export type SyncStage = "checking" | "downloading" | "classifying";
+export type SyncStage = "checking" | "downloading" | "classifying" | "reviewing";
 
 export interface SyncResult {
   fetched: number;
@@ -78,13 +79,14 @@ export interface GmailStatus {
   stage: SyncStage | null;
   stageCount: number | null;
   lastRunAt: string | null;
-  lastSynced: string | null;
+  lastFinishedAt: string | null;
   lastError: string | null;
   needsReconnect: boolean;
   lastFetched: number | null;
   lastLinked: number | null;
   hasMore: boolean;
   autoSync: boolean;
+  unseenActivity: number;
 }
 
 interface Run {
@@ -111,8 +113,14 @@ interface CategoryChange extends Classification {
 }
 
 interface Plan {
-  links: { emailId: string; applicationId: string }[];
-  statusChanges: { applicationId: string; status: string }[];
+  links: { emailId: string; applicationId: string; category: string; receivedAt: string }[];
+  statusChanges: { applicationId: string; status: string; from: string }[];
+}
+
+interface StatusChange {
+  applicationId: string;
+  from: string;
+  to: string;
 }
 
 type StoredEmail = typeof emailMessage.$inferSelect;
@@ -123,22 +131,26 @@ type LatestStage = Awaited<ReturnType<typeof latestStageEmailPerApplication>>[nu
 const isGmailAccount = and(eq(account.providerId, "google"), like(account.scope, `%${GMAIL_SCOPE}%`));
 
 export async function getGmailStatus(db: Db, userId: string): Promise<GmailStatus> {
-  const [row] = await db
-    .select({
-      lastRunAt: gmailSync.lastRunAt,
-      lastError: gmailSync.lastError,
-      hasMore: gmailSync.hasMore,
-      stage: gmailSync.stage,
-      stageCount: gmailSync.stageCount,
-      lastFetched: gmailSync.lastFetched,
-      lastLinked: gmailSync.lastLinked,
-      autoSync: userSettings.autoSync,
-    })
-    .from(account)
-    .leftJoin(gmailSync, eq(gmailSync.userId, account.userId))
-    .leftJoin(userSettings, eq(userSettings.userId, account.userId))
-    .where(and(eq(account.userId, userId), isGmailAccount))
-    .limit(1);
+  const [[row], [unseen]] = await db.batch([
+    db
+      .select({
+        lastRunAt: gmailSync.lastRunAt,
+        lastError: gmailSync.lastError,
+        hasMore: gmailSync.hasMore,
+        stage: gmailSync.stage,
+        stageCount: gmailSync.stageCount,
+        lastFetched: gmailSync.lastFetched,
+        lastLinked: gmailSync.lastLinked,
+        autoSync: userSettings.autoSync,
+        lastFinishedAt: gmailSync.lastFinishedAt,
+      })
+      .from(account)
+      .leftJoin(gmailSync, eq(gmailSync.userId, account.userId))
+      .leftJoin(userSettings, eq(userSettings.userId, account.userId))
+      .where(and(eq(account.userId, userId), isGmailAccount))
+      .limit(1),
+    unseenActivityCount(db, userId),
+  ]);
   const lastRunAt = row?.lastRunAt ?? null;
   const runIsLive = !!lastRunAt && Date.now() - Date.parse(lastRunAt) < STUCK_RUN_MS;
   const stage = runIsLive ? ((row?.stage as SyncStage | null) ?? null) : null;
@@ -148,13 +160,14 @@ export async function getGmailStatus(db: Db, userId: string): Promise<GmailStatu
     stage,
     stageCount: stage ? (row?.stageCount ?? null) : null,
     lastRunAt,
-    lastSynced: lastRunAt ? fmtAgo(lastRunAt) : null,
+    lastFinishedAt: row?.lastFinishedAt ?? null,
     lastError: row?.lastError ?? null,
     needsReconnect: row?.lastError === AUTH_ERROR,
     lastFetched: row?.lastFetched ?? null,
     lastLinked: row?.lastLinked ?? null,
     hasMore: row?.hasMore ?? false,
     autoSync: row?.autoSync ?? true,
+    unseenActivity: Number(unseen?.count ?? 0),
   };
 }
 
@@ -192,11 +205,16 @@ export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger):
 
     const toClassify = await withSentByUser(token, fetched.messages, stored);
     if (toClassify.length) await setStage(db, userId, "classifying", toClassify.length);
-    const { classifications, usage, fellBack } = await classifyEmails(env, toClassify, (ids) => getMessageBodies(token, ids), {
-      useJev: run.useJev,
-      minConfidence: run.settings.minConfidence,
-      readBodies: run.settings.readBodies,
-    });
+    const { classifications, usage, fellBack } = await classifyEmails(
+      env,
+      toClassify,
+      (ids) => getMessageBodies(token, ids),
+      {
+        useJev: run.useJev,
+        minConfidence: run.settings.minConfidence,
+        readBodies: run.settings.readBodies,
+      },
+    );
     const reclassified = stored.filter((e) => !fellBack.has(e.id));
     const categoryChanges = changedCategories(reclassified, classifications);
     const reclassifyComplete = reclassified.length === stored.length;
@@ -210,13 +228,58 @@ export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger):
     );
     const plan = planLinksAndStatuses(unlinked, applications, latestStages, run.settings.minConfidence);
     await finishRun(db, run, plan, fetched, usage, reclassifyComplete);
-    if (categoryChanges.length) await refreshApplicationStatus(db, userId);
-    await extractPendingDetails(env, db, run, token).catch((e) => console.error("email details failed", e));
-    await suggestUntrackedApplications(env, db, run, token).catch((e) => console.error("suggestions failed", e));
+    const reclassifiedStatuses = categoryChanges.length ? await refreshApplicationStatus(db, userId) : [];
+    const details = await extractPendingDetails(env, db, run, token).catch((e) => {
+      console.error("email details failed", e);
+      return [];
+    });
+    const suggestions = await suggestUntrackedApplications(env, db, run, token).catch((e) => {
+      console.error("suggestions failed", e);
+      return [];
+    });
+    await completeRun(db, run.userId, [
+      ...plan.links.filter((link) => isRecent(link.receivedAt)).map(linkActivity),
+      ...plan.statusChanges.map(({ applicationId, from, status }) =>
+        statusActivity({ applicationId, from, to: status }),
+      ),
+      ...reclassifiedStatuses.map(statusActivity),
+      ...details,
+      ...suggestions,
+    ]);
     return { fetched: fetched.messages.length, linked: plan.links.length, more: fetched.more };
   } catch (e) {
     return failRun(db, userId, e);
   }
+}
+
+async function completeRun(db: Db, userId: string, activities: NewActivity[]) {
+  const finishedAt = new Date().toISOString();
+  await db.batch(
+    asBatch([
+      ...activityInserts(db, userId, activities, finishedAt),
+      db
+        .update(gmailSync)
+        .set({ stage: null, stageCount: null, lastFinishedAt: finishedAt })
+        .where(eq(gmailSync.userId, userId)),
+    ]),
+  );
+}
+
+function isRecent(receivedAt: string) {
+  return Date.now() - Date.parse(receivedAt) < RECENT_FOR_ACTIVITY_MS;
+}
+
+function linkActivity(link: Plan["links"][number]): NewActivity {
+  return {
+    kind: "email",
+    applicationId: link.applicationId,
+    emailId: link.emailId,
+    detail: { category: link.category },
+  };
+}
+
+function statusActivity({ applicationId, from, to }: StatusChange): NewActivity {
+  return { kind: "status", applicationId, detail: { from, to } };
 }
 
 async function startRun(db: Db, env: Env, userId: string, trigger: SyncTrigger): Promise<Run | null> {
@@ -353,7 +416,7 @@ async function finishRun(
           lastError: null,
           hasMore: fetched.more,
           classifier: classifierUpToDate ? run.classifier : run.previousClassifier,
-          stage: null,
+          stage: "reviewing",
           stageCount: null,
           lastFetched: fetched.messages.length,
           lastLinked: plan.links.length,
@@ -370,7 +433,10 @@ async function failRun(db: Db, userId: string, e: unknown): Promise<SyncResult> 
   else console.error("gmail sync failed", e);
 
   const error = isAuth ? AUTH_ERROR : RETRY_ERROR;
-  await db.update(gmailSync).set({ lastError: error, stage: null, stageCount: null }).where(eq(gmailSync.userId, userId));
+  await db
+    .update(gmailSync)
+    .set({ lastError: error, stage: null, stageCount: null, lastFinishedAt: new Date().toISOString() })
+    .where(eq(gmailSync.userId, userId));
   return { fetched: 0, linked: 0, more: true, error };
 }
 
@@ -389,7 +455,7 @@ function planLinksAndStatuses(
     const match = matchApplication(email, candidates);
     if (!match) continue;
 
-    links.push({ emailId: email.id, applicationId: match.id });
+    links.push({ emailId: email.id, applicationId: match.id, category: email.category, receivedAt: email.receivedAt });
     const unsure = !email.manualCategoryAt && !isConfident(email.confidence, minConfidence);
     if (NON_STAGE_CATEGORIES.includes(email.category) || unsure) continue;
 
@@ -402,7 +468,9 @@ function planLinksAndStatuses(
 
   const statusChanges = applications.flatMap((app) => {
     const latest = needsStatusCheck.has(app.id) ? latestByApplication.get(app.id) : undefined;
-    return latest && shouldFollowEmail(app, latest) ? [{ applicationId: app.id, status: latest.category }] : [];
+    return latest && shouldFollowEmail(app, latest)
+      ? [{ applicationId: app.id, status: latest.category, from: app.status }]
+      : [];
   });
 
   return { links, statusChanges };
@@ -421,7 +489,11 @@ function applicationsStillOpenFor(
   });
 }
 
-export async function refreshApplicationStatus(db: Db, userId: string, applicationId?: string) {
+export async function refreshApplicationStatus(
+  db: Db,
+  userId: string,
+  applicationId?: string,
+): Promise<StatusChange[]> {
   const [settingsRow] = await settingsRowFor(db, userId);
   const { minConfidence } = withDefaults(settingsRow);
   const [apps, latestStages, evidence] = await db.batch([
@@ -433,30 +505,34 @@ export async function refreshApplicationStatus(db: Db, userId: string, applicati
   const lastEvidenceAt = new Map(evidence.map((row) => [row.applicationId, row.receivedAt]));
   const updatedAt = new Date().toISOString();
 
-  const updates = apps.flatMap((app) => {
+  const changes = apps.flatMap((app): StatusChange[] => {
     const evidenceAt = lastEvidenceAt.get(app.id);
     if (!evidenceAt || LOCKED_STATUSES.has(app.status)) return [];
     const setByHandSinceLastEmail = app.manualStatusAt !== null && app.manualStatusAt >= evidenceAt;
     if (setByHandSinceLastEmail) return [];
     const status = latestByApplication.get(app.id)?.category ?? "applied";
-    if (status === app.status) return [];
-    return [
-      db
-        .update(application)
-        .set({ status, updatedAt })
-        .where(and(eq(application.id, app.id), eq(application.userId, userId))),
-    ];
+    return status === app.status ? [] : [{ applicationId: app.id, from: app.status, to: status }];
   });
+  const updates = changes.map((change) =>
+    db
+      .update(application)
+      .set({ status: change.to, updatedAt })
+      .where(and(eq(application.id, change.applicationId), eq(application.userId, userId))),
+  );
   if (updates.length) await db.batch(asBatch(updates));
+  return changes;
 }
 
-async function extractPendingDetails(env: Env, db: Db, run: Run, token: string) {
+async function extractPendingDetails(env: Env, db: Db, run: Run, token: string): Promise<NewActivity[]> {
   const apiKey = env.TYPESAFE_API_KEY;
-  if (!apiKey || !run.useJev || !run.settings.extractDetails) return;
+  if (!apiKey || !run.useJev || !run.settings.extractDetails) return [];
   const pending = await emailsNeedingDetails(db, run.userId);
-  if (!pending.length) return;
+  if (!pending.length) return [];
 
-  const bodies = await getMessageBodies(token, pending.map((e) => e.id));
+  const bodies = await getMessageBodies(
+    token,
+    pending.map((e) => e.id),
+  );
   const inputs = pending.map((email) => {
     const body = bodies.get(email.id);
     const text = body?.text || email.snippet;
@@ -485,14 +561,31 @@ async function extractPendingDetails(env: Env, db: Db, run: Run, token: string) 
   });
   const inserts = usageRows(run.userId, usage, detailsAt).map((row) => db.insert(jevUsage).values(row));
   if (updates.length || inserts.length) await db.batch(asBatch([...inserts, ...updates]));
+
+  return pending
+    .filter((email) => isRecent(email.receivedAt))
+    .flatMap((email): NewActivity[] => {
+      const details = results.get(email.id);
+      if (!details) return [];
+      const base = { applicationId: email.applicationId, emailId: email.id };
+      return [
+        ...(details.needsReply >= NEEDS_REPLY_PROBABILITY ? [{ ...base, kind: "reply" as const }] : []),
+        ...(details.eventAt
+          ? [{ ...base, kind: "event" as const, detail: { eventAt: details.eventAt, category: email.category } }]
+          : []),
+      ];
+    });
 }
 
-async function suggestUntrackedApplications(env: Env, db: Db, run: Run, token: string) {
-  if (!run.settings.suggestApplications) return;
+async function suggestUntrackedApplications(env: Env, db: Db, run: Run, token: string): Promise<NewActivity[]> {
+  if (!run.settings.suggestApplications) return [];
   const pending = await emailsNeedingSuggestion(db, run.userId);
-  if (!pending.length) return;
+  if (!pending.length) return [];
 
-  const bodies = await getMessageBodies(token, pending.map((e) => e.id));
+  const bodies = await getMessageBodies(
+    token,
+    pending.map((e) => e.id),
+  );
   const inputs = pending.map((email) => {
     const source = {
       subject: email.subject,
@@ -535,12 +628,28 @@ async function suggestUntrackedApplications(env: Env, db: Db, run: Run, token: s
   });
   const inserts = usageRows(run.userId, usage, suggestionAt).map((row) => db.insert(jevUsage).values(row));
   if (updates.length || inserts.length) await db.batch(asBatch([...inserts, ...updates]));
+
+  return pending
+    .filter((email) => isRecent(email.receivedAt))
+    .flatMap((email): NewActivity[] => {
+      const result = results.get(email.id);
+      if (!result || result.isApplication < MIN_APPLICATION_PROBABILITY) return [];
+      return [
+        {
+          kind: "suggestion",
+          emailId: email.id,
+          detail: { company: result.company, role: result.role, category: email.category },
+        },
+      ];
+    });
 }
 
 function emailsNeedingSuggestion(db: Db, userId: string) {
   return db
     .select({
       id: emailMessage.id,
+      category: emailMessage.category,
+      receivedAt: emailMessage.receivedAt,
       subject: emailMessage.subject,
       snippet: emailMessage.snippet,
       fromName: emailMessage.fromName,
@@ -550,7 +659,7 @@ function emailsNeedingSuggestion(db: Db, userId: string) {
     .where(
       and(
         eq(emailMessage.userId, userId),
-        eq(emailMessage.category, "applied"),
+        inArray(emailMessage.category, [...APPLICATION_CATEGORIES]),
         isNull(emailMessage.suggestionAt),
         gte(emailMessage.receivedAt, new Date(Date.now() - SUGGESTION_LOOKBACK_MS).toISOString()),
         sql`not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})`,
@@ -564,6 +673,7 @@ function emailsNeedingDetails(db: Db, userId: string) {
   return db
     .select({
       id: emailMessage.id,
+      applicationId: sql<string>`(select ${emailLink.applicationId} from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id} and ${emailLink.dismissedAt} is null limit 1)`,
       category: emailMessage.category,
       subject: emailMessage.subject,
       snippet: emailMessage.snippet,

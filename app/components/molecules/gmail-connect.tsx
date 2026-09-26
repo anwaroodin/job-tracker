@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Button } from "~/components/atoms/button";
 import { authClient } from "~/lib/auth-client";
 import { GMAIL_SCOPE } from "~/lib/gmail";
+import { syncedAgo } from "~/lib/gmail-status";
 import type { GmailStatus } from "~/server/gmail/sync.server";
 
 export function gmailStatusText(g: GmailStatus) {
   if (!g.connected) return "Auto-match emails to job applications (read-only access)";
   if (g.lastError) return g.lastError;
-  return g.lastSynced ? `Connected · synced ${g.lastSynced}` : "Connected · first sync pending";
+  const ago = syncedAgo(g);
+  return ago ? `Connected · synced ${ago}` : "Connected · first sync pending";
 }
 
 export function GmailConnectButton({

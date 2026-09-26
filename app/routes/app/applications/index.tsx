@@ -109,7 +109,7 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
             </span>
           </h1>
         </div>
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap w-full justify-end items-center gap-4">
           <GmailSync status={loaderData.gmail} />
           <Button type="button">+ New application</Button>
         </div>

@@ -18,6 +18,7 @@ export default [
   route("api/ext/applications", "routes/api/ext/applications.ts"),
 
   route("api/gmail/status", "routes/api/gmail/status.ts"),
+  route("api/activity", "routes/api/activity.ts"),
 
   ...prefix("auth", [
     route("login", "routes/auth/login.tsx"),

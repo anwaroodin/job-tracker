@@ -6,7 +6,11 @@ export function isEmailCategory(value: unknown): value is EmailCategory {
   return EMAIL_CATEGORIES.includes(value as EmailCategory);
 }
 
+export const NEEDS_REPLY_PROBABILITY = 0.6;
+
 export const DETAIL_CATEGORIES: readonly EmailCategory[] = ["screening", "interview", "assessment", "offer"];
+
+export const APPLICATION_CATEGORIES: readonly EmailCategory[] = ["applied", ...DETAIL_CATEGORIES, "rejected"];
 
 const MEETING_HOSTS = /(^|\.)(zoom\.us|meet\.google\.com|teams\.microsoft\.com|teams\.live\.com|webex\.com|whereby\.com|bluejeans\.com|chime\.aws)$/i;
 const BOOKING_HOSTS = /(^|\.)(calendly\.com|cal\.com|goodtime\.io|youcanbook\.me|doodle\.com|savvycal\.com|acuityscheduling\.com)$/i;

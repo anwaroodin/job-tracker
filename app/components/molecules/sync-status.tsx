@@ -1,35 +1,42 @@
 import { useEffect, useRef } from "react";
 import { Link, useFetcher, useFetchers, useRevalidator, type FetcherWithComponents } from "react-router";
 import { cn } from "~/lib/cn";
+import { GMAIL_STATUS_KEY, GMAIL_STATUS_URL, syncedAgo } from "~/lib/gmail-status";
+import { useNow } from "~/lib/use-now";
 import type { GmailStatus, SyncStage } from "~/server/gmail/sync.server";
 
-const STATUS_URL = "/api/gmail/status";
 const POLL_WHILE_SYNCING_MS = 1500;
-const POLL_WHILE_IDLE_MS = 60_000;
+const POLL_WHILE_IDLE_MS = 30_000;
 
 const STAGES: { stage: SyncStage; label: string }[] = [
   { stage: "checking", label: "Checking inbox" },
   { stage: "downloading", label: "Downloading" },
   { stage: "classifying", label: "Classifying" },
+  { stage: "reviewing", label: "Reading details" },
 ];
 
 export function SyncStatus({ initial, collapsed }: { initial: GmailStatus; collapsed: boolean }) {
-  const poll = useFetcher<GmailStatus>({ key: "gmail-status" });
+  const poll = useFetcher<GmailStatus>({ key: GMAIL_STATUS_KEY });
   const status = poll.data && "connected" in poll.data ? poll.data : initial;
   const manualSyncRunning = useFetchers().some((f) => f.state !== "idle" && f.formData?.get("intent") === "sync");
   const syncing = status.syncing || manualSyncRunning;
+  const ago = syncedAgo(status, useNow());
 
   usePolling(poll, syncing);
-  useRefreshWhenSyncFinishes(status);
+  useRefreshOnNewResults(status);
 
   return (
     <div className="border-t border-dashed border-white/15 px-2.5 py-3 font-mono text-[10.5px] uppercase tracking-[0.08em]">
-      <div className={cn(collapsed && "lg:hidden")} aria-live="polite">
+      <div className={cn("min-h-[6.25rem]", collapsed && "lg:hidden")} aria-live="polite">
         <p className="eyebrow pb-2 !text-[10px]">Gmail sync</p>
-        {syncing ? <StageList stage={status.stage} count={status.stageCount} /> : <IdleSummary status={status} />}
+        {syncing ? (
+          <StageList stage={status.stage} count={status.stageCount} />
+        ) : (
+          <IdleSummary status={status} ago={ago} />
+        )}
       </div>
       <span
-        title={syncing ? "Syncing Gmail" : status.lastSynced ? `Gmail synced ${status.lastSynced}` : "Gmail"}
+        title={syncing ? "Syncing Gmail" : ago ? `Gmail synced ${ago}` : "Gmail"}
         className={cn("hidden text-center", collapsed && "lg:block", dotColour(status, syncing), syncing && "animate-pulse")}
       >
         ●
@@ -62,7 +69,7 @@ function StageList({ stage, count }: { stage: SyncStage | null; count: number | 
   );
 }
 
-function IdleSummary({ status }: { status: GmailStatus }) {
+function IdleSummary({ status, ago }: { status: GmailStatus; ago: string | null }) {
   if (!status.connected) {
     return (
       <Link to="/profile#integrations" className="text-text-tertiary transition-colors hover:text-text-primary">
@@ -81,9 +88,11 @@ function IdleSummary({ status }: { status: GmailStatus }) {
     <div className="flex flex-col gap-1">
       <p className="text-text-secondary">
         <span className={status.lastError ? "text-red-primary" : "text-green-primary"}>[{status.lastError ? "!" : "●"}]</span>{" "}
-        {status.lastError ? "Failed, retrying" : status.lastSynced ? `Synced ${status.lastSynced}` : "Not synced yet"}
+        <span suppressHydrationWarning>
+          {status.lastError ? "Failed, retrying" : ago ? `Synced ${ago}` : "Not synced yet"}
+        </span>
       </p>
-      {status.lastFetched !== null && !status.lastError && (
+      {!!status.lastFetched && !status.lastError && (
         <p className="pl-[4ch] text-text-tertiary">
           {status.lastFetched} new · {status.lastLinked ?? 0} matched
         </p>
@@ -103,7 +112,7 @@ function usePolling(poll: FetcherWithComponents<GmailStatus>, syncing: boolean) 
   const hasLoaded = poll.data !== undefined;
   useEffect(() => {
     const load = () => {
-      if (document.visibilityState === "visible") poll.load(STATUS_URL);
+      if (document.visibilityState === "visible") poll.load(GMAIL_STATUS_URL);
     };
     const delay = !hasLoaded ? 0 : syncing ? POLL_WHILE_SYNCING_MS : POLL_WHILE_IDLE_MS;
     const timer = setTimeout(load, delay);
@@ -115,12 +124,12 @@ function usePolling(poll: FetcherWithComponents<GmailStatus>, syncing: boolean) 
   }, [poll.data, syncing]);
 }
 
-function useRefreshWhenSyncFinishes(status: GmailStatus) {
+function useRefreshOnNewResults(status: GmailStatus) {
   const revalidator = useRevalidator();
-  const wasSyncing = useRef(status.syncing);
+  const lastFinished = useRef(status.lastFinishedAt);
   useEffect(() => {
-    const justFinished = wasSyncing.current && !status.syncing;
-    if (justFinished && (status.lastFetched || status.lastLinked)) revalidator.revalidate();
-    wasSyncing.current = status.syncing;
-  }, [status.syncing]);
+    const finishedAgain = status.lastFinishedAt !== null && status.lastFinishedAt !== lastFinished.current;
+    if (finishedAgain) revalidator.revalidate();
+    lastFinished.current = status.lastFinishedAt;
+  }, [status.lastFinishedAt]);
 }

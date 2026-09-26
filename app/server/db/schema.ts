@@ -234,6 +234,7 @@ export const gmailSync = sqliteTable("gmail_sync", {
   stageCount: integer("stage_count"),
   lastFetched: integer("last_fetched"),
   lastLinked: integer("last_linked"),
+  lastFinishedAt: text("last_finished_at"),
 });
 
 export const userSettings = sqliteTable("user_settings", {
@@ -268,6 +269,25 @@ export const jevUsage = sqliteTable(
   }),
 );
 
+export const activity = sqliteTable(
+  "activity",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: text("created_at").notNull(),
+    kind: text("kind").notNull(),
+    applicationId: text("application_id").references(() => application.id, { onDelete: "cascade" }),
+    emailId: text("email_id"),
+    detail: text("detail"),
+    seenAt: text("seen_at"),
+  },
+  (t) => ({
+    byUserCreated: index("activity_user_created_idx").on(t.userId, t.createdAt),
+  }),
+);
+
 // ── Type exports ─────────────────────────────────────────────────────────
 
 export type User = typeof user.$inferSelect;
@@ -281,3 +301,4 @@ export type EmailMessage = typeof emailMessage.$inferSelect;
 export type GmailSync = typeof gmailSync.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type JevUsage = typeof jevUsage.$inferSelect;
+export type Activity = typeof activity.$inferSelect;
