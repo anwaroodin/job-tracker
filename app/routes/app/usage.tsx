@@ -69,7 +69,7 @@ export default function Usage({ loaderData }: Route.ComponentProps) {
         )}
       </header>
 
-      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-x-16 gap-y-12 lg:grid-cols-2">
         <Section n="02" title="Spend" hint={`$${pricePerMillion.toFixed(3)} / 1M input tokens`} i={1}>
           <Leader label="This month">{formatDollars(m.cost)}</Leader>
           <Leader label="Projected">{formatDollars(m.projected)}</Leader>

@@ -53,7 +53,7 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
       <UpNextSection next={loaderData.next} />
 
       {/* ── [03] + [04] ──────────────────────────────────────────── */}
-      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-x-16 gap-y-12 lg:grid-cols-2">
         <Section n="03" title="Readout" hint="right now" i={2}>
           <Leader label="Last 7 days">
             {t.weekly}
@@ -93,7 +93,7 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
       </Section>
 
       {/* ── [06] + [07] + [08] ───────────────────────────────────── */}
-      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-x-16 gap-y-12 lg:grid-cols-2">
         <Section n="06" title="Status" hint="where everything sits" i={5}>
           {a.byStatus.map((s) => (
             <BarRow
