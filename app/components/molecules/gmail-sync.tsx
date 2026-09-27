@@ -39,7 +39,7 @@ export function GmailSync({ status: initial }: { status: GmailStatus }) {
   const text = error ?? message;
 
   return (
-    <div className="flex w-full items-center justify-between gap-4 sm:w-[26rem] sm:justify-end">
+    <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-end">
       <span
         title={text}
         aria-live="polite"
