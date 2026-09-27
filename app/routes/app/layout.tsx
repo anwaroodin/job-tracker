@@ -1,6 +1,7 @@
 import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
 import type { Route } from "./+types/layout";
 import { AppShell } from "~/components/organisms/app-shell";
+import { useRevalidateOnFocus } from "~/lib/use-revalidate-on-focus";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
@@ -23,6 +24,7 @@ export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate 
 }
 
 export default function AppLayout({ loaderData }: Route.ComponentProps) {
+  useRevalidateOnFocus();
   return (
     <AppShell user={loaderData.user} gmail={loaderData.gmail} unread={loaderData.unreadTotal}>
       <Outlet />
