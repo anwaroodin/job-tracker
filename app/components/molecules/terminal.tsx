@@ -2,6 +2,7 @@ import { cn } from "~/lib/cn";
 
 /** Greys by default; colour only where the status carries meaning. */
 export const STATUS_COLORS: Record<string, string> = {
+  saved: "#4a4c53",
   applied: "#d4d4d8",
   screening: "#a6a7ad",
   interview: "#e8b33c",
@@ -59,10 +60,10 @@ export function Section({
 /** `LABEL ........... value` — dotted leader between the two. */
 export function Leader({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-baseline gap-3 py-[7px]">
-      <span className="text-text-secondary">{label}</span>
-      <span className="min-w-4 flex-1 -translate-y-[3px] border-b border-dotted border-white/25" />
-      <span className="text-text-primary">{children}</span>
+    <div className="flex items-baseline gap-2.5 py-[7px]">
+      <span className="shrink-0 text-text-secondary">{label}</span>
+      <span className="min-w-3 flex-1 -translate-y-[3px] border-b border-dotted border-white/25" />
+      <span className="text-right text-text-primary">{children}</span>
     </div>
   );
 }

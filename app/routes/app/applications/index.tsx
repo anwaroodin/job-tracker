@@ -1,16 +1,15 @@
+import { data, redirect } from "react-router";
 import type { Route } from "./+types/index";
-import { Button } from "~/components/atoms/button";
 import { ApplicationDataTable } from "~/components/organisms/application-data-table";
 import { ApplicationSuggestions } from "~/components/organisms/application-suggestions";
+import { NewApplication } from "~/components/organisms/new-application";
+import { SavedJobs } from "~/components/organisms/saved-jobs";
 import { GmailSync } from "~/components/molecules/gmail-sync";
 import { Section, stagger } from "~/components/molecules/terminal";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import {
-  createApplication,
-  listApplications,
-} from "~/server/db/applications.server";
+import { createApplication, listApplications, settleSavedJob } from "~/server/db/applications.server";
 import {
   applicationSuggestions,
   dismissSuggestions,
@@ -34,8 +33,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     getGmailStatus(db, user.id),
     applicationSuggestions(db, user.id),
   ]);
-  const rows = apps.map((a) => ({ ...a, unread: unread[a.id] ?? 0 }));
-  return { rows, gmail, suggestions, accountEmail: user.email };
+  // Saved postings are bookmarks from the extension, listed apart from applications.
+  const saved = apps.filter((a) => a.status === "saved");
+  const rows = apps.filter((a) => a.status !== "saved").map((a) => ({ ...a, unread: unread[a.id] ?? 0 }));
+  return { rows, saved, gmail, suggestions, accountEmail: user.email };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -47,6 +48,12 @@ export async function action({ request, context }: Route.ActionArgs) {
   const db = getDb(env.DB);
   const emailIds = String(form.get("emailIds") ?? "").split(",").filter(Boolean);
 
+  if (intent === "saved-applied" || intent === "saved-remove") {
+    const applicationId = String(form.get("applicationId") ?? "");
+    const outcome = intent === "saved-remove" ? "removed" : "applied";
+    if (!(await settleSavedJob(db, user.id, applicationId, outcome))) return { error: "Not a saved posting" };
+    return { ok: true };
+  }
   if (intent === "dismiss-suggestion") {
     await dismissSuggestions(db, user.id, emailIds);
     return { ok: true };
@@ -58,6 +65,8 @@ export async function action({ request, context }: Route.ActionArgs) {
     return { ok: true };
   }
 
+  // "create": + New application. "track": an application suggested from the inbox.
+  if (intent !== "create" && intent !== "track") throw data("Unknown intent", { status: 400 });
   const company = String(form.get("company") ?? "").trim().slice(0, MAX_FIELD_LENGTH);
   const role = String(form.get("role") ?? "").trim().slice(0, MAX_FIELD_LENGTH);
   if (!company || !role) return { error: "Company and role are required" };
@@ -71,10 +80,9 @@ export async function action({ request, context }: Route.ActionArgs) {
     autoFilled: false,
     ...(intent === "track" && !Number.isNaN(appliedAt.getTime()) ? { appliedAt: appliedAt.toISOString() } : {}),
   });
-  if (intent === "track") {
-    await linkEmailsToApplication(db, user.id, id, emailIds);
-    await refreshApplicationStatus(db, user.id, id);
-  }
+  if (intent === "create") return redirect(`/applications/${id}`);
+  await linkEmailsToApplication(db, user.id, id, emailIds);
+  await refreshApplicationStatus(db, user.id, id);
   return { ok: true };
 }
 
@@ -86,6 +94,9 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
   const closed = rows.filter((r) => HIDDEN.has(r.status)).length;
   const suggestions = loaderData.suggestions;
   const hasSuggestions = suggestions.length > 0;
+  const saved = loaderData.saved;
+  let n = 1;
+  const next = () => String(++n).padStart(2, "0");
 
   return (
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
@@ -111,13 +122,19 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
         </div>
         <div className="flex flex-wrap w-full justify-end items-center gap-4">
           <GmailSync status={loaderData.gmail} />
-          <Button type="button">+ New application</Button>
+          <NewApplication />
         </div>
       </header>
 
+      {saved.length > 0 && (
+        <Section n={next()} title="Saved" hint={`${saved.length} to apply to`} i={1}>
+          <SavedJobs jobs={saved} />
+        </Section>
+      )}
+
       {hasSuggestions && (
         <Section
-          n="02"
+          n={next()}
           title="From your inbox"
           hint={`${suggestions.length} untracked ${suggestions.length === 1 ? "application" : "applications"}`}
           i={1}
@@ -126,7 +143,7 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
         </Section>
       )}
 
-      <Section n={hasSuggestions ? "03" : "02"} title="Records" hint="filter, search, sort" i={2}>
+      <Section n={next()} title="Records" hint="filter, search, sort" i={2}>
         <ApplicationDataTable rows={rows} />
       </Section>
     </div>

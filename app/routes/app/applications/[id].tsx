@@ -1,7 +1,7 @@
 import { ArrowUpRight, CalendarClock, Check, Ellipsis, Link2, Reply, Unlink } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
-import { data, Link, useFetcher } from "react-router";
+import { data, Link, redirect, useFetcher } from "react-router";
 import type { Route } from "./+types/[id]";
 import {
   DropdownMenu,
@@ -12,18 +12,25 @@ import {
   DropdownMenuTrigger,
 } from "~/components/atoms/dropdown-menu";
 import { Button } from "~/components/atoms/button";
+import { ContactList } from "~/components/molecules/contact-list";
+import { FactChips, listingFacts } from "~/components/molecules/fact-chips";
+import { FlagToggle } from "~/components/molecules/flag";
 import { GmailSync } from "~/components/molecules/gmail-sync";
+import { JobDescription } from "~/components/molecules/job-description";
+import { SavedListing } from "~/components/organisms/saved-listing";
 import { NewBadge } from "~/components/molecules/new-badge";
 import { Leader, STATUS_COLORS, Section, fmtDate, stagger } from "~/components/molecules/terminal";
 import { StatusBadge } from "~/components/molecules/status-badge";
 import { cn } from "~/lib/cn";
+import { parseContacts } from "~/lib/contacts";
 import { actionLabel, EMAIL_CATEGORIES, eventLabel, formatEventAt, isEmailCategory } from "~/lib/email";
 import { gmailThreadUrl } from "~/lib/gmail";
+import { hostOf } from "~/lib/url";
 import { useArrivals } from "~/lib/use-arrivals";
 import { requireUser } from "~/server/auth.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { getApplication } from "~/server/db/applications.server";
+import { getApplication, settleSavedJob, updateApplication } from "~/server/db/applications.server";
 import {
   getApplicationEmails,
   markReplyDone,
@@ -61,6 +68,16 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   const intent = form.get("intent");
   const emailId = String(form.get("id"));
   if (intent === "sync") return { sync: await syncGmail(env, user.id, "manual") };
+  if (intent === "flag") {
+    // The star, shown as a bookmark while the posting is only saved.
+    await updateApplication(db, user.id, params.id, { starred: form.get("flagged") === "true" });
+    return { ok: true };
+  }
+  if (intent === "saved-applied" || intent === "saved-remove") {
+    const outcome = intent === "saved-remove" ? "removed" : "applied";
+    if (!(await settleSavedJob(db, user.id, params.id, outcome))) throw data("Not a saved posting", { status: 400 });
+    return outcome === "removed" ? redirect("/applications") : { ok: true };
+  }
   if (intent === "replied") {
     await markReplyDone(db, user.id, emailId);
     return { ok: true };
@@ -79,6 +96,12 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 }
 
 export default function ApplicationDetail({ loaderData }: Route.ComponentProps) {
+  // A saved posting hasn't been applied to yet: show it as the job listing.
+  if (loaderData.row.status === "saved") return <SavedListing job={loaderData.row} />;
+  return <TrackedApplication loaderData={loaderData} />;
+}
+
+function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
   const { row, gmail, accountEmail } = loaderData;
   const isNew = useNewOnArrival(row.id, loaderData.emails);
   const isArrival = useArrivals(
@@ -92,108 +115,154 @@ export default function ApplicationDetail({ loaderData }: Route.ComponentProps) 
     row.status,
     ...emails.filter((e) => !e.unsure).map((e) => e.category ?? ""),
   ]);
+  const source = hostOf(row.url);
+  const contacts = parseContacts(row.contactsJson);
 
   return (
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
-      <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
+      <header className="rise flex flex-col gap-6" style={stagger(0)}>
+        <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
+          <Link to="/applications" className="transition-colors hover:text-text-primary">
+            [02] Applications
+          </Link>
+          <span className="mx-2 opacity-50">/</span>
+          {row.company}
+        </p>
+
         <div className="min-w-0">
-          <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <Link to="/applications" className="transition-colors hover:text-text-primary">
-              [02] Applications
-            </Link>
-            <span className="mx-2 opacity-50">/</span>
-            {row.company}
-          </p>
-          <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
+          <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
             {row.company}
             <span className="block text-text-tertiary">{row.role}</span>
           </h1>
-          <p className="mt-5">
-            <StatusBadge status={row.status} />
-          </p>
+          <FactChips facts={listingFacts(row)} className="mt-5" />
         </div>
-        <GmailSync status={gmail} />
+
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="flex items-center gap-4 text-[11px] tracking-[0.1em]">
+            <StatusBadge status={row.status} />
+            <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
+          </p>
+          <GmailSync status={gmail} />
+        </div>
       </header>
 
-      <Section n="02" title="Progress" i={1}>
-        <ol className="grid grid-cols-5 gap-1">
-          {STAGES.map((stage) => {
-            const on = reached.has(stage);
-            return (
-              <li key={stage} className="flex min-w-0 flex-col gap-2">
-                <span
-                  aria-hidden
-                  className="h-[3px] w-full"
-                  style={{ background: on ? STATUS_COLORS[stage] : "rgba(255,255,255,0.08)" }}
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="order-2 flex flex-col gap-12 lg:order-1">
+          <Section n="02" title="Progress" i={1}>
+            <ol className="grid grid-cols-5 gap-1">
+              {STAGES.map((stage) => {
+                const on = reached.has(stage);
+                return (
+                  <li key={stage} className="flex min-w-0 flex-col gap-2">
+                    <span
+                      aria-hidden
+                      className="h-[3px] w-full"
+                      style={{ background: on ? STATUS_COLORS[stage] : "rgba(255,255,255,0.08)" }}
+                    />
+                    <span
+                      className={cn(
+                        "truncate text-[10px] tracking-[0.08em] sm:text-[11px]",
+                        stage === row.status ? "text-text-primary" : on ? "text-text-secondary" : "text-text-tertiary",
+                      )}
+                    >
+                      {stage}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+            {OUTCOMES.has(row.status) && (
+              <p className="mt-4 text-[11px] tracking-[0.08em] text-text-tertiary">
+                Outcome <StatusBadge status={row.status} className="ml-2" />
+              </p>
+            )}
+          </Section>
+
+          <Section
+            n="03"
+            title="Timeline"
+            hint={emails.length ? `${emails.length} ${emails.length === 1 ? "email" : "emails"}` : undefined}
+            i={2}
+          >
+            <ol className="flex flex-col">
+              <TimelineItem
+                date={row.appliedAt}
+                category="applied"
+                title="Application logged"
+                meta={row.url ? "Open job posting" : undefined}
+                href={row.url || undefined}
+              />
+              {emails.map((e) => (
+                <EmailItem
+                  key={e.id}
+                  email={e}
+                  isNew={isNew(e)}
+                  arrived={isArrival(e.id)}
+                  href={gmailThreadUrl(accountEmail, e.threadId || e.id)}
                 />
-                <span
-                  className={cn(
-                    "truncate text-[10px] tracking-[0.08em] sm:text-[11px]",
-                    stage === row.status ? "text-text-primary" : on ? "text-text-secondary" : "text-text-tertiary",
-                  )}
-                >
-                  {stage}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-        {OUTCOMES.has(row.status) && (
-          <p className="mt-4 text-[11px] tracking-[0.08em] text-text-tertiary">
-            Outcome <StatusBadge status={row.status} className="ml-2" />
-          </p>
-        )}
-      </Section>
+              ))}
+            </ol>
+            {unlinked.length > 0 && <UnlinkedEmails emails={unlinked} />}
+            {emails.length === 0 && (
+              <p className="mt-4 font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
+                {gmail.connected
+                  ? `No emails matched yet. An email is matched when its sender or subject mentions “${row.company}”.`
+                  : "Connect Gmail in your profile to pull in emails for this application."}
+              </p>
+            )}
+          </Section>
 
-      <Section
-        n="03"
-        title="Timeline"
-        hint={emails.length ? `${emails.length} ${emails.length === 1 ? "email" : "emails"}` : undefined}
-        i={2}
-      >
-        <ol className="flex flex-col">
-          <TimelineItem
-            date={row.appliedAt}
-            category="applied"
-            title="Application logged"
-            meta={row.url ? "Open job posting" : undefined}
-            href={row.url || undefined}
-          />
-          {emails.map((e) => (
-            <EmailItem
-              key={e.id}
-              email={e}
-              isNew={isNew(e)}
-              arrived={isArrival(e.id)}
-              href={gmailThreadUrl(accountEmail, e.threadId || e.id)}
-            />
-          ))}
-        </ol>
-        {unlinked.length > 0 && <UnlinkedEmails emails={unlinked} />}
-        {emails.length === 0 && (
-          <p className="mt-4 font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
-            {gmail.connected
-              ? `No emails matched yet. An email is matched when its sender or subject mentions “${row.company}”.`
-              : "Connect Gmail in your profile to pull in emails for this application."}
-          </p>
-        )}
-      </Section>
-
-      <Section n="04" title="Details" i={3}>
-        <div className="grid grid-cols-1 gap-x-16 sm:grid-cols-2">
-          <Leader label="Location">{row.location || "—"}</Leader>
-          <Leader label="Work type">{row.workType || "—"}</Leader>
-          <Leader label="Salary">{row.salary || "—"}</Leader>
-          <Leader label="CV">{row.cvType}</Leader>
-          <Leader label="Applied">{fmtDate(row.appliedAt)}</Leader>
-          <Leader label="Updated">{fmtDate(row.updatedAt)}</Leader>
+          {row.description && (
+            <Section n="05" title="Job description" hint={source || undefined} i={4}>
+              <JobDescription text={row.description} />
+            </Section>
+          )}
         </div>
-        {row.notes && (
-          <p className="mt-4 whitespace-pre-line font-sans text-[13px] normal-case tracking-normal text-text-secondary">
-            {row.notes}
-          </p>
-        )}
-      </Section>
+
+        {/* Sticky while it's short enough to fit on screen; with people listed it scrolls with the page. */}
+        <aside
+          className={cn(
+            "order-1 flex flex-col gap-12 self-start lg:order-2",
+            contacts.length === 0 && "lg:sticky lg:top-16",
+          )}
+        >
+          <Section n="04" title="Details" i={3}>
+            <Leader label="Location">{row.location || "—"}</Leader>
+            <Leader label="Work type">{row.workType || "—"}</Leader>
+            {row.employmentType && <Leader label="Employment">{row.employmentType}</Leader>}
+            <Leader label="Salary">{row.salary || "—"}</Leader>
+            {row.postedAt && <Leader label="Posted">{fmtDate(row.postedAt)}</Leader>}
+            {row.applicants && <Leader label="Applicants">{row.applicants}</Leader>}
+            {row.category && <Leader label="Level">{row.category}</Leader>}
+            <Leader label="CV">{row.cvType}</Leader>
+            <Leader label="Applied">{fmtDate(row.appliedAt)}</Leader>
+            <Leader label="Updated">{fmtDate(row.updatedAt)}</Leader>
+            {source && (
+              <Leader label="Source">
+                <a
+                  href={row.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="normal-case text-accent-primary transition-colors hover:text-accent-secondary"
+                >
+                  {source} ↗
+                </a>
+              </Leader>
+            )}
+            {row.notes && (
+              <p className="mt-4 whitespace-pre-line font-sans text-[13px] normal-case tracking-normal text-text-secondary">
+                {row.notes}
+              </p>
+            )}
+          </Section>
+
+          {contacts.length > 0 && (
+            <Section n="06" title="People to reach out to" hint={String(contacts.length)} i={5}>
+              <ContactList contacts={contacts} />
+            </Section>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
