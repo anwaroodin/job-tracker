@@ -69,6 +69,7 @@ job-tracker/
 │       ├── gmail/              Gmail API client and background sync
 │       ├── jev/                TypeSafe Jev questions (optional AI classification)
 │       └── *.server.ts         Auth, R2, and Extension API utilities
+├── extension/                  Chrome extension (see extension/README.md)
 ├── workers/
 │   └── app.ts                  Cloudflare Worker entry point
 └── migrations/                 Drizzle SQL migrations
@@ -140,11 +141,15 @@ npm run dev       # Start local dev server at http://localhost:5173
 npm run deploy    # Build and deploy to Cloudflare Workers
 ```
 
+### 6. Load the Browser Extension
+
+Load the `extension/` folder unpacked from `chrome://extensions` and sign in on the dashboard. See [extension/README.md](./extension/README.md) for pointing it at your deployment.
+
 ## Roadmap
 
 - [ ] Support CV upload/download via R2 signed URLs
 - [x] Gmail integration for automatic follow-up tracking
-- [ ] Browser extension companion app interacting with the Workers API
+- [x] Browser extension companion app interacting with the Workers API
 - [ ] Data importer for legacy JSON job tracking formats
 
 ## Contributing

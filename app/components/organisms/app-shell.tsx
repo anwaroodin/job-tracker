@@ -27,7 +27,7 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
         />
         <main className="min-w-0 flex-1">
           <PathBar gmail={gmail} onOpenMobile={() => setMobileOpen(true)} />
-          <div className="mr-auto w-auto max-w-[1200px] px-4 pb-[max(4rem,env(safe-area-inset-bottom))] pt-4 sm:px-6 lg:ml-16 lg:px-8 lg:pb-20">
+          <div className="mx-auto w-full max-w-[1200px] px-4 pb-[max(4rem,env(safe-area-inset-bottom))] pt-4 sm:px-6 lg:px-8 lg:pb-20">
             {children}
           </div>
         </main>
@@ -42,7 +42,7 @@ function PathBar({ gmail, onOpenMobile }: { gmail: GmailStatus; onOpenMobile: ()
   const short = (s: string) => (s.length > 14 ? `${s.slice(0, 8)}…` : s);
 
   return (
-    <div className="flex h-[52px] items-center gap-3 px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto flex h-[52px] w-full max-w-[1200px] items-center gap-3 px-4 sm:px-6 lg:px-8">
       <button
         type="button"
         onClick={onOpenMobile}

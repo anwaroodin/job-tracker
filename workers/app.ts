@@ -3,7 +3,9 @@ import { envContext, execContext } from "~/server/context.server";
 import { syncAllGmailUsers } from "~/server/gmail/sync.server";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
-const CROSS_ORIGIN_PATHS = ["/api/ext/", "/api/auth/"];
+const AUTH_PATH = "/api/auth/";
+const EXTENSION_PATH = "/api/ext/";
+const EXTENSION_ORIGIN = /^(chrome|moz)-extension:\/\//;
 
 const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),
@@ -26,7 +28,10 @@ export default {
 function isCrossOriginMutation(request: Request) {
   if (SAFE_METHODS.has(request.method)) return false;
   const url = new URL(request.url);
-  if (CROSS_ORIGIN_PATHS.some((path) => url.pathname.startsWith(path))) return false;
+  if (url.pathname.startsWith(AUTH_PATH)) return false;
   const origin = request.headers.get("Origin");
-  return origin !== null && origin !== url.origin;
+  if (origin === null || origin === url.origin) return false;
+  // The session cookie is SameSite=None for the extension, so other websites
+  // must not be able to post to its endpoints.
+  return !(url.pathname.startsWith(EXTENSION_PATH) && EXTENSION_ORIGIN.test(origin));
 }

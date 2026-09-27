@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>job-tracker</title>
+  <link rel="stylesheet" href="popup.css" />
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <img class="logo" src="../../icons/icon48.png" alt="" />
+      <span class="brand-name">job-tracker</span>
+    </div>
+    <div class="status" role="status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Connecting</span>
+    </div>
+  </header>
+
+  <main class="body">
+    <!-- Signed out -->
+    <section data-view="signin" hidden>
+      <div class="section">
+        <div class="section-head"><b>[00]</b><span>Auth</span></div>
+        <div class="notice">
+          <h2>Sign-in required</h2>
+          <p>Open the dashboard, sign in with Google, then reopen this popup.</p>
+          <button class="btn" type="button" data-action="dashboard">Open dashboard</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Can't reach the dashboard, or can't run on this tab -->
+    <section data-view="message" hidden>
+      <div class="section">
+        <div class="section-head"><b>[00]</b><span id="messageLabel">Status</span></div>
+        <div class="notice">
+          <h2 id="messageTitle"></h2>
+          <p id="messageBody"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- New application -->
+    <form data-view="track" hidden id="trackForm" novalidate>
+      <div class="section">
+        <div class="section-head"><b>[01]</b><span>Target</span></div>
+        <label class="field">
+          <span class="label">Company</span>
+          <input class="input" id="company" name="company" maxlength="100" placeholder="Company name" autocomplete="off" required />
+        </label>
+        <label class="field">
+          <span class="label">Role</span>
+          <input class="input" id="role" name="role" maxlength="150" placeholder="Role title" autocomplete="off" required />
+        </label>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><b>[02]</b><span>Config</span></div>
+        <div class="row">
+          <span class="label" id="cvLabel">CV</span>
+          <div class="segmented" role="group" aria-labelledby="cvLabel" data-control="cvType">
+            <button class="seg-btn" type="button" data-value="software">Software</button>
+            <button class="seg-btn" type="button" data-value="retail">Retail</button>
+          </div>
+        </div>
+        <div class="row">
+          <span class="label" id="categoryLabel">Category</span>
+          <div class="segmented" role="group" aria-labelledby="categoryLabel" data-control="category">
+            <button class="seg-btn" type="button" data-value="" aria-label="No category">—</button>
+            <button class="seg-btn" type="button" data-value="grad">Grad</button>
+            <button class="seg-btn" type="button" data-value="intern">Intern</button>
+            <button class="seg-btn" type="button" data-value="junior">Junior</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><b>[03]</b><span>Action</span></div>
+        <button class="btn" type="submit" id="trackBtn">Fill &amp; track</button>
+        <div class="result" data-result hidden></div>
+      </div>
+    </form>
+
+    <!-- Returning to an application that is already tracked -->
+    <section data-view="continue" hidden>
+      <div class="section">
+        <div class="section-head"><b>[01]</b><span>Session</span></div>
+        <div class="compact">
+          <div class="compact-eyebrow">Already tracked</div>
+          <div class="compact-company" id="trackedCompany"></div>
+          <div class="compact-role" id="trackedRole"></div>
+          <div class="compact-cv" id="trackedCv"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><b>[02]</b><span>Action</span></div>
+        <button class="btn" type="button" id="fillBtn">Fill fields</button>
+        <div class="result" data-result hidden></div>
+        <button class="link center" type="button" id="newApplicationBtn">This is a different job</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <button class="link accent" type="button" data-action="dashboard">Open dashboard</button>
+    <span class="footer-count" id="footerCount"></span>
+  </footer>
+</body>
+</html>

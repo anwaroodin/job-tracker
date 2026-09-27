@@ -6,6 +6,7 @@ import { createAuth } from "../auth.server";
 import { getDb, type Db } from "../db/client.server";
 import { account, application, emailLink, emailMessage, gmailSync, jevUsage, userSettings } from "../db/schema";
 import { activityInserts, unseenActivityCount, type NewActivity } from "../db/activity.server";
+import { clearBookmarkOnApply } from "../db/applications.server";
 import { settingsRowFor, withDefaults } from "../db/settings.server";
 import { dollars, monthStart, tokensSince, usageRows } from "../db/usage.server";
 import {
@@ -407,7 +408,7 @@ async function finishRun(
       ...plan.statusChanges.map((change) =>
         db
           .update(application)
-          .set({ status: change.status, updatedAt: run.startedAt })
+          .set(clearBookmarkOnApply(change.from, { status: change.status, updatedAt: run.startedAt }))
           .where(and(eq(application.id, change.applicationId), eq(application.userId, run.userId))),
       ),
       db
@@ -516,7 +517,7 @@ export async function refreshApplicationStatus(
   const updates = changes.map((change) =>
     db
       .update(application)
-      .set({ status: change.to, updatedAt })
+      .set(clearBookmarkOnApply(change.from, { status: change.to, updatedAt }))
       .where(and(eq(application.id, change.applicationId), eq(application.userId, userId))),
   );
   if (updates.length) await db.batch(asBatch(updates));

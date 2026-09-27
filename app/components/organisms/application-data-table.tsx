@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/atoms/dropdown-menu";
 import { Input } from "~/components/atoms/input";
+import { FlagMark } from "~/components/molecules/flag";
 import { NewBadge } from "~/components/molecules/new-badge";
 import { StatusBadge } from "~/components/molecules/status-badge";
 import { fmtDate } from "~/components/molecules/terminal";
@@ -49,6 +50,7 @@ const columns: ColumnDef<ApplicationRow>[] = [
     cell: ({ row }) => (
       <div className="min-w-0">
         <p className="flex min-w-0 items-baseline gap-2">
+          {row.original.starred && <FlagMark status={row.original.status} />}
           <span title={row.original.company} className="truncate text-text-primary group-hover:!text-text-inverse">
             {row.original.company}
           </span>
@@ -275,6 +277,7 @@ function MobileCard({ app, arrived }: { app: ApplicationRow; arrived: boolean })
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex min-w-0 items-baseline gap-2">
+            {app.starred && <FlagMark status={app.status} />}
             <span className="truncate text-text-primary group-hover:!text-text-inverse">{app.company}</span>
             <UnreadMark count={app.unread} />
           </p>

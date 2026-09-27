@@ -1,3 +1,5 @@
+import { hostOf } from "./url";
+
 export const EMAIL_CATEGORIES = ["applied", "screening", "interview", "assessment", "offer", "rejected", "other"] as const;
 
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
@@ -39,12 +41,4 @@ export function formatEventAt(eventAt: string) {
   const [year, month, day] = date.split("-").map(Number);
   const weekday = DAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
   return `${weekday} ${String(day).padStart(2, "0")} ${MONTHS[month - 1]}${time ? `, ${time}` : ""}`;
-}
-
-function hostOf(url: string) {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return "";
-  }
 }
