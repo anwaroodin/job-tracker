@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import type { Db } from "./client.server";
 import { application, type Application } from "./schema";
 
@@ -35,10 +35,11 @@ export interface Analytics {
 }
 
 export async function analyticsFor(db: Db, userId: string): Promise<Analytics> {
+  // Saved jobs (bookmarked from the extension, not applied to) stay out of the stats.
   const rows = await db
     .select()
     .from(application)
-    .where(eq(application.userId, userId))
+    .where(and(eq(application.userId, userId), ne(application.status, "saved")))
     .orderBy(desc(application.appliedAt));
 
   const total = rows.length;

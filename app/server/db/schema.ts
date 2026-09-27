@@ -146,6 +146,18 @@ export const application = sqliteTable(
     location: text("location").notNull().default(""),
     workType: text("work_type").notNull().default(""),
     notes: text("notes").notNull().default(""),
+    // Job description captured by the browser extension when applying.
+    description: text("description").notNull().default(""),
+    // Listing facts captured with the posting: "Full-time", when it went up, "Over 100 applicants".
+    employmentType: text("employment_type").notNull().default(""),
+    postedAt: text("posted_at"),
+    applicants: text("applicants").notNull().default(""),
+    // People the listing suggests reaching out to (LinkedIn's "People you can
+    // reach out to"), as a JSON array of Contact (app/lib/contacts.ts).
+    contactsJson: text("contacts_json")
+      .notNull()
+      .default(sql`'[]'`),
+    starred: integer("starred", { mode: "boolean" }).notNull().default(false),
     autoFilled: integer("auto_filled", { mode: "boolean" })
       .notNull()
       .default(true),

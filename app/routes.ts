@@ -16,6 +16,7 @@ export default [
   route("api/ext/stats", "routes/api/ext/stats.ts"),
   route("api/ext/profile", "routes/api/ext/profile.ts"),
   route("api/ext/applications", "routes/api/ext/applications.ts"),
+  route("api/ext/applications/:id", "routes/api/ext/application.ts"),
 
   route("api/gmail/status", "routes/api/gmail/status.ts"),
   route("api/activity", "routes/api/activity.ts"),
