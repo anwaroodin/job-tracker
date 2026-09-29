@@ -1,7 +1,9 @@
-import { Menu } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { MotionConfig } from "motion/react";
 import { useState, type ReactNode } from "react";
 import { useLocation } from "react-router";
+import { CommandPalette } from "~/components/molecules/command-palette";
+import { commandPalette$ } from "~/lib/state/command-palette";
 import type { GmailStatus } from "~/server/gmail/sync.server";
 import { ActivityBell, ActivityToasts } from "./activity-feed";
 import { Sidebar } from "./sidebar";
@@ -33,9 +35,11 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
         </main>
       </div>
       <ActivityToasts initial={gmail} />
+      <CommandPalette />
     </MotionConfig>
   );
 }
+
 function PathBar({ gmail, onOpenMobile }: { gmail: GmailStatus; onOpenMobile: () => void }) {
   const { pathname } = useLocation();
   const segments = pathname.split("/").filter(Boolean);
@@ -62,7 +66,26 @@ function PathBar({ gmail, onOpenMobile }: { gmail: GmailStatus; onOpenMobile: ()
           </span>
         ))}
       </nav>
-      <div className="ml-auto shrink-0">
+      <div className="ml-auto flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => commandPalette$.open.set(true)}
+          className="hidden sm:inline-flex items-center gap-2 border border-stroke-secondary bg-fill-secondary px-2.5 py-1 font-mono text-[11px] text-text-tertiary transition-colors hover:border-stroke-primary hover:text-text-primary cursor-pointer"
+          title="Search (Ctrl+K)"
+        >
+          <Search className="size-3" />
+          <span>Search</span>
+          <kbd className="border border-stroke-secondary px-1 text-[9px] text-text-tertiary">Ctrl+K</kbd>
+        </button>
+        <button
+          type="button"
+          onClick={() => commandPalette$.open.set(true)}
+          className="p-1.5 text-text-tertiary transition-colors hover:text-text-primary sm:hidden cursor-pointer"
+          title="Search"
+          aria-label="Search"
+        >
+          <Search className="size-4" />
+        </button>
         <ActivityBell initial={gmail} />
       </div>
     </div>

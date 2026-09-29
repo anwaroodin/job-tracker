@@ -30,7 +30,7 @@ export function NewApplication() {
         required
         maxLength={200}
         autoFocus
-        className="w-44 font-mono text-[12.5px] normal-case tracking-normal"
+        className="w-full sm:w-44 font-mono text-[12.5px] normal-case tracking-normal"
       />
       <Input
         name="role"
@@ -38,7 +38,7 @@ export function NewApplication() {
         placeholder="Role"
         required
         maxLength={200}
-        className="w-56 font-mono text-[12.5px] normal-case tracking-normal"
+        className="w-full sm:w-56 font-mono text-[12.5px] normal-case tracking-normal"
       />
       <Button type="submit" disabled={busy}>
         {busy ? "Adding…" : "Add"}

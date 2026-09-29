@@ -1,4 +1,5 @@
 import { ArrowUpRight, Check, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/atoms/button";
 import { ContactList } from "~/components/molecules/contact-list";
@@ -41,9 +42,16 @@ type SavedJob = Pick<
 export function SavedListing({ job }: { job: SavedJob }) {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const act = (fields: Record<string, string>) => fetcher.submit(fields, { method: "post" });
   const source = hostOf(job.url);
   const contacts = parseContacts(job.contactsJson);
+
+  useEffect(() => {
+    if (!confirmingRemove) return;
+    const timer = setTimeout(() => setConfirmingRemove(false), 5000);
+    return () => clearTimeout(timer);
+  }, [confirmingRemove]);
 
   return (
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
@@ -83,39 +91,50 @@ export function SavedListing({ job }: { job: SavedJob }) {
             <Check />
             Mark applied
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => act({ intent: "saved-remove" })}
-            className="text-text-tertiary hover:text-red-primary"
-          >
-            <Trash2 />
-            Remove
-          </Button>
+          {confirmingRemove ? (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={busy}
+                onClick={() => act({ intent: "saved-remove" })}
+              >
+                <Trash2 />
+                Confirm remove
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => setConfirmingRemove(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setConfirmingRemove(true)}
+              className="text-text-tertiary hover:text-red-primary"
+            >
+              <Trash2 />
+              Remove
+            </Button>
+          )}
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Section n="02" title="Job description" hint={source || undefined} i={1} className="order-2 lg:order-1">
-          {job.description ? (
-            <JobDescription text={job.description} />
-          ) : (
-            <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
-              No description was captured with this posting.{" "}
-              {job.url && "Open the posting with the extension installed and it's filled in once the page loads it."}
-            </p>
-          )}
-        </Section>
-
+      <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         {/* Sticky while it's short enough to fit on screen; with people listed it scrolls with the page. */}
         <aside
           className={cn(
-            "order-1 flex flex-col gap-12 self-start lg:order-2",
+            "flex flex-col gap-12 self-start lg:col-start-2 lg:row-start-1",
             contacts.length === 0 && "lg:sticky lg:top-16",
           )}
         >
-          <Section n="03" title="Details" i={2}>
+          <Section n="02" title="Details" i={1}>
             <Leader label="Location">{job.location || "—"}</Leader>
             <Leader label="Work type">{job.workType || "—"}</Leader>
             <Leader label="Employment">{job.employmentType || "—"}</Leader>
@@ -138,13 +157,28 @@ export function SavedListing({ job }: { job: SavedJob }) {
               </Leader>
             )}
           </Section>
+        </aside>
 
-          {contacts.length > 0 && (
+        <div className="lg:col-start-1 lg:row-start-1">
+          <Section n="03" title="Job description" hint={source || undefined} i={2}>
+            {job.description ? (
+              <JobDescription text={job.description} />
+            ) : (
+              <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
+                No description was captured with this posting.{" "}
+                {job.url && "Open the posting with the extension installed and it's filled in once the page loads it."}
+              </p>
+            )}
+          </Section>
+        </div>
+
+        {contacts.length > 0 && (
+          <div className="lg:col-start-2 lg:row-start-2">
             <Section n="04" title="People to reach out to" hint={String(contacts.length)} i={3}>
               <ContactList contacts={contacts} />
             </Section>
-          )}
-        </aside>
+          </div>
+        )}
       </div>
     </div>
   );
