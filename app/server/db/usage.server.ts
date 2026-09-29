@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, ne, sql } from "drizzle-orm";
 import type { Settings } from "~/lib/settings";
 import { DOLLARS_PER_INPUT_TOKEN } from "../jev/client.server";
 import type { StageUsage } from "../jev/email-stage.server";
@@ -62,7 +62,8 @@ export async function usageDashboard(db: Db, userId: string, settings: Settings)
         confirmed: sql<number>`sum(case when ${emailMessage.manualKind} = 'confirmed' then 1 else 0 end)`,
       })
       .from(emailMessage)
-      .where(and(eq(emailMessage.userId, userId), ne(emailMessage.category, "deleted"))),
+      // Stubs of emails pruned as unrelated to jobs aren't stored emails any more.
+      .where(and(eq(emailMessage.userId, userId), ne(emailMessage.category, "deleted"), isNull(emailMessage.prunedAt))),
   ]);
 
   const inMonth = recentRows.filter((r) => r.createdAt >= thisMonth);
