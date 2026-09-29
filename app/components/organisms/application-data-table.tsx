@@ -8,7 +8,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { motion } from "motion/react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router";
 import { Button } from "~/components/atoms/button";
 import {
@@ -46,7 +46,16 @@ function SortIcon({ dir }: { dir: false | "asc" | "desc" }) {
 const columns: ColumnDef<ApplicationRow>[] = [
   {
     accessorKey: "company",
-    header: "Company",
+    header: ({ column }) => (
+      <button
+        type="button"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="inline-flex items-center gap-1.5 uppercase transition-colors hover:text-text-primary"
+      >
+        Company
+        <SortIcon dir={column.getIsSorted()} />
+      </button>
+    ),
     cell: ({ row }) => (
       <div className="min-w-0">
         <p className="flex min-w-0 items-baseline gap-2">
@@ -64,7 +73,16 @@ const columns: ColumnDef<ApplicationRow>[] = [
   },
   {
     accessorKey: "role",
-    header: "Role",
+    header: ({ column }) => (
+      <button
+        type="button"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="inline-flex items-center gap-1.5 uppercase transition-colors hover:text-text-primary"
+      >
+        Role
+        <SortIcon dir={column.getIsSorted()} />
+      </button>
+    ),
     cell: ({ row }) => (
       <span title={row.original.role} className="block truncate text-text-secondary group-hover:!text-text-inverse/80">
         {row.original.role}
@@ -73,7 +91,16 @@ const columns: ColumnDef<ApplicationRow>[] = [
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: ({ column }) => (
+      <button
+        type="button"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="inline-flex items-center gap-1.5 uppercase transition-colors hover:text-text-primary"
+      >
+        Status
+        <SortIcon dir={column.getIsSorted()} />
+      </button>
+    ),
     cell: ({ row }) => <StatusBadge status={row.original.status} className="group-hover:!text-text-inverse" />,
   },
   {
@@ -155,22 +182,71 @@ export function ApplicationDataTable({ rows }: { rows: ApplicationRow[] }) {
 function Toolbar({ total, shown }: { total: number; shown: number }) {
   const search = useSelector(applicationsView$.search);
   const status = useSelector(applicationsView$.status);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement as HTMLElement)?.tagName;
+      if (e.key === "/" && activeTag !== "INPUT" && activeTag !== "TEXTAREA") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const hasFilter = status !== "all" || search.trim() !== "";
+  const resetFilters = () => {
+    applicationsView$.search.set("");
+    applicationsView$.status.set("all");
+    inputRef.current?.focus();
+  };
 
   return (
     <div className="flex flex-wrap items-center gap-2.5">
       <div className="relative min-w-0 flex-1 basis-40 sm:min-w-52 sm:max-w-sm">
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">{">"}</span>
         <Input
+          ref={inputRef}
           value={search}
           onChange={(e) => applicationsView$.search.set(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              applicationsView$.search.set("");
+              inputRef.current?.blur();
+            }
+          }}
           placeholder="search company, role, location…"
-          className="pl-7 font-mono text-[12.5px] normal-case tracking-normal"
+          className="pl-7 pr-8 font-mono text-[12.5px] normal-case tracking-normal"
         />
+        {search ? (
+          <button
+            type="button"
+            onClick={() => {
+              applicationsView$.search.set("");
+              inputRef.current?.focus();
+            }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary transition-colors hover:text-text-primary"
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        ) : (
+          <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 border border-stroke-secondary px-1 text-[10px] text-text-tertiary">
+            /
+          </kbd>
+        )}
       </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="secondary" size="medium">
+          <Button
+            variant="secondary"
+            size="medium"
+            className={cn(status !== "all" && "border-accent-primary text-text-primary")}
+          >
+            {status !== "all" && <span className="size-1.5 rounded-full bg-accent-primary" />}
             <span className="text-text-tertiary">Status:</span>
             {status}
           </Button>
@@ -185,6 +261,18 @@ function Toolbar({ total, shown }: { total: number; shown: number }) {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {hasFilter && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="small"
+          onClick={resetFilters}
+          className="text-text-tertiary hover:text-text-primary"
+        >
+          Reset filters
+        </Button>
+      )}
 
       <span className="ml-auto tabular-nums text-text-tertiary">
         {shown} of {total}
@@ -202,6 +290,8 @@ function TableBucket({
   sorting: any;
   isArrival: (id: string) => boolean;
 }) {
+  const status = useSelector(applicationsView$.status);
+  const search = useSelector(applicationsView$.search);
   const table = useReactTable({
     data: rows,
     columns,
@@ -213,7 +303,24 @@ function TableBucket({
   });
 
   if (rows.length === 0) {
-    return <div className="border border-dashed border-stroke-primary py-10 text-center text-text-tertiary">No matches for this view.</div>;
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-stroke-primary py-12 text-center">
+        <p className="text-text-tertiary">No matches for this view.</p>
+        {(status !== "all" || search.trim() !== "") && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="small"
+            onClick={() => {
+              applicationsView$.search.set("");
+              applicationsView$.status.set("all");
+            }}
+          >
+            Reset filters
+          </Button>
+        )}
+      </div>
+    );
   }
 
   return (

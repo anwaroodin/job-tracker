@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/atoms/button";
 import { FlagMark } from "~/components/molecules/flag";
@@ -20,8 +21,15 @@ export function SavedJobs({ jobs }: { jobs: SavedJob[] }) {
 function SavedRow({ job }: { job: SavedJob }) {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const act = (intent: string) =>
     fetcher.submit({ intent, applicationId: job.id }, { method: "post" });
+
+  useEffect(() => {
+    if (!confirmingRemove) return;
+    const timer = setTimeout(() => setConfirmingRemove(false), 5000);
+    return () => clearTimeout(timer);
+  }, [confirmingRemove]);
 
   return (
     <li className={cn("flex flex-wrap items-center gap-x-6 gap-y-2", busy && "opacity-50")}>
@@ -61,16 +69,39 @@ function SavedRow({ job }: { job: SavedJob }) {
         <Button type="button" variant="ghost" size="tiny" disabled={busy} onClick={() => act("saved-applied")}>
           Mark applied
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="tiny"
-          disabled={busy}
-          onClick={() => act("saved-remove")}
-          className="text-text-tertiary hover:text-red-primary"
-        >
-          Remove
-        </Button>
+        {confirmingRemove ? (
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="destructive"
+              size="tiny"
+              disabled={busy}
+              onClick={() => act("saved-remove")}
+            >
+              Confirm remove
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="tiny"
+              disabled={busy}
+              onClick={() => setConfirmingRemove(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="tiny"
+            disabled={busy}
+            onClick={() => setConfirmingRemove(true)}
+            className="text-text-tertiary hover:text-red-primary"
+          >
+            Remove
+          </Button>
+        )}
       </div>
     </li>
   );
