@@ -17,15 +17,16 @@ export default [
   route("api/ext/profile", "routes/api/ext/profile.ts"),
   route("api/ext/applications", "routes/api/ext/applications.ts"),
   route("api/ext/applications/:id", "routes/api/ext/application.ts"),
-
+  
   route("api/gmail/status", "routes/api/gmail/status.ts"),
   route("api/activity", "routes/api/activity.ts"),
-
+  route("api/search", "routes/api/search.ts"),
+  
   ...prefix("auth", [
     route("login", "routes/auth/login.tsx"),
     route("logout", "routes/auth/logout.ts"),
   ]),
-
+  
   // Authenticated app shell
   layout("routes/app/layout.tsx", [
     route("overview", "routes/app/overview.tsx"),
