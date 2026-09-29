@@ -33,8 +33,11 @@ export function jevAvailable(env: Env) {
   return !!env.TYPESAFE_API_KEY && env.EMAIL_CLASSIFIER !== "regex";
 }
 
+/** The keyword classifier's id, which is also what classifies when Jev can't. */
+export const REGEX_CLASSIFIER = `regex:${CLASSIFIER_VERSION}`;
+
 export function activeClassifier(env: Env, settings: Settings) {
-  return jevAvailable(env) && settings.classifier === "jev" ? `jev:${JEV_STAGE_VERSION}` : `regex:${CLASSIFIER_VERSION}`;
+  return jevAvailable(env) && settings.classifier === "jev" ? `jev:${JEV_STAGE_VERSION}` : REGEX_CLASSIFIER;
 }
 
 export function isConfident(confidence: number | null, minConfidence: number) {
