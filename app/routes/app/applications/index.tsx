@@ -1,7 +1,7 @@
 import { data, redirect, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/index";
 import type { loader as layoutLoader } from "../layout";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { NewApplication } from "~/components/applications/new-application";
 import { GmailSync } from "~/components/gmail/gmail-sync";
 import { Section, stagger } from "~/components/ui/terminal";
@@ -12,7 +12,7 @@ import { createApplication } from "~/server/db/queries/applications.server";
 import { listApplications } from "~/server/services/applications/list.server";
 import { applicationSuggestions } from "~/server/services/applications/suggestions.server";
 import { settleSavedJob } from "~/server/services/status/saved.server";
-import { dismissSuggestions, linkEmailsToApplication, setEmailCategory, unreadEmailCounts } from "~/server/db/queries/emails.server";
+import { dismissSuggestions, linkEmailsToApplication, setEmailCategory } from "~/server/db/queries/emails.server";
 import { confirmNotAboutJobs, emailsToConfirm } from "~/server/email/retention.server";
 import { isEmailCategory } from "~/lib/email";
 import { UnsureEmailsBanner } from "~/components/applications/unsure-emails-banner";
@@ -32,14 +32,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [apps, unread, suggestions, unsure] = await Promise.all([
+  const [apps, suggestions, unsure] = await Promise.all([
     listApplications(db, user.id),
-    unreadEmailCounts(db, user.id),
     applicationSuggestions(db, user.id),
     emailsToConfirm(db, user.id),
   ]);
   const saved = apps.filter((a) => a.status === "saved");
-  const rows = apps.filter((a) => a.status !== "saved").map((a) => ({ ...a, unread: unread[a.id] ?? 0 }));
+  const rows = apps.filter((a) => a.status !== "saved");
   return { rows, saved, suggestions, unsure, accountEmail: user.email };
 }
 
@@ -100,8 +99,11 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 export default function Applications({ loaderData }: Route.ComponentProps) {
-  const gmail = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!.gmail;
-  const rows = loaderData.rows;
+  const { gmail, unread } = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!;
+  const rows = useMemo(
+    () => loaderData.rows.map((a) => ({ ...a, unread: unread[a.id] ?? 0 })),
+    [loaderData.rows, unread],
+  );
   const saved = loaderData.saved;
   const suggestions = loaderData.suggestions;
   const view = useApplicationsView(rows);
