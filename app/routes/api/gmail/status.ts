@@ -1,9 +1,9 @@
 import { data } from "react-router";
 import type { Route } from "./+types/status";
-import { getSession } from "~/server/auth.server";
+import { getSession } from "~/server/auth/session.server";
 import { envContext, execContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { getGmailStatus, syncGmailInBackground } from "~/server/gmail/sync.server";
+import { getGmailStatus, syncGmailInBackground } from "~/server/gmail/sync/schedule.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);

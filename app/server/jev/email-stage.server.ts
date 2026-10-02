@@ -1,5 +1,5 @@
 import { chunk } from "~/lib/array";
-import type { EmailCategory } from "../email/classify.server";
+import type { EmailCategory } from "../email/classify/rules.server";
 import { askJev, type ChoiceAnswer, type ChoiceQuestion } from "./client.server";
 
 export const JEV_STAGE_VERSION = 1;

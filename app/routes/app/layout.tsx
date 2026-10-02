@@ -1,12 +1,12 @@
 import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
 import type { Route } from "./+types/layout";
-import { AppShell } from "~/components/organisms/app-shell";
-import { useRevalidateOnFocus } from "~/lib/use-revalidate-on-focus";
-import { requireUser } from "~/server/auth.server";
+import { AppShell } from "~/components/shell/app-shell";
+import { useRevalidateOnFocus } from "~/hooks/use-revalidate-on-focus";
+import { requireUser } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { unreadEmailCounts } from "~/server/db/emails.server";
-import { getGmailStatus } from "~/server/gmail/sync.server";
+import { unreadEmailCounts } from "~/server/db/queries/emails.server";
+import { getGmailStatus } from "~/server/gmail/sync/schedule.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);

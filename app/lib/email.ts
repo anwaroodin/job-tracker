@@ -1,4 +1,4 @@
-import { hostOf } from "./url";
+import { hostOf } from "./format/url";
 
 export const EMAIL_CATEGORIES = ["applied", "screening", "interview", "assessment", "offer", "rejected", "other"] as const;
 

@@ -1,6 +1,6 @@
 import { redirect } from "react-router";
 import type { Route } from "./+types/index";
-import { getSession } from "~/server/auth.server";
+import { getSession } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {

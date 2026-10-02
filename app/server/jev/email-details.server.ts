@@ -1,5 +1,5 @@
 import { chunk } from "~/lib/array";
-import type { BodyLink } from "../gmail/api.server";
+import type { BodyLink } from "../gmail/mapping.server";
 import type { DateCandidate } from "../email/details.server";
 import { askJev, type ChoiceAnswer, type ChoiceQuestion, type NoulAnswer, type NoulQuestion } from "./client.server";
 import type { StageUsage } from "./email-stage.server";

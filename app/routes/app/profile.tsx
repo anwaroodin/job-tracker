@@ -1,32 +1,31 @@
 import { useState } from "react";
-import { Form, useNavigation } from "react-router";
+import { Form, useNavigation, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/profile";
-import { Button } from "~/components/atoms/button";
-import { Input } from "~/components/atoms/input";
-import { Switch } from "~/components/atoms/switch";
-import { Section, stagger } from "~/components/molecules/terminal";
-import { SettingsNav } from "~/components/molecules/settings-nav";
-import { requireUser } from "~/server/auth.server";
+import type { loader as layoutLoader } from "./layout";
+import { Button } from "~/components/ui/button";
+import { stagger } from "~/components/ui/terminal";
+import { SettingsNav } from "~/components/ui/settings-nav";
+import { requireUser } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import {
   getProfile,
   saveProfile,
-  type ProfileForm,
-} from "~/server/db/profile.server";
-import { GmailConnectButton, gmailStatusText } from "~/components/molecules/gmail-connect";
-import { cn } from "~/lib/cn";
-import { getGmailStatus } from "~/server/gmail/sync.server";
+} from "~/server/db/queries/profile.server";
+import type { ProfileForm } from "~/types/profile";
+import { CvCard } from "~/components/profile/cv-card";
+import { PersonalSection } from "~/components/profile/personal-section";
+import { AddressSection } from "~/components/profile/address-section";
+import { LinksSection } from "~/components/profile/links-section";
+import { EligibilitySection } from "~/components/profile/eligibility-section";
+import { IntegrationsSection } from "~/components/profile/integrations-section";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = await requireUser(request, env);
   const db = getDb(env.DB);
-  const [profile, gmail] = await Promise.all([
-    getProfile(db, user.id),
-    getGmailStatus(db, user.id),
-  ]);
-  return { profile, user, gmail };
+  const profile = await getProfile(db, user.id);
+  return { profile, user };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -90,6 +89,7 @@ export default function ProfilePage({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
+  const gmail = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!.gmail;
   const [form, setForm] = useState<ProfileForm>(loaderData.profile);
   const [dirty, setDirty] = useState(false);
   const nav = useNavigation();
@@ -177,176 +177,13 @@ export default function ProfilePage({
         </aside>
 
         <main className="flex flex-col gap-12">
-          <Section
-            n={secN("personal")}
-            id="personal"
-            title="Personal information"
-            hint="Your name and how employers reach you."
-            i={1}
-          >
-            <FieldGrid cols={2}>
-              <Field label="First name">
-                <Input
-                  value={p.firstName}
-                  onChange={(e) =>
-                    setP("personal", { firstName: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Last name">
-                <Input
-                  value={p.lastName}
-                  onChange={(e) =>
-                    setP("personal", { lastName: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Email address">
-                <Input
-                  type="email"
-                  value={p.email}
-                  onChange={(e) => setP("personal", { email: e.target.value })}
-                />
-              </Field>
-              <Field label="Phone number">
-                <Input
-                  type="tel"
-                  value={p.phone}
-                  onChange={(e) => setP("personal", { phone: e.target.value })}
-                />
-              </Field>
-            </FieldGrid>
-          </Section>
+          <PersonalSection n={secN("personal")} value={p} onChange={(patch) => setP("personal", patch)} />
 
-          <Section
-            n={secN("address")}
-            id="address"
-            title="Address"
-            hint="Used for postal fields on applications."
-            i={2}
-          >
-            <div className="flex flex-col gap-4">
-              <Field label="Address line 1">
-                <Input
-                  value={p.address.line1}
-                  onChange={(e) => setAddr({ line1: e.target.value })}
-                />
-              </Field>
-              <Field label="Address line 2 (optional)">
-                <Input
-                  value={p.address.line2}
-                  onChange={(e) => setAddr({ line2: e.target.value })}
-                />
-              </Field>
-              <FieldGrid cols={3}>
-                <Field label="City">
-                  <Input
-                    value={p.address.city}
-                    onChange={(e) => setAddr({ city: e.target.value })}
-                  />
-                </Field>
-                <Field label="County / Region">
-                  <Input
-                    value={p.address.county}
-                    onChange={(e) => setAddr({ county: e.target.value })}
-                  />
-                </Field>
-                <Field label="Postcode">
-                  <Input
-                    value={p.address.postcode}
-                    onChange={(e) => setAddr({ postcode: e.target.value })}
-                  />
-                </Field>
-              </FieldGrid>
-              <Field label="Country">
-                <Input
-                  value={p.address.country}
-                  onChange={(e) => setAddr({ country: e.target.value })}
-                />
-              </Field>
-            </div>
-          </Section>
+          <AddressSection n={secN("address")} value={p.address} onChange={setAddr} />
 
-          <Section
-            n={secN("links")}
-            id="links"
-            title="Links"
-            hint="Attached to auto-filled applications."
-            i={3}
-          >
-            <FieldGrid cols={2}>
-              <Field label="LinkedIn">
-                <Input
-                  value={p.linkedin}
-                  onChange={(e) =>
-                    setP("personal", { linkedin: e.target.value })
-                  }
-                  placeholder="https://linkedin.com/in/…"
-                />
-              </Field>
-              <Field label="GitHub">
-                <Input
-                  value={p.github}
-                  onChange={(e) => setP("personal", { github: e.target.value })}
-                  placeholder="https://github.com/…"
-                />
-              </Field>
-            </FieldGrid>
-            <div className="mt-4">
-              <Field label="Portfolio">
-                <Input
-                  value={p.portfolio}
-                  onChange={(e) =>
-                    setP("personal", { portfolio: e.target.value })
-                  }
-                  placeholder="https://…"
-                />
-              </Field>
-            </div>
-          </Section>
+          <LinksSection n={secN("links")} value={p} onChange={(patch) => setP("personal", patch)} />
 
-          <Section
-            n={secN("eligibility")}
-            id="eligibility"
-            title="Work eligibility"
-            hint="Right to work, sponsorship, and availability."
-            i={4}
-          >
-            <div className="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
-              <div className="flex flex-col gap-4 normal-case">
-                <Switch
-                  checked={elig.rightToWork}
-                  onCheckedChange={(v) =>
-                    setP("eligibility", { rightToWork: v })
-                  }
-                  label="I have the right to work in the UK"
-                />
-                <Switch
-                  checked={elig.requiresSponsorship}
-                  onCheckedChange={(v) =>
-                    setP("eligibility", { requiresSponsorship: v })
-                  }
-                  label="I require visa sponsorship"
-                />
-                <Switch
-                  checked={elig.availableImmediately}
-                  onCheckedChange={(v) =>
-                    setP("eligibility", { availableImmediately: v })
-                  }
-                  label="Available to start immediately"
-                />
-              </div>
-              <Field label="Notice period">
-                <Input
-                  value={elig.noticePeriod}
-                  onChange={(e) =>
-                    setP("eligibility", { noticePeriod: e.target.value })
-                  }
-                  placeholder="e.g. 2 weeks"
-                />
-              </Field>
-            </div>
-          </Section>
+          <EligibilitySection n={secN("eligibility")} value={elig} onChange={(patch) => setP("eligibility", patch)} />
 
           <CvCard
             n={secN("software-cv")}
@@ -370,165 +207,23 @@ export default function ProfilePage({
             skillsPlaceholder="Customer Service, Cash Handling, Stock…"
           />
 
-          <Section
-            n={secN("integrations")}
-            id="integrations"
-            title="Integrations"
-            hint="Third-party services connected to your account."
-            i={7}
-          >
-            <div className="flex items-center justify-between gap-4 border border-stroke-secondary bg-bg-secondary px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-8 items-center justify-center bg-bg-primary text-[12px] font-semibold text-text-primary [box-shadow:inset_0_0_0_1px_var(--stroke-secondary)]">
-                  G
-                </div>
-                <div>
-                  <p className="text-text-primary">Gmail</p>
-                  <p className="mt-0.5 font-sans text-[11.5px] normal-case tracking-normal text-text-secondary">
-                    {gmailStatusText(loaderData.gmail)}
-                  </p>
-                </div>
-              </div>
-              <GmailConnectButton
-                connected={loaderData.gmail.connected}
-                broken={!!loaderData.gmail.lastError}
-              />
-            </div>
-          </Section>
+          <IntegrationsSection n={secN("integrations")} gmail={gmail} />
         </main>
       </div>
+
+      {dirty && (
+        <aside
+          aria-label="Unsaved changes"
+          className="fixed bottom-6 right-6 z-30 flex items-center gap-4 border border-stroke-primary bg-bg-secondary/95 px-5 py-3 shadow-xl backdrop-blur-sm sm:right-10"
+        >
+          <span className="text-[11px] text-text-tertiary">Unsaved changes</span>
+          <Button type="submit" size="medium" disabled={saving}>
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </aside>
+      )}
     </Form>
   );
 }
 
 // ── Local primitives ────────────────────────────────────────────────────
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="eyebrow !text-[10px]">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function FieldGrid({
-  cols,
-  children,
-}: {
-  cols: 2 | 3;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        "grid grid-cols-1 gap-4",
-        cols === 2 ? "md:grid-cols-2" : "md:grid-cols-3",
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-function CvCard({
-  n,
-  id,
-  i,
-  title,
-  hint,
-  value,
-  onChange,
-  skillsPlaceholder,
-}: {
-  n: string;
-  id: string;
-  i: number;
-  title: string;
-  hint: string;
-  value: {
-    summary: string;
-    skills: string;
-    coverLetter: string;
-    salary: string;
-  };
-  onChange: (
-    patch: Partial<{
-      summary: string;
-      skills: string;
-      coverLetter: string;
-      salary: string;
-    }>,
-  ) => void;
-  skillsPlaceholder: string;
-}) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  return (
-    <Section n={n} id={id} title={title} hint={hint} i={i}>
-      <div className="flex flex-col gap-4">
-        <Field label="Profile summary">
-          <textarea
-            value={value.summary}
-            onChange={(e) => onChange({ summary: e.target.value })}
-            rows={3}
-            placeholder="One paragraph describing your background and strengths."
-            className="w-full resize-y bg-bg-primary px-3 py-2 text-[13px] normal-case tracking-normal text-text-primary placeholder:text-text-tertiary [box-shadow:inset_0_0_0_1px_var(--stroke-primary)] focus-visible:outline-none focus-visible:[box-shadow:inset_0_0_0_1px_var(--text-primary)]"
-          />
-        </Field>
-        <FieldGrid cols={2}>
-          <Field label="Skills (comma-separated)">
-            <Input
-              value={value.skills}
-              onChange={(e) => onChange({ skills: e.target.value })}
-              placeholder={skillsPlaceholder}
-            />
-          </Field>
-          <Field label="Expected salary">
-            <Input
-              value={value.salary}
-              onChange={(e) => onChange({ salary: e.target.value })}
-              placeholder="45000"
-            />
-          </Field>
-        </FieldGrid>
-
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={() => setShowAdvanced((s) => !s)}
-            className="inline-flex items-center gap-2 uppercase text-text-secondary transition-colors hover:text-text-primary"
-          >
-            <span
-              className={cn(
-                "inline-block transition-transform",
-                showAdvanced && "rotate-90",
-              )}
-            >
-              ▸
-            </span>
-            {showAdvanced ? "Hide" : "Show"} cover letter template
-          </button>
-          {showAdvanced && (
-            <div className="mt-3">
-              <Field label="Cover letter template">
-                <textarea
-                  value={value.coverLetter}
-                  onChange={(e) => onChange({ coverLetter: e.target.value })}
-                  rows={5}
-                  placeholder="I am excited to apply for this role. My experience with…"
-                  className="w-full resize-y bg-bg-primary px-3 py-2 text-[13px] normal-case tracking-normal text-text-primary placeholder:text-text-tertiary [box-shadow:inset_0_0_0_1px_var(--stroke-primary)] focus-visible:outline-none focus-visible:[box-shadow:inset_0_0_0_1px_var(--text-primary)]"
-                />
-              </Field>
-            </div>
-          )}
-        </div>
-      </div>
-    </Section>
-  );
-}

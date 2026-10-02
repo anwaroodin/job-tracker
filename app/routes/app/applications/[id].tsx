@@ -1,63 +1,49 @@
-import { ArrowUpRight, CalendarClock, Check, Ellipsis, Link2, Reply, Unlink } from "lucide-react";
-import { motion } from "motion/react";
-import { useRef, useState, type ReactNode } from "react";
-import { data, Link, redirect, useFetcher } from "react-router";
+import { data, Link, redirect, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/[id]";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "~/components/atoms/dropdown-menu";
-import { Button } from "~/components/atoms/button";
-import { ContactList } from "~/components/molecules/contact-list";
-import { FactChips, listingFacts } from "~/components/molecules/fact-chips";
-import { FlagToggle } from "~/components/molecules/flag";
-import { GmailSync } from "~/components/molecules/gmail-sync";
-import { JobDescription } from "~/components/molecules/job-description";
-import { SavedListing } from "~/components/organisms/saved-listing";
-import { NewBadge } from "~/components/molecules/new-badge";
-import { Leader, STATUS_COLORS, Section, fmtDate, stagger } from "~/components/molecules/terminal";
-import { StatusBadge } from "~/components/molecules/status-badge";
+import type { loader as layoutLoader } from "../layout";
+import { ContactList } from "~/components/application-detail/contact-list";
+import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
+import { FlagToggle } from "~/components/applications/flag-toggle";
+import { GmailSync } from "~/components/gmail/gmail-sync";
+import { JobDescription } from "~/components/application-detail/job-description";
+import { SavedListing } from "~/components/application-detail/saved-listing";
+import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
+import { StatusBadge } from "~/components/ui/status-badge";
 import { cn } from "~/lib/cn";
 import { parseContacts } from "~/lib/contacts";
-import { actionLabel, EMAIL_CATEGORIES, eventLabel, formatEventAt, isEmailCategory } from "~/lib/email";
+import { isEmailCategory } from "~/lib/email";
 import { gmailThreadUrl } from "~/lib/gmail";
-import { hostOf } from "~/lib/url";
-import { useArrivals } from "~/lib/use-arrivals";
-import { requireUser } from "~/server/auth.server";
+import { hostOf } from "~/lib/format/url";
+import { useArrivals } from "~/hooks/use-arrivals";
+import { requireUser } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { getApplication, settleSavedJob, updateApplication } from "~/server/db/applications.server";
-import {
-  getApplicationEmails,
-  markReplyDone,
-  markViewed,
-  setEmailCategory,
-  setEmailDismissed,
-} from "~/server/db/emails.server";
-import { getSettings } from "~/server/db/settings.server";
-import { getGmailStatus, refreshApplicationStatus, syncGmail } from "~/server/gmail/sync.server";
-
-const STAGES = ["applied", "screening", "assessment", "interview", "offer"] as const;
-const OUTCOMES = new Set(["rejected", "accepted", "withdrawn", "ghosted"]);
+import { getApplication, updateApplication } from "~/server/db/queries/applications.server";
+import { settleSavedJob } from "~/server/services/status/saved.server";
+import { markReplyDone, markViewed, setEmailCategory, setEmailDismissed } from "~/server/db/queries/emails.server";
+import { getApplicationEmails } from "~/server/services/timeline/index.server";
+import { getSettings } from "~/server/db/queries/settings.server";
+import { syncGmail } from "~/server/gmail/sync/index.server";
+import { refreshApplicationStatus } from "~/server/services/status/refresh.server";
+import { TimelineItem } from "~/components/application-detail/timeline-item";
+import { EmailItem } from "~/components/application-detail/email-item";
+import { UnlinkedEmails } from "~/components/application-detail/unlinked-emails";
+import { useNewOnArrival } from "~/components/application-detail/use-new-on-arrival";
+import { Progress } from "~/components/application-detail/progress";
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = await requireUser(request, env);
   const db = getDb(env.DB);
   const settings = await getSettings(db, user.id);
-  const [row, emails, gmail] = await Promise.all([
+  const [row, emails] = await Promise.all([
     getApplication(db, user.id, params.id),
     getApplicationEmails(db, user.id, params.id, settings.minConfidence),
-    getGmailStatus(db, user.id),
   ]);
   if (!row) throw data("Not found", { status: 404 });
   const unseen = emails.filter((e) => !e.viewedAt && !e.dismissedAt).map((e) => e.id);
   if (unseen.length) await markViewed(db, user.id, unseen);
-  return { row, emails, gmail, accountEmail: user.email };
+  return { row, emails, accountEmail: user.email };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -102,7 +88,8 @@ export default function ApplicationDetail({ loaderData }: Route.ComponentProps) 
 }
 
 function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
-  const { row, gmail, accountEmail } = loaderData;
+  const { row, accountEmail } = loaderData;
+  const gmail = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!.gmail;
   const isNew = useNewOnArrival(row.id, loaderData.emails);
   const isArrival = useArrivals(
     loaderData.emails.map((e) => e.id),
@@ -146,37 +133,9 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="order-2 flex flex-col gap-12 lg:order-1">
-          <Section n="02" title="Progress" i={1}>
-            <ol className="grid grid-cols-5 gap-1">
-              {STAGES.map((stage) => {
-                const on = reached.has(stage);
-                return (
-                  <li key={stage} className="flex min-w-0 flex-col gap-2">
-                    <span
-                      aria-hidden
-                      className="h-[3px] w-full"
-                      style={{ background: on ? STATUS_COLORS[stage] : "rgba(255,255,255,0.08)" }}
-                    />
-                    <span
-                      className={cn(
-                        "truncate text-[10px] tracking-[0.08em] sm:text-[11px]",
-                        stage === row.status ? "text-text-primary" : on ? "text-text-secondary" : "text-text-tertiary",
-                      )}
-                    >
-                      {stage}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-            {OUTCOMES.has(row.status) && (
-              <p className="mt-4 text-[11px] tracking-[0.08em] text-text-tertiary">
-                Outcome <StatusBadge status={row.status} className="ml-2" />
-              </p>
-            )}
-          </Section>
+      <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+        <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
+          <Progress status={row.status} reached={reached} />
 
           <Section
             n="03"
@@ -211,18 +170,12 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
               </p>
             )}
           </Section>
-
-          {row.description && (
-            <Section n="05" title="Job description" hint={source || undefined} i={4}>
-              <JobDescription text={row.description} />
-            </Section>
-          )}
         </div>
 
         {/* Sticky while it's short enough to fit on screen; with people listed it scrolls with the page. */}
         <aside
           className={cn(
-            "order-1 flex flex-col gap-12 self-start lg:order-2",
+            "flex flex-col gap-12 self-start lg:col-start-2 lg:row-start-1",
             contacts.length === 0 && "lg:sticky lg:top-16",
           )}
         >
@@ -255,354 +208,24 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
               </p>
             )}
           </Section>
+        </aside>
 
-          {contacts.length > 0 && (
+        {row.description && (
+          <div className="lg:col-start-1 lg:row-start-2">
+            <Section n="05" title="Job description" hint={source || undefined} i={4}>
+              <JobDescription text={row.description} />
+            </Section>
+          </div>
+        )}
+
+        {contacts.length > 0 && (
+          <div className="lg:col-start-2 lg:row-start-2">
             <Section n="06" title="People to reach out to" hint={String(contacts.length)} i={5}>
               <ContactList contacts={contacts} />
             </Section>
-          )}
-        </aside>
+          </div>
+        )}
       </div>
     </div>
-  );
-}
-
-type TimelineEmail = Route.ComponentProps["loaderData"]["emails"][number];
-
-function useNewOnArrival(applicationId: string, emails: TimelineEmail[]) {
-  const arrivals = useRef<{ applicationId: string; ids: Set<string> } | null>(null);
-  if (arrivals.current?.applicationId !== applicationId) arrivals.current = { applicationId, ids: new Set() };
-  const arrived = arrivals.current.ids;
-  for (const email of emails) if (!email.viewedAt) arrived.add(email.id);
-  return (email: TimelineEmail) => arrived.has(email.id) || !email.viewedAt;
-}
-
-function EmailItem({
-  email,
-  href,
-  isNew,
-  arrived,
-}: {
-  email: TimelineEmail;
-  href: string;
-  isNew: boolean;
-  arrived: boolean;
-}) {
-  if (email.category === "deleted") {
-    return (
-      <TimelineItem
-        category="deleted"
-        title="Deleted from Gmail"
-        arrived={arrived}
-        actions={<EmailActions email={email} unlinkOnly />}
-      />
-    );
-  }
-  if (!email.category) {
-    return (
-      <TimelineItem
-        category="pending"
-        title="Email details not synced yet"
-        arrived={arrived}
-        meta="Open in Gmail"
-        href={href}
-        actions={<EmailActions email={email} unlinkOnly />}
-      />
-    );
-  }
-  return (
-    <TimelineItem
-      date={email.receivedAt ?? undefined}
-      category={email.category}
-      title={email.subject || "(no subject)"}
-      from={email.fromName || email.fromAddress || undefined}
-      snippet={email.snippet || undefined}
-      meta="Open in Gmail"
-      href={href}
-      unread={isNew}
-      arrived={arrived}
-      unsure={email.unsure}
-      edited={email.edited}
-      confirmed={email.confirmed}
-      needsReply={email.needsReply}
-      footer={<EmailDetails email={email} />}
-      actions={<EmailActions email={email} />}
-    />
-  );
-}
-
-function EmailDetails({ email }: { email: TimelineEmail }) {
-  const fetcher = useFetcher();
-  const replied = fetcher.formData?.get("intent") === "replied";
-  const needsReply = email.needsReply && !replied;
-  if (!email.eventAt && !email.actionUrl && !needsReply) return null;
-
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[11px] tracking-[0.08em]">
-      {email.eventAt && (
-        <span className="flex items-center gap-1.5 text-text-primary" title={email.eventText ?? undefined}>
-          <CalendarClock className="size-3.5 text-text-tertiary" />
-          <span className="text-text-tertiary">{eventLabel(email.category ?? "")}</span>
-          {formatEventAt(email.eventAt)}
-        </span>
-      )}
-      {email.actionUrl && (
-        <Button asChild variant="secondary" size="tiny">
-          <a href={email.actionUrl} target="_blank" rel="noopener noreferrer" title={email.actionText ?? email.actionUrl}>
-            {actionLabel(email.actionUrl, email.category ?? "")}
-            <ArrowUpRight />
-          </a>
-        </Button>
-      )}
-      {needsReply && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="tiny"
-          onClick={() => fetcher.submit({ intent: "replied", id: email.id }, { method: "post" })}
-        >
-          <Check />
-          Mark replied
-        </Button>
-      )}
-    </div>
-  );
-}
-
-function EmailActions({ email, unlinkOnly }: { email: TimelineEmail; unlinkOnly?: boolean }) {
-  const fetcher = useFetcher();
-  const busy = fetcher.state !== "idle";
-  const pendingCategory = fetcher.formData?.get("category");
-  const current = typeof pendingCategory === "string" ? pendingCategory : email.category;
-  const submit = (fields: Record<string, string>) => fetcher.submit({ id: email.id, ...fields }, { method: "post" });
-  const confirm = () => submit({ intent: "categorize", category: email.category ?? "other" });
-  const unsure = email.unsure && !unlinkOnly && fetcher.formData?.get("intent") !== "categorize";
-
-  return (
-    <div className="mt-2 flex shrink-0 items-center gap-1">
-      {unsure && (
-        <button
-          type="button"
-          onClick={confirm}
-          disabled={busy}
-          title={`Jev wasn't sure. Confirm this email really is ${email.category}.`}
-          className="flex h-7 items-center gap-1.5 px-2 text-[10.5px] uppercase tracking-[0.1em] text-accent-primary transition-colors hover:bg-white/[0.06] hover:text-accent-secondary focus-visible:bg-white/[0.06] focus-visible:outline-none disabled:opacity-40"
-        >
-          <Check className="size-3.5" />
-          Confirm
-        </button>
-      )}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label="Email actions"
-            disabled={busy}
-            className="flex size-7 shrink-0 items-center justify-center text-text-tertiary transition-colors hover:bg-white/[0.06] hover:text-text-primary focus-visible:bg-white/[0.06] focus-visible:text-text-primary focus-visible:outline-none disabled:opacity-40 data-[state=open]:bg-white/[0.06] data-[state=open]:text-text-primary"
-          >
-            <Ellipsis className="size-4" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-56 whitespace-nowrap font-mono uppercase tracking-[0.04em]">
-          {!unlinkOnly && (
-            <>
-              {unsure && (
-                <>
-                  <DropdownMenuItem onSelect={confirm}>
-                    <Check />
-                    Confirm as {email.category}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuLabel>Mark as</DropdownMenuLabel>
-              {EMAIL_CATEGORIES.map((category) => (
-                <DropdownMenuItem
-                  key={category}
-                  disabled={category === current && !unsure}
-                  onSelect={() => submit({ intent: "categorize", category })}
-                >
-                  <span
-                    aria-hidden
-                    className="size-[7px] shrink-0"
-                    style={{ background: STATUS_COLORS[category] ?? "#6e6f76" }}
-                  />
-                  {category}
-                  {category === current && <Check className="ml-auto" />}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-            </>
-          )}
-          <DropdownMenuItem onSelect={() => submit({ intent: "unlink" })}>
-            <Unlink />
-            Unlink from application
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-}
-
-function UnlinkedEmails({ emails }: { emails: TimelineEmail[] }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="mt-6">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="uppercase text-[11px] tracking-[0.08em] text-text-tertiary transition-colors hover:text-text-primary"
-      >
-        {emails.length} unlinked {emails.length === 1 ? "email" : "emails"} · {open ? "Hide" : "Show"}
-      </button>
-      {open && (
-        <ul className="mt-3 flex flex-col gap-1">
-          {emails.map((email) => (
-            <UnlinkedEmail key={email.id} email={email} />
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function UnlinkedEmail({ email }: { email: TimelineEmail }) {
-  const fetcher = useFetcher();
-  return (
-    <li className="flex items-center gap-4 py-1.5">
-      <span className="hidden w-[96px] shrink-0 text-[11px] tracking-[0.08em] text-text-tertiary sm:block">
-        {email.receivedAt ? fmtDate(email.receivedAt) : "—"}
-      </span>
-      <span className="min-w-0 flex-1 truncate font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
-        {email.subject || "(no subject)"}
-      </span>
-      <button
-        type="button"
-        disabled={fetcher.state !== "idle"}
-        onClick={() => fetcher.submit({ intent: "relink", id: email.id }, { method: "post" })}
-        className="flex shrink-0 items-center gap-1.5 uppercase text-[10.5px] tracking-[0.1em] text-text-tertiary transition-colors hover:text-text-primary disabled:opacity-40"
-      >
-        <Link2 className="size-3.5" />
-        Relink
-      </button>
-    </li>
-  );
-}
-
-function TimelineItem({
-  date,
-  category,
-  title,
-  from,
-  snippet,
-  meta,
-  href,
-  unread,
-  arrived,
-  unsure,
-  edited,
-  confirmed,
-  needsReply,
-  actions,
-  footer,
-}: {
-  date?: string;
-  category: string;
-  title: string;
-  from?: string;
-  snippet?: string;
-  meta?: string;
-  href?: string;
-  unread?: boolean;
-  arrived?: boolean;
-  unsure?: boolean;
-  edited?: boolean;
-  confirmed?: boolean;
-  needsReply?: boolean;
-  actions?: ReactNode;
-  footer?: ReactNode;
-}) {
-  const color = STATUS_COLORS[category] ?? "#6e6f76";
-  const body = (
-    <>
-      <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[11px] tracking-[0.08em]">
-        <span className="text-text-tertiary sm:hidden">{date ? fmtDate(date) : "—"}</span>
-        <span style={{ color }}>[{category}]</span>
-        {unread && <NewBadge className="self-center" />}
-        {needsReply && (
-          <span className="flex items-center gap-1 text-text-primary">
-            <Reply className="size-3" />
-            Reply needed
-          </span>
-        )}
-        {unsure && (
-          <span
-            className="text-accent-primary"
-            title="The classifier wasn't sure, so this email didn't change the status"
-          >
-            Unsure
-          </span>
-        )}
-        {edited && <span className="text-text-tertiary">Edited</span>}
-        {confirmed && <span className="text-text-tertiary">Confirmed</span>}
-      </p>
-      <p className="mt-1.5 font-sans text-[14px] normal-case tracking-normal text-text-primary">{title}</p>
-      {from && (
-        <p className="mt-0.5 truncate font-sans text-[12px] normal-case tracking-normal text-text-tertiary">{from}</p>
-      )}
-      {snippet && (
-        <p className="mt-2 line-clamp-2 font-sans text-[12.5px] normal-case leading-relaxed tracking-normal text-text-secondary">
-          {snippet}
-        </p>
-      )}
-      {meta && href && (
-        <p className="mt-2 text-[10.5px] tracking-[0.1em] text-text-tertiary transition-colors group-hover:text-text-primary">
-          {meta} ↗
-        </p>
-      )}
-    </>
-  );
-
-  return (
-    <motion.li
-      layout="position"
-      initial={arrived ? { opacity: 0, y: -8 } : false}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="grid grid-cols-[14px_1fr] gap-x-4 sm:grid-cols-[96px_14px_1fr]"
-    >
-      <span className="hidden pt-[13px] text-[11px] tracking-[0.08em] text-text-tertiary sm:block">
-        {date ? fmtDate(date) : "—"}
-      </span>
-      <span aria-hidden className="relative flex justify-center">
-        <span className="absolute inset-y-0 w-px bg-white/10" />
-        <span className="relative mt-[15px] size-[9px]" style={{ background: color }} />
-      </span>
-      <div
-        className={cn(
-          "-mx-3 my-1 flex min-w-0 items-start gap-1 px-3 transition-colors",
-          arrived && "arrive",
-          unread && "bg-green-quaternary shadow-[inset_2px_0_0_var(--color-green-primary)]",
-          href && "hover:bg-white/[0.04] has-[a:focus-visible]:bg-white/[0.04] has-[[data-state=open]]:bg-white/[0.04]",
-        )}
-      >
-        <div className="min-w-0 flex-1">
-          {href ? (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group block py-2.5 focus-visible:outline-none"
-            >
-              {body}
-            </a>
-          ) : (
-            <div className="py-2.5">{body}</div>
-          )}
-          {footer}
-        </div>
-        {actions}
-      </div>
-    </motion.li>
   );
 }

@@ -1,14 +1,14 @@
 import { redirect, useSearchParams } from "react-router";
 import type { Route } from "./+types/login";
-import { Button } from "~/components/atoms/button";
+import { Button } from "~/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "~/components/atoms/card";
-import { getSession } from "~/server/auth.server";
+} from "~/components/ui/card";
+import { getSession } from "~/server/auth/session.server";
 import { authClient } from "~/lib/auth-client";
 import { envContext } from "~/server/context.server";
 import logo from "~/assets/job-tracker.png";

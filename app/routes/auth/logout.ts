@@ -1,6 +1,6 @@
 import { redirect } from "react-router";
 import type { Route } from "./+types/logout";
-import { createAuth } from "~/server/auth.server";
+import { createAuth } from "~/server/auth/config.server";
 import { envContext } from "~/server/context.server";
 
 export async function action({ request, context }: Route.ActionArgs) {

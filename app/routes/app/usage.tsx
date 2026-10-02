@@ -1,14 +1,14 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/usage";
-import { Bar, BarRow, ColumnChart, Leader, Section, fmtDate, pct, stagger } from "~/components/molecules/terminal";
+import { Bar, BarRow, ColumnChart, Leader, Section, fmtDate, pct, stagger } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { formatDollars } from "~/lib/settings";
-import { requireUser } from "~/server/auth.server";
+import { requireUser } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { getSettings } from "~/server/db/settings.server";
-import { usageDashboard } from "~/server/db/usage.server";
-import { activeClassifier, jevAvailable } from "~/server/email/classifier.server";
+import { getSettings } from "~/server/db/queries/settings.server";
+import { usageDashboard } from "~/server/db/queries/usage.server";
+import { activeClassifier, jevAvailable } from "~/server/email/classify/index.server";
 import { DOLLARS_PER_INPUT_TOKEN } from "~/server/jev/client.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {

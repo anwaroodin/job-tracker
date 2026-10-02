@@ -1,8 +1,8 @@
 import { data } from "react-router";
 import type { Route } from "./+types/activity";
-import { getSession } from "~/server/auth.server";
+import { getSession } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
-import { markActivitySeen, recentActivity } from "~/server/db/activity.server";
+import { markActivitySeen, recentActivity } from "~/server/db/queries/activity.server";
 import { getDb } from "~/server/db/client.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
