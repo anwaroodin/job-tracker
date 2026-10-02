@@ -7,6 +7,7 @@ import { GMAIL_SCOPE } from "~/lib/gmail";
 import { getDb } from "../db/client.server";
 import { updateSyncState } from "../db/queries/gmail-sync.server";
 import { assertAllowed } from "./allowlist.server";
+import { kvStorage } from "./kv-storage.server";
 
 export function createAuth(env: Env, request?: Request) {
   const origin = request ? new URL(request.url).origin : env.APP_URL;
@@ -48,10 +49,14 @@ export function createAuth(env: Env, request?: Request) {
       },
     },
 
+    secondaryStorage: kvStorage(env.SESSIONS),
     session: {
       expiresIn: 60 * 60 * 24 * 30, // 30 days
       updateAge: 60 * 60 * 24, // refresh cookie once per day
+      storeSessionInDatabase: true,
     },
+    verification: { storeInDatabase: true },
+    rateLimit: { storage: "memory" },
 
     advanced: {
       cookiePrefix: "jt",
