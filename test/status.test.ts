@@ -170,7 +170,7 @@ describe("refreshApplicationStatus", () => {
     expect(await refreshApplicationStatus(db, USER_ID, "app-1")).toEqual([]);
   });
 
-  it.fails("an unsure email newer than a status set by hand doesn't override it (bug 2.2)", async () => {
+  it("an unsure email newer than a status set by hand doesn't override it (bug 2.2)", async () => {
     const { db } = testDb();
     await setMinConfidence(db, 0.8);
     await addApplication(db, { id: "app-1", status: "offer", manualStatusAt: at(2) });

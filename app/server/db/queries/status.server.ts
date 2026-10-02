@@ -17,7 +17,7 @@ export function applicationsFor(db: Db, userId: string, applicationId?: string) 
     .where(and(eq(application.userId, userId), applicationId ? eq(application.id, applicationId) : undefined));
 }
 
-export function lastStageEvidencePerApplication(db: Db, userId: string, applicationId?: string) {
+export function lastStageEvidencePerApplication(db: Db, userId: string, minConfidence: number, applicationId?: string) {
   return db
     .select({ applicationId: emailLink.applicationId, receivedAt: sql<string>`max(${emailMessage.receivedAt})` })
     .from(emailLink)
@@ -27,6 +27,11 @@ export function lastStageEvidencePerApplication(db: Db, userId: string, applicat
         eq(emailLink.userId, userId),
         applicationId ? eq(emailLink.applicationId, applicationId) : undefined,
         or(notInArray(emailMessage.category, NON_STAGE_CATEGORIES), isNotNull(emailMessage.manualCategoryAt)),
+        or(
+          isNull(emailMessage.confidence),
+          gte(emailMessage.confidence, minConfidence),
+          isNotNull(emailMessage.manualCategoryAt),
+        ),
       ),
     )
     .groupBy(emailLink.applicationId);

@@ -20,7 +20,7 @@ export async function refreshApplicationStatus(
   const [apps, latestStages, evidence] = await db.batch([
     applicationsFor(db, userId, applicationId),
     latestStageEmailPerApplication(db, userId, minConfidence, applicationId),
-    lastStageEvidencePerApplication(db, userId, applicationId),
+    lastStageEvidencePerApplication(db, userId, minConfidence, applicationId),
   ]);
   const latestByApplication = new Map(latestStages.map((stage) => [stage.applicationId, stage]));
   const lastEvidenceAt = new Map(evidence.map((row) => [row.applicationId, row.receivedAt]));
