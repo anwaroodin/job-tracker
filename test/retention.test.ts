@@ -155,7 +155,7 @@ describe("saving a downloaded email", () => {
     expect(await email(db, "e1")).toMatchObject({ category: "offer", subject: "Subject e1" });
   });
 
-  it.fails("keeps a stub's date when Gmail reports it deleted (bug 2.3)", async () => {
+  it("keeps a stub's date when Gmail reports it deleted (bug 2.3)", async () => {
     const { db } = testDb();
     await pruned(db, "e1", { receivedAt: at(3) });
     await saveEmail(db, { userId: USER_ID, id: "e1", category: "deleted", receivedAt: "" });

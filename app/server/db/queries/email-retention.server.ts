@@ -96,7 +96,8 @@ export function pruneUnrelatedEmails(db: Db, userId: string, classifier: string,
 }
 
 export function saveEmail(db: Db, row: typeof emailMessage.$inferInsert) {
-  const { userId: _userId, id: _id, ...content } = row;
+  const { userId: _userId, id: _id, receivedAt, ...rest } = row;
+  const content = receivedAt ? { ...rest, receivedAt } : rest;
   return db
     .insert(emailMessage)
     .values(row)
