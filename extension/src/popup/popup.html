@@ -19,6 +19,23 @@
   </header>
 
   <main class="body">
+    <!-- First run: which dashboard to talk to -->
+    <form data-view="setup" hidden id="setupForm" class="setup" novalidate>
+      <div class="section">
+        <div class="section-head"><b>[00]</b><span>Setup</span></div>
+        <div class="notice">
+          <h2>Connect your dashboard</h2>
+          <p>Enter the address of your job-tracker dashboard. You'll sign in there, and the extension uses that session.</p>
+        </div>
+        <label class="field">
+          <span class="label">Dashboard address</span>
+          <input class="input" name="dashboard" type="url" inputmode="url" placeholder="https://job-tracker.example.com" autocomplete="url" spellcheck="false" required />
+        </label>
+        <p class="result" data-tone="error" data-error role="alert" hidden></p>
+        <button class="btn" type="submit">Save</button>
+      </div>
+    </form>
+
     <!-- Signed out -->
     <section data-view="signin" hidden>
       <div class="section">
@@ -105,7 +122,10 @@
   </main>
 
   <footer class="footer">
-    <button class="link accent" type="button" data-action="dashboard">Open dashboard</button>
+    <div class="footer-links">
+      <button class="link accent" type="button" data-action="dashboard">Open dashboard</button>
+      <button class="link" type="button" data-action="options">Settings</button>
+    </div>
     <span class="footer-count" id="footerCount"></span>
   </footer>
 </body>

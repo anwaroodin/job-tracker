@@ -3,12 +3,17 @@
  * the top frame, the scan loop that keeps the action bar in step with the
  * job open on the page.
  */
-(() => {
+(async () => {
   "use strict";
 
   const JT = globalThis.__jobTracker;
   if (!JT?.bar || JT.started) return;
   JT.started = true;
+
+  // Nothing to do on the dashboard itself. Its address is the user's own
+  // (config.js), so the manifest can't exclude it; this checks at runtime.
+  const { dashboardOrigin } = await chrome.storage.sync.get("dashboardOrigin");
+  if (dashboardOrigin && location.origin === dashboardOrigin) return;
 
   JT.autofill.start();
   if (window !== window.top) return;

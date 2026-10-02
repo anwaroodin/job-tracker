@@ -6,18 +6,18 @@ A Chrome extension that captures a job's details, fills the application form fro
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and pick this `extension/` folder.
-3. Sign in on the dashboard in the same Chrome profile. The extension uses that session; there is no separate login.
+3. Click the extension's icon and enter your dashboard's address (for example `https://job-tracker.<subdomain>.workers.dev`, or `localhost:5173` for `npm run dev`).
+4. Sign in on the dashboard in the same Chrome profile. The extension uses that session; there is no separate login.
 
 There's no build step. The popup and service worker are ES modules; content scripts are classic scripts that share `globalThis.__jobTracker` and load in the order listed in `manifest.json`.
 
 After changing the extension, click reload on `chrome://extensions` and refresh open tabs.
 
-### Pointing at another deployment
+### The dashboard address
 
-The dashboard origin appears in two places. Change both:
+The extension doesn't have a dashboard built in: each user points it at their own deployment. The address is asked for on first use and can be changed under **Settings** in the popup (or **Extension options** on `chrome://extensions`). Only the origin is kept, in `chrome.storage.sync`, and it must be `https://`, apart from `localhost` and `127.0.0.1` over plain http for development. `src/config.js` owns reading and checking it; nothing else hardcodes an address.
 
-- `API_ORIGIN` in `src/config.js`
-- `exclude_matches` and the `connect-src` CSP in `manifest.json`
+The bar stays off the dashboard itself: `main.js` compares the page's origin with the configured one.
 
 ## Usage
 
@@ -100,7 +100,7 @@ extension/
 ├── manifest.json            Content-script order lives here and in src/lib/page.js
 ├── icons/
 └── src/
-    ├── config.js            Dashboard origin
+    ├── config.js            The user's dashboard origin: reading, checking and saving it
     ├── background.js        Service worker: API calls, tracking, pending-tab state
     ├── content/             Content scripts (classic scripts sharing globalThis.__jobTracker)
     │   ├── core.js          Namespace, DOM helpers, structured data, adapter registry
@@ -114,9 +114,11 @@ extension/
     ├── lib/                 ES modules for the popup and service worker
     │   ├── api.js           /api/ext/* client
     │   ├── cv.js            CV variant and category detection
+    │   ├── dashboard-form.js The dashboard address form (popup setup and options page)
     │   ├── page.js          Lets the popup inject the content library
     │   ├── profile.js       Profile → form values
     │   └── tracked.js       Recently tracked applications
+    ├── options/             Options page: the dashboard address
     └── popup/
 ```
 
@@ -171,6 +173,7 @@ Reload the extension on `chrome://extensions`, refresh the tab, and check:
 - **Apply & fill** on an external-apply job opens the application and fills it; on LinkedIn Easy Apply the modal fills.
 - A bookmark, a status change and Apply & fill on the same job all update one application, and the bookmark or star and status show on the dashboard.
 - Signed out: the panel asks you to sign in and nothing is saved.
+- No dashboard set (clear it from the service worker console with `chrome.storage.sync.clear()`): the popup asks for the address, and the bar's actions point to Set up.
 - No errors in the page console or the service worker console.
 
 ## API

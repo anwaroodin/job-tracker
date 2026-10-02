@@ -1,8 +1,8 @@
 import type { Route } from "./+types/profile";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { getProfile } from "~/server/db/profile.server";
-import { extUser, guarded, json, preflight } from "~/server/ext-api.server";
+import { getProfile } from "~/server/db/queries/profile.server";
+import { extUser, guarded, json, preflight } from "~/server/extension/http.server";
 
 /** GET /api/ext/profile: the profile the extension fills application forms from. */
 export const loader = (args: Route.LoaderArgs) => guarded(args.request, () => profile(args));

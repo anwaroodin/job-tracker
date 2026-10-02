@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.cloudflare.json",
+  "include": [".react-router/types/**/*", "app/**/*", "test/**/*", "vitest.config.ts", "worker-configuration.d.ts"],
+  "compilerOptions": {
+    "composite": false,
+    "types": ["vite/client", "node"]
+  }
+}

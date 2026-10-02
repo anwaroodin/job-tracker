@@ -17,10 +17,11 @@
  *   fill:get     {}                             → { values, company, role, sourceUrl } | null
  *   fill:stop    {}
  *   fill:progress { filled }                    (relayed to the tab's top frame)
- *   open         { page: "dashboard" | "application", applicationId? }
- * Failures resolve to { error }, with "signed_out" when the session is gone.
+ *   open         { page: "dashboard" | "application" | "options", applicationId? }
+ * Failures resolve to { error }: "signed_out" when the session is gone,
+ * "not_configured" while no dashboard address is set (see config.js).
  */
-import { API_ORIGIN, DASHBOARD_URL } from "./config.js";
+import { NotConfiguredError, dashboardUrl, getDashboardOrigin } from "./config.js";
 import { AuthError, getProfile, logApplication, lookupApplication, updateApplication } from "./lib/api.js";
 import { detectCategory, detectCvType } from "./lib/cv.js";
 import { formValues } from "./lib/profile.js";
@@ -133,7 +134,7 @@ async function checkJob({ job }) {
     const { application } = await lookupApplication({ ...job, url: normaliseUrl(job.url) });
     return { ...suggested, application: application && summary(application) };
   } catch (error) {
-    if (error instanceof AuthError) throw error;
+    if (error instanceof AuthError || error instanceof NotConfiguredError) throw error;
     // Offline: fall back to what this device tracked. A listing is its own
     // job, so another job on the same site doesn't count.
     const local = await findTracked(job, { sameHost: false });
@@ -252,13 +253,23 @@ async function relayProgress({ filled }, tab) {
   return {};
 }
 
+/** Opens the dashboard (or one application on it), or the options page while no dashboard is set. */
 async function openPage({ page, applicationId }, tab) {
-  const url =
-    page === "application" && /^[\w-]+$/.test(applicationId ?? "")
-      ? `${API_ORIGIN}/applications/${applicationId}`
-      : DASHBOARD_URL;
-  await chrome.tabs.create({ url, openerTabId: tab.id, index: tab.index + 1 });
+  const origin = await getDashboardOrigin();
+  if (!origin || page === "options") {
+    await chrome.runtime.openOptionsPage();
+    return {};
+  }
+  const id = page === "application" && /^[\w-]+$/.test(applicationId ?? "") ? applicationId : undefined;
+  await chrome.tabs.create({ url: dashboardUrl(origin, id), openerTabId: tab.id, index: tab.index + 1 });
   return {};
+}
+
+/** The error code a content script gets back for a failed request. */
+function errorCode(error) {
+  if (error instanceof AuthError) return "signed_out";
+  if (error instanceof NotConfiguredError) return "not_configured";
+  return error.message;
 }
 
 const HANDLERS = {
@@ -278,6 +289,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!handler || sender.id !== chrome.runtime.id || !sender.tab?.id) return false;
   handler(message, sender.tab)
     .then(sendResponse)
-    .catch((error) => sendResponse({ error: error instanceof AuthError ? "signed_out" : error.message }));
+    .catch((error) => sendResponse({ error: errorCode(error) }));
   return true;
 });

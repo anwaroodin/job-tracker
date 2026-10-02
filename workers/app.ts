@@ -1,6 +1,7 @@
 import { RouterContextProvider, createRequestHandler } from "react-router";
 import { envContext, execContext } from "~/server/context.server";
-import { syncAllGmailUsers } from "~/server/gmail/sync.server";
+import { syncGmail } from "~/server/gmail/sync/index.server";
+import { enqueueGmailSyncs } from "~/server/gmail/sync/schedule.server";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const AUTH_PATH = "/api/auth/";
@@ -21,7 +22,19 @@ export default {
     return requestHandler(request, context);
   },
   async scheduled(_controller, env, ctx) {
-    ctx.waitUntil(syncAllGmailUsers(env));
+    ctx.waitUntil(enqueueGmailSyncs(env));
+  },
+  async queue(batch, env) {
+    for (const message of batch.messages) {
+      const { userId } = message.body as { userId: string };
+      try {
+        await syncGmail(env, userId, "auto");
+        message.ack();
+      } catch (e) {
+        console.error("queued gmail sync threw", userId, e);
+        message.retry();
+      }
+    }
   },
 } satisfies ExportedHandler<Env>;
 

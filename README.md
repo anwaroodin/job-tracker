@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./public/favicon.png" alt="job-tracker logo" width="120" />
   <h1>job-tracker</h1>
-  <p>A personal job-application tracker built on React Router 7 and deployed to Cloudflare Workers.</p>
+  <p>A personal job-application tracker built on React Router 8 and deployed to Cloudflare Workers.</p>
 </div>
 
 ---
@@ -31,6 +31,7 @@ Connect Gmail (read-only) and job-tracker syncs application emails in the backgr
 - **Dates, links and replies (Jev):** pulls out interview times and deadlines, adds a button to join the meeting or open the assessment, and flags emails waiting on your reply. These show on the timeline and in the overview's *Up next*.
 - **Untracked applications:** confirmation emails for jobs you haven't added are suggested on the Applications page, with the company and role filled in where they can be found.
 - **Usage & settings:** a usage page tracks Jev spend against an optional monthly budget, and a settings page controls the classifier, confidence threshold and syncing.
+- **Privacy:** only job-related email is kept. Once an email is known not to be about jobs, its subject, sender and snippet are deleted, and only its Gmail id, thread and date remain so it isn't downloaded again. Emails Jev isn't sure about are kept and listed on the Applications page until you mark them as not about jobs (which deletes them) or give them a category. Emails in the same thread as a job email are kept, and a removed email is fetched again if a job email later joins its thread or the classifier changes.
 
 <div align="center">
   <img src="./images/extension.png" alt="browser-extension" />
@@ -39,11 +40,11 @@ Connect Gmail (read-only) and job-tracker syncs application emails in the backgr
 
 ## Tech Stack
 
-- **Framework:** [React Router 7](https://reactrouter.com/) (Framework Mode)
+- **Framework:** [React Router 8](https://reactrouter.com/) (Framework Mode)
 - **Deployment:** [Cloudflare Workers](https://workers.cloudflare.com/)
 - **Database:** Cloudflare D1 (SQLite) via [Drizzle ORM](https://orm.drizzle.team/)
 - **Storage:** Cloudflare R2 (CV PDFs)
-- **Sessions:** Cloudflare KV
+- **Sessions:** Cloudflare KV (read on every request; D1 keeps a copy)
 - **Authentication:** [Better Auth](https://better-auth.com/) + Google OAuth
 - **Styling:** Tailwind CSS v4 & Radix UI primitives
 
@@ -54,25 +55,33 @@ job-tracker/
 ├── app/
 │   ├── app.css                 Tailwind v4 @theme configuration
 │   ├── root.tsx                Root layout & font loading
-│   ├── routes.ts               Route table mapping
-│   ├── env.d.ts                Cloudflare Env type definitions
-│   ├── routes/
-│   │   ├── index.tsx           Session-based redirect
-│   │   ├── api/                API Endpoints (Auth splat & browser extension API)
-│   │   ├── auth/               Login & Logout routes
-│   │   └── app/                Authed App Shell (Overview, Applications, Profile, Usage, Settings)
-│   ├── components/             Atomic design system (Atoms, Molecules, Organisms)
-│   ├── lib/                    Client-side utilities & global state
-│   └── server/                 Backend configuration
-│       ├── db/                 Drizzle schema, clients, and data access layer
-│       ├── email/              Email classification, detail and suggestion candidates
-│       ├── gmail/              Gmail API client and background sync
+│   ├── routes.ts               Route table mapping (the only one)
+│   ├── routes/                 Route modules only: loader, action and page
+│   │   ├── api/                Auth splat, extension API, activity, search, Gmail status
+│   │   ├── auth/               Login & logout
+│   │   └── app/                Authed shell (layout resolves the user once per request) and its pages
+│   ├── components/             All components, grouped by feature
+│   │   ├── ui/                 Generic building blocks (Button, Input, terminal blocks, StatusBadge)
+│   │   ├── shell/              Sidebar, activity feed, command palette
+│   │   └── gmail/ overview/ applications/ application-detail/ profile/ settings/
+│   ├── hooks/                  Generic React hooks
+│   ├── types/                  Types shared by the server and the UI
+│   ├── lib/                    Client-safe helpers, constants and client state
+│   └── server/                 Server-only code (never imported by components)
+│       ├── auth/               Better Auth config, sessions (KV), allowlist
+│       ├── db/                 Drizzle client, schema/ (one file per table), queries/ (the only place SQL lives)
+│       ├── services/           Business rules: status transitions, applications, timeline, overview, search
+│       ├── email/              Classification, retention (privacy rules), details, suggestions
+│       ├── gmail/              Gmail API client, payload mapping, sync/ (the sync pipeline)
 │       ├── jev/                TypeSafe Jev questions (optional AI classification)
-│       └── *.server.ts         Auth, R2, and Extension API utilities
+│       ├── storage/            R2 helpers (CV uploads, upcoming)
+│       └── extension/          Extension API HTTP helpers and input validation
+├── test/                       Vitest suite (npm test), runs against the real migrations
 ├── extension/                  Chrome extension (see extension/README.md)
 ├── workers/
 │   └── app.ts                  Cloudflare Worker entry point
-└── migrations/                 Drizzle SQL migrations
+├── migrations/                 Drizzle SQL migrations
+└── docs/                       Architecture, development and refactor notes
 ```
 
 ## Local Setup
@@ -138,12 +147,13 @@ TYPESAFE_API_KEY=                 # optional
 
 ```bash
 npm run dev       # Start local dev server at http://localhost:5173
+npm test          # Run the test suite
 npm run deploy    # Build and deploy to Cloudflare Workers
 ```
 
 ### 6. Load the Browser Extension
 
-Load the `extension/` folder unpacked from `chrome://extensions` and sign in on the dashboard. See [extension/README.md](./extension/README.md) for pointing it at your deployment.
+Load the `extension/` folder unpacked from `chrome://extensions`, click its icon and enter your dashboard's address (your Worker's URL), then sign in on the dashboard. See [extension/README.md](./extension/README.md) for details.
 
 ## Roadmap
 

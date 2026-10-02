@@ -1,22 +1,12 @@
 import type { Route } from "./+types/applications";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import {
-  clearBookmarkOnApply,
-  createApplication,
-  findRecentDuplicate,
-  getApplication,
-  updateApplication,
-} from "~/server/db/applications.server";
-import type { NewApplication } from "~/server/db/schema";
-import { extUser, guarded, json, preflight, readJsonBody } from "~/server/ext-api.server";
-import { applicationStatus, cleanUrl, jobDetails, text } from "~/server/ext-input.server";
+import { findRecentDuplicate } from "~/server/db/queries/applications.server";
+import { trackPosting } from "~/server/services/applications/track.server";
+import { extUser, guarded, json, preflight, readJsonBody } from "~/server/extension/http.server";
+import { applicationStatus, cleanUrl, jobDetails, text } from "~/server/extension/input.server";
 
-/**
- * POST /api/ext/applications: tracks a posting. Idempotent per posting: when
- * the same URL, or the same company and role, was tracked in the last 30
- * days, the existing application is updated and returned instead.
- */
+/** POST /api/ext/applications: tracks a posting (see trackPosting). */
 export const action = (args: Route.ActionArgs) => guarded(args.request, () => track(args));
 
 async function track({ request, context }: Route.ActionArgs) {
@@ -34,45 +24,19 @@ async function track({ request, context }: Route.ActionArgs) {
   const role = text(body.role, 200);
   if (!company || !role) return json(request, { error: "company and role are required" }, { status: 400 });
 
-  const url = cleanUrl(body.url);
-  const status = applicationStatus(body.status);
-  const details = jobDetails(body);
   const db = getDb(env.DB);
-
-  const existing = await findRecentDuplicate(db, user.id, { url, company, role });
-  if (existing) {
-    // Fill in details that loaded after the first save (LinkedIn renders
-    // descriptions lazily), but keep the company and role already stored.
-    const { company: _company, role: _role, ...rest } = details;
-    const patch: Partial<NewApplication> = rest;
-    // Applying to a saved posting turns the bookmark into the application.
-    if (existing.status === "saved" && status && status !== "saved") {
-      const now = new Date().toISOString();
-      Object.assign(patch, { status, manualStatusAt: now, appliedAt: now });
-    }
-    if (typeof body.starred === "boolean") patch.starred = body.starred;
-    clearBookmarkOnApply(existing.status, patch);
-    if (Object.keys(patch).length) await updateApplication(db, user.id, existing.id, patch);
-    const application = await getApplication(db, user.id, existing.id);
-    return json(request, { success: true, duplicate: true, application });
-  }
-
-  const application = await createApplication(db, {
-    ...details,
-    id: crypto.randomUUID(),
-    userId: user.id,
+  const { duplicate, application } = await trackPosting(db, user.id, {
     company,
     role,
-    url,
-    cvType: details.cvType ?? "software",
-    category: details.category ?? null,
-    status: status || "applied",
-    // A status the user picked counts as set by hand, so Gmail sync won't override it.
-    manualStatusAt: status ? new Date().toISOString() : null,
-    starred: body.starred === true,
+    url: cleanUrl(body.url),
+    status: applicationStatus(body.status),
+    details: jobDetails(body),
+    starred: typeof body.starred === "boolean" ? body.starred : undefined,
     autoFilled: body.auto_filled !== false,
   });
-  return json(request, { success: true, duplicate: false, application }, { status: 201 });
+  return duplicate
+    ? json(request, { success: true, duplicate: true, application })
+    : json(request, { success: true, duplicate: false, application }, { status: 201 });
 }
 
 /**

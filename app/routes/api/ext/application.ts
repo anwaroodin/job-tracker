@@ -1,10 +1,12 @@
 import type { Route } from "./+types/application";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { clearBookmarkOnApply, getApplication, updateApplication } from "~/server/db/applications.server";
-import type { NewApplication } from "~/server/db/schema";
-import { extUser, guarded, json, preflight, readJsonBody } from "~/server/ext-api.server";
-import { applicationStatus, jobDetails } from "~/server/ext-input.server";
+import { getApplication, updateApplication } from "~/server/db/queries/applications.server";
+import { setByHand } from "~/server/services/status/manual";
+import { clearBookmarkOnApply } from "~/server/services/status/rules";
+import type { NewApplication } from "~/types/application";
+import { extUser, guarded, json, preflight, readJsonBody } from "~/server/extension/http.server";
+import { applicationStatus, jobDetails } from "~/server/extension/input.server";
 
 /**
  * PATCH /api/ext/applications/:id with { status?, starred?, ...job details }:
@@ -28,8 +30,7 @@ async function update({ request, params, context }: Route.ActionArgs) {
   if (body.status !== undefined) {
     const status = applicationStatus(body.status);
     if (!status) return json(request, { error: "invalid_status" }, { status: 400 });
-    patch.status = status;
-    patch.manualStatusAt = new Date().toISOString();
+    Object.assign(patch, setByHand(status));
   }
   if (typeof body.starred === "boolean") patch.starred = body.starred;
   if (!Object.keys(patch).length) return json(request, { error: "nothing_to_update" }, { status: 400 });
@@ -37,8 +38,8 @@ async function update({ request, params, context }: Route.ActionArgs) {
   const db = getDb(env.DB);
   const current = await getApplication(db, user.id, params.id);
   if (!current) return json(request, { error: "not_found" }, { status: 404 });
-  await updateApplication(db, user.id, params.id, clearBookmarkOnApply(current.status, patch));
-  return json(request, { success: true, application: await getApplication(db, user.id, params.id) });
+  const application = await updateApplication(db, user.id, params.id, clearBookmarkOnApply(current.status, patch));
+  return json(request, { success: true, application });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

@@ -1,8 +1,8 @@
 import type { Route } from "./+types/stats";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { applicationStats } from "~/server/db/applications.server";
-import { extUser, guarded, json, preflight } from "~/server/ext-api.server";
+import { applicationStats } from "~/server/db/queries/applications.server";
+import { extUser, guarded, json, preflight } from "~/server/extension/http.server";
 
 /** GET /api/ext/stats: checks the session and gives the popup its tracked count. */
 export const loader = (args: Route.LoaderArgs) => guarded(args.request, () => stats(args));

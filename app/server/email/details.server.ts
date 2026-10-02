@@ -1,5 +1,5 @@
 import * as chrono from "chrono-node";
-import type { BodyLink } from "../gmail/api.server";
+import type { BodyLink } from "../gmail/mapping.server";
 
 const MAX_DATES = 12;
 const MAX_LINKS = 15;

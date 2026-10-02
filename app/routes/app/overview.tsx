@@ -1,14 +1,10 @@
 import type { Route } from "./+types/overview";
 import { Link } from "react-router";
-import { requireUser } from "~/server/auth.server";
+import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { analyticsFor } from "~/server/db/analytics.server";
-import { upNext, type UpNext } from "~/server/db/emails.server";
-import { eventLabel, formatEventAt } from "~/lib/email";
-import { fmtAgo } from "~/lib/time";
-import { useArrivals } from "~/lib/use-arrivals";
-import { motion } from "motion/react";
+import { analyticsFor } from "~/server/services/overview/analytics.server";
+import { upNext } from "~/server/services/overview/up-next.server";
 import {
   Bar,
   BarRow,
@@ -21,84 +17,20 @@ import {
   pct,
   stagger,
   two,
-} from "~/components/molecules/terminal";
-import { StatusBadge } from "~/components/molecules/status-badge";
+} from "~/components/ui/terminal";
+import { StatusBadge } from "~/components/ui/status-badge";
 import { cn } from "~/lib/cn";
+import { StackedStatusBar } from "~/components/overview/stacked-status-bar";
+import { Stat, TickerDivider } from "~/components/overview/stat-ticker";
+import { UpNextSection } from "~/components/overview/up-next";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const [analytics, next] = await Promise.all([analyticsFor(db, user.id), upNext(db, user.id)]);
   return { analytics, next };
 }
-
-/**
- * Splits `cells` between counts in proportion (largest remainder method), so
- * the parts always add up to exactly `cells` and no count rounds away to more
- * than its share.
- */
-function apportion(counts: number[], cells: number) {
-  const total = counts.reduce((sum, n) => sum + n, 0);
-  if (total === 0) return counts.map(() => 0);
-  const exact = counts.map((n) => (n / total) * cells);
-  const parts = exact.map(Math.floor);
-  const leftover = cells - parts.reduce((sum, n) => sum + n, 0);
-  const byRemainder = exact.map((x, i) => [x - Math.floor(x), i] as const).sort((a, b) => b[0] - a[0]);
-  for (let k = 0; k < leftover; k++) parts[byRemainder[k][1]]++;
-  return parts;
-}
-
-/** Every status in one glyph bar (`████▓▓▓░░`), with a legend of the largest few. */
-function StackedStatusBar({ byStatus, cells = 34 }: { byStatus: { status: string; count: number }[]; cells?: number }) {
-  const present = byStatus.filter((s) => s.count > 0);
-  if (!present.length) return null;
-  const widths = apportion(
-    present.map((s) => s.count),
-    cells,
-  );
-  const segments = present
-    .map((s, i) => ({ status: s.status, color: STATUS_COLORS[s.status] ?? "#6e6f76", width: widths[i] }))
-    .filter((s) => s.width > 0);
-  const LEGEND = 4;
-
-  return (
-    <div className="flex flex-col gap-2">
-      <span aria-hidden className="block min-w-0 select-none overflow-hidden whitespace-pre tracking-[-0.05em]">
-        {segments.map((s) => (
-          <span key={s.status} style={{ color: s.color }}>
-            {"█".repeat(s.width)}
-          </span>
-        ))}
-      </span>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-text-tertiary">
-        {segments.slice(0, LEGEND).map((s) => (
-          <span key={s.status} className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full" style={{ background: s.color }} />
-            {s.status}
-          </span>
-        ))}
-        {segments.length > LEGEND && <span>+{segments.length - LEGEND} more</span>}
-      </div>
-    </div>
-  );
-}
-
-/** One figure in the header's ticker: `ACTIVE 12`. */
-function Stat({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-baseline gap-2">
-      <span className="text-text-tertiary">{label}</span>
-      {children}
-    </div>
-  );
-}
-
-const TickerDivider = () => (
-  <span aria-hidden className="select-none text-white/20">
-    /
-  </span>
-);
 
 export default function Overview({ loaderData }: Route.ComponentProps) {
   const a = loaderData.analytics;
@@ -294,79 +226,5 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
         </ul>
       </Section>
     </div>
-  );
-}
-
-function UpNextSection({ n, next }: { n: string; next: UpNext }) {
-  const total = next.replies.length + next.upcoming.length;
-  const isArrival = useArrivals([
-    ...next.replies.map((r) => `reply-${r.emailId}`),
-    ...next.upcoming.map((r) => `event-${r.emailId}`),
-  ]);
-  return (
-    <Section n={n} title="Up next" hint={`${total} ${total === 1 ? "thing" : "things"}`} i={1}>
-      <ul className="-mx-3 divide-y divide-dashed divide-stroke-primary/50">
-        {next.replies.map((r) => (
-          <UpNextRow
-            key={`reply-${r.emailId}`}
-            arrived={isArrival(`reply-${r.emailId}`)}
-            to={`/applications/${r.applicationId}`}
-            when={<span className="text-text-primary group-hover:!text-text-inverse">Reply needed</span>}
-            company={r.company}
-            detail={r.subject}
-            note={fmtAgo(r.receivedAt)}
-          />
-        ))}
-        {next.upcoming.map((r) => (
-          <UpNextRow
-            key={`event-${r.emailId}`}
-            arrived={isArrival(`event-${r.emailId}`)}
-            to={`/applications/${r.applicationId}`}
-            when={formatEventAt(r.eventAt!)}
-            company={r.company}
-            detail={r.role}
-            note={eventLabel(r.category)}
-          />
-        ))}
-      </ul>
-    </Section>
-  );
-}
-
-function UpNextRow({
-  to,
-  when,
-  company,
-  detail,
-  note,
-  arrived,
-}: {
-  arrived: boolean;
-  to: string;
-  when: React.ReactNode;
-  company: string;
-  detail: string;
-  note: string;
-}) {
-  return (
-    <motion.li
-      layout="position"
-      initial={arrived ? { opacity: 0, y: -6 } : false}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={cn(arrived && "arrive")}
-    >
-      <Link
-        to={to}
-        className="group grid grid-cols-[124px_1fr] items-baseline gap-4 px-3 py-2 transition-colors hover:bg-text-primary hover:text-text-inverse sm:grid-cols-[150px_1fr_auto]"
-      >
-        <span className="text-text-tertiary group-hover:!text-text-inverse/60">{when}</span>
-        <span className="min-w-0 truncate">
-          <span className="text-text-primary group-hover:!text-text-inverse">{company}</span>
-          <span className="text-text-tertiary group-hover:!text-text-inverse/60"> / {detail}</span>
-        </span>
-        <span className="hidden text-text-tertiary group-hover:!text-text-inverse/60 sm:block">{note}</span>
-      </Link>
-    </motion.li>
   );
 }

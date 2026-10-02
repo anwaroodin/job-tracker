@@ -1,6 +1,7 @@
-import { API_ORIGIN, DASHBOARD_URL } from "../config.js";
+import { NotConfiguredError, dashboardUrl, getDashboardOrigin } from "../config.js";
 import { AuthError, getProfile, getStats, logApplication } from "../lib/api.js";
 import { detectCategory, detectCvType } from "../lib/cv.js";
+import { bindDashboardForm } from "../lib/dashboard-form.js";
 import { extractJob, fillForm, getActiveTab, isScriptable } from "../lib/page.js";
 import { formValues } from "../lib/profile.js";
 import { findTracked, forgetTracked, normaliseUrl, rememberTracked } from "../lib/tracked.js";
@@ -8,6 +9,8 @@ import { findTracked, forgetTracked, normaliseUrl, rememberTracked } from "../li
 const $ = (id) => document.getElementById(id);
 
 const state = {
+  /** The dashboard's origin (config.js); null until the user sets it. */
+  origin: null,
   /** @type {chrome.tabs.Tab | undefined} */
   tab: undefined,
   job: { company: "", role: "", url: "", description: "" },
@@ -50,9 +53,7 @@ function showResult(tone, text, applicationId) {
     link.type = "button";
     link.className = "link";
     link.textContent = "View";
-    link.addEventListener("click", () =>
-      openTab(`${API_ORIGIN}/applications/${encodeURIComponent(applicationId)}`),
-    );
+    link.addEventListener("click", () => openTab(dashboardUrl(state.origin, applicationId)));
     el.append(link);
   }
   el.dataset.tone = tone;
@@ -76,6 +77,14 @@ function signedOut() {
   show("signin");
 }
 
+/** First run (or the saved address stopped being valid): ask which dashboard to use. */
+function needsSetup() {
+  setStatus("warning", "Not set up");
+  $("footerCount").textContent = "";
+  show("setup");
+  $("setupForm").elements.namedItem("dashboard").focus();
+}
+
 /** Runs an action with its button disabled, routing sign-out and errors to the UI. */
 async function withButton(button, busyLabel, action) {
   const label = button.textContent;
@@ -85,6 +94,7 @@ async function withButton(button, busyLabel, action) {
     await action();
   } catch (error) {
     if (error instanceof AuthError) signedOut();
+    else if (error instanceof NotConfiguredError) needsSetup();
     else showResult("error", error?.message || "Something went wrong.");
   } finally {
     button.disabled = false;
@@ -180,10 +190,15 @@ async function refreshStats() {
 }
 
 async function init() {
+  state.origin = await getDashboardOrigin();
+  if (!state.origin) return needsSetup();
+  setStatus("", "Connecting");
+
   try {
     await refreshStats();
   } catch (error) {
     if (error instanceof AuthError) return signedOut();
+    if (error instanceof NotConfiguredError) return needsSetup();
     setStatus("offline", "Offline");
     return showMessage("Status", "Can't reach the dashboard", "Check your connection and reopen the popup.");
   }
@@ -211,8 +226,13 @@ for (const control of document.querySelectorAll("[data-control]")) {
   });
 }
 for (const button of document.querySelectorAll('[data-action="dashboard"]')) {
-  button.addEventListener("click", () => openTab(DASHBOARD_URL));
+  button.addEventListener("click", () => (state.origin ? openTab(dashboardUrl(state.origin)) : needsSetup()));
 }
+for (const button of document.querySelectorAll('[data-action="options"]')) {
+  button.addEventListener("click", () => chrome.runtime.openOptionsPage());
+}
+// Saving the address carries on into the popup's normal start.
+bindDashboardForm($("setupForm"), { onSaved: () => init() });
 $("trackForm").addEventListener("submit", (event) => {
   event.preventDefault();
   withButton($("trackBtn"), "Filling…", fillAndTrack);

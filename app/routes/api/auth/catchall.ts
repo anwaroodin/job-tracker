@@ -1,5 +1,5 @@
 import type { Route } from "./+types/catchall";
-import { createAuth } from "~/server/auth.server";
+import { createAuth } from "~/server/auth/config.server";
 import { envContext } from "~/server/context.server";
 
 /**
