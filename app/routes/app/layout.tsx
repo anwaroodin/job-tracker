@@ -2,15 +2,21 @@ import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
 import type { Route } from "./+types/layout";
 import { AppShell } from "~/components/shell/app-shell";
 import { useRevalidateOnFocus } from "~/hooks/use-revalidate-on-focus";
-import { requireUser } from "~/server/auth/session.server";
+import { requireUser, userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { unreadEmailCounts } from "~/server/db/queries/emails.server";
 import { getGmailStatus } from "~/server/gmail/sync/schedule.server";
 
+export const middleware: Route.MiddlewareFunction[] = [
+  async ({ request, context }) => {
+    context.set(userContext, await requireUser(request, context.get(envContext)));
+  },
+];
+
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const [gmail, unread] = await Promise.all([getGmailStatus(db, user.id), unreadEmailCounts(db, user.id)]);
   const path = new URL(request.url).pathname.replace(/\.data$/, "");

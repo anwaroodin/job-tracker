@@ -5,7 +5,7 @@ import { useState } from "react";
 import { NewApplication } from "~/components/applications/new-application";
 import { GmailSync } from "~/components/gmail/gmail-sync";
 import { Section, stagger } from "~/components/ui/terminal";
-import { requireUser } from "~/server/auth/session.server";
+import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { createApplication } from "~/server/db/queries/applications.server";
@@ -30,7 +30,7 @@ const MAX_FIELD_LENGTH = 200;
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const [apps, unread, suggestions, unsure] = await Promise.all([
     listApplications(db, user.id),
@@ -45,7 +45,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const form = await request.formData();
   const intent = form.get("intent");
   if (intent === "sync") return { sync: await syncGmail(env, user.id, "manual") };

@@ -1,4 +1,4 @@
-import { redirect } from "react-router";
+import { createContext, redirect } from "react-router";
 import { createAuth } from "./config.server";
 
 export async function getSession(request: Request, env: Env) {
@@ -15,3 +15,7 @@ export async function requireUser(request: Request, env: Env) {
   }
   return session.user;
 }
+
+export type SessionUser = Awaited<ReturnType<typeof requireUser>>;
+
+export const userContext = createContext<SessionUser>();

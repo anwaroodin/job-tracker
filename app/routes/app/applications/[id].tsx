@@ -15,7 +15,7 @@ import { isEmailCategory } from "~/lib/email";
 import { gmailThreadUrl } from "~/lib/gmail";
 import { hostOf } from "~/lib/format/url";
 import { useArrivals } from "~/hooks/use-arrivals";
-import { requireUser } from "~/server/auth/session.server";
+import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { getApplication, updateApplication } from "~/server/db/queries/applications.server";
@@ -33,7 +33,7 @@ import { Progress } from "~/components/application-detail/progress";
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const settings = await getSettings(db, user.id);
   const [row, emails] = await Promise.all([
@@ -48,7 +48,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
 export async function action({ request, context, params }: Route.ActionArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const form = await request.formData();
   const intent = form.get("intent");

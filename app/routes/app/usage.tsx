@@ -3,7 +3,7 @@ import type { Route } from "./+types/usage";
 import { Bar, BarRow, ColumnChart, Leader, Section, fmtDate, pct, stagger } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { formatDollars } from "~/lib/settings";
-import { requireUser } from "~/server/auth/session.server";
+import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { getSettings } from "~/server/db/queries/settings.server";
@@ -13,7 +13,7 @@ import { DOLLARS_PER_INPUT_TOKEN } from "~/server/jev/client.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const settings = await getSettings(db, user.id);
   const usage = await usageDashboard(db, user.id, settings);

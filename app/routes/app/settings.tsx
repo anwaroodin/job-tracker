@@ -9,7 +9,7 @@ import { GmailSync } from "~/components/gmail/gmail-sync";
 import { SettingsNav } from "~/components/ui/settings-nav";
 import { Leader, Section, stagger } from "~/components/ui/terminal";
 import { parseSettings, type Settings } from "~/lib/settings";
-import { requireUser } from "~/server/auth/session.server";
+import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { getSettings, saveSettings } from "~/server/db/queries/settings.server";
@@ -25,7 +25,7 @@ import { ClassificationSection } from "~/components/settings/classification-sect
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const [settings, estimate] = await Promise.all([
     getSettings(db, user.id),
@@ -36,7 +36,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const form = await request.formData();
   const intent = form.get("intent");

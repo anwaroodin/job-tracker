@@ -1,6 +1,6 @@
 import type { Route } from "./+types/overview";
 import { Link } from "react-router";
-import { requireUser } from "~/server/auth/session.server";
+import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { analyticsFor } from "~/server/services/overview/analytics.server";
@@ -26,7 +26,7 @@ import { UpNextSection } from "~/components/overview/up-next";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const [analytics, next] = await Promise.all([analyticsFor(db, user.id), upNext(db, user.id)]);
   return { analytics, next };

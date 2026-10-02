@@ -5,7 +5,7 @@ import type { loader as layoutLoader } from "./layout";
 import { Button } from "~/components/ui/button";
 import { stagger } from "~/components/ui/terminal";
 import { SettingsNav } from "~/components/ui/settings-nav";
-import { requireUser } from "~/server/auth/session.server";
+import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import {
@@ -22,7 +22,7 @@ import { IntegrationsSection } from "~/components/profile/integrations-section";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const db = getDb(env.DB);
   const profile = await getProfile(db, user.id);
   return { profile, user };
@@ -30,7 +30,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export async function action({ request, context }: Route.ActionArgs) {
   const env = context.get(envContext);
-  const user = await requireUser(request, env);
+  const user = context.get(userContext);
   const form = await request.formData();
   const payload = JSON.parse(
     String(form.get("profile") ?? "{}"),
