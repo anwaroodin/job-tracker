@@ -12,7 +12,10 @@ import { createApplication } from "~/server/db/queries/applications.server";
 import { listApplications } from "~/server/services/applications/list.server";
 import { applicationSuggestions } from "~/server/services/applications/suggestions.server";
 import { settleSavedJob } from "~/server/services/status/saved.server";
-import { dismissSuggestions, linkEmailsToApplication, unreadEmailCounts } from "~/server/db/queries/emails.server";
+import { dismissSuggestions, linkEmailsToApplication, setEmailCategory, unreadEmailCounts } from "~/server/db/queries/emails.server";
+import { confirmNotAboutJobs, emailsToConfirm } from "~/server/email/retention.server";
+import { isEmailCategory } from "~/lib/email";
+import { UnsureEmailsBanner } from "~/components/applications/unsure-emails-banner";
 import { syncGmail } from "~/server/gmail/sync/index.server";
 import { refreshApplicationStatus } from "~/server/services/status/refresh.server";
 import { useArrivals } from "~/hooks/use-arrivals";
@@ -29,14 +32,15 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = await requireUser(request, env);
   const db = getDb(env.DB);
-  const [apps, unread, suggestions] = await Promise.all([
+  const [apps, unread, suggestions, unsure] = await Promise.all([
     listApplications(db, user.id),
     unreadEmailCounts(db, user.id),
     applicationSuggestions(db, user.id),
+    emailsToConfirm(db, user.id),
   ]);
   const saved = apps.filter((a) => a.status === "saved");
   const rows = apps.filter((a) => a.status !== "saved").map((a) => ({ ...a, unread: unread[a.id] ?? 0 }));
-  return { rows, saved, suggestions, accountEmail: user.email };
+  return { rows, saved, suggestions, unsure, accountEmail: user.email };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -52,6 +56,16 @@ export async function action({ request, context }: Route.ActionArgs) {
     const applicationId = String(form.get("applicationId") ?? "");
     const outcome = intent === "saved-remove" ? "removed" : "applied";
     if (!(await settleSavedJob(db, user.id, applicationId, outcome))) return { error: "Not a saved posting" };
+    return { ok: true };
+  }
+  if (intent === "not-job") {
+    await confirmNotAboutJobs(env, db, user.id, String(form.get("id")));
+    return { ok: true };
+  }
+  if (intent === "label-email") {
+    const category = form.get("category");
+    if (!isEmailCategory(category)) throw data("Unknown category", { status: 400 });
+    await setEmailCategory(db, user.id, String(form.get("id")), category);
     return { ok: true };
   }
   if (intent === "dismiss-suggestion") {
@@ -134,6 +148,8 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
           setShowSuggestions={setShowSuggestions}
         />
       )}
+
+      {loaderData.unsure.length > 0 && <UnsureEmailsBanner emails={loaderData.unsure} />}
 
       <SavedSection saved={saved} isArrival={isArrival} />
 

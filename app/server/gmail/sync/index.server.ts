@@ -73,7 +73,7 @@ export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger):
     // Last, once matching, suggestions and details have had their look: clear
     // what's left that isn't about jobs.
     const judgedBy = run.useJev || !run.classifier.startsWith("jev") ? run.classifier : REGEX_CLASSIFIER;
-    await pruneAfterRun(db, run.userId, judgedBy, fellBack);
+    await pruneAfterRun(db, run.userId, judgedBy, run.settings.minConfidence, fellBack);
     await completeRun(db, run.userId, [
       ...plan.links.filter((link) => isRecent(link.receivedAt)).map(linkActivity),
       ...plan.statusChanges.map(({ applicationId, from, status }) =>

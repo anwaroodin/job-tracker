@@ -3,7 +3,14 @@ import { describe, expect, it } from "vitest";
 import { REGEX_CLASSIFIER } from "~/server/email/classify/index.server";
 import type { Db } from "~/server/db/client.server";
 import { emailMessage } from "~/server/db/schema";
-import { markJudgedBy, prunedEmailsToFetchAgain, pruneUnrelatedEmails, saveEmail } from "~/server/db/queries/email-retention.server";
+import {
+  markJudgedBy,
+  pruneConfirmedEmail,
+  prunedEmailsToFetchAgain,
+  pruneUnrelatedEmails,
+  saveEmail,
+  unsureUnrelatedEmails,
+} from "~/server/db/queries/email-retention.server";
 import { requestReclassify } from "~/server/db/queries/gmail-sync.server";
 import { USER_ID, testDb } from "./db";
 import { addApplication, addEmail, at, link } from "./fixtures";
@@ -11,7 +18,7 @@ import { addApplication, addEmail, at, link } from "./fixtures";
 const JEV = "jev:1";
 const LONG_AGO = Date.UTC(2026, 0, 1);
 
-const prune = (db: Db) => pruneUnrelatedEmails(db, USER_ID, JEV, at(10));
+const prune = (db: Db) => pruneUnrelatedEmails(db, USER_ID, JEV, at(10), 0.8);
 const toFetchAgain = async (db: Db, classifier: string | null = JEV) =>
   (await prunedEmailsToFetchAgain(db, USER_ID, classifier, LONG_AGO)).map((r) => r.id).sort();
 
@@ -80,10 +87,49 @@ describe("pruning emails that aren't about jobs", () => {
     expect((await email(db, "e2")).prunedAt).toBe(at(10));
   });
 
-  it.fails("keeps an unsure 'other' until the user confirms it (decision Q3)", async () => {
+  it("keeps an unsure 'other' until the user confirms it (decision Q3)", async () => {
     const { db } = testDb();
     await addEmail(db, { id: "e1", confidence: 0.55 });
     await prune(db);
+    expect((await email(db, "e1")).prunedAt).toBeNull();
+  });
+});
+
+describe("unsure emails waiting for the user", () => {
+  it("prunes a confident 'other'", async () => {
+    const { db } = testDb();
+    await addEmail(db, { id: "e1", confidence: 0.9 });
+    await prune(db);
+    expect((await email(db, "e1")).prunedAt).toBe(at(10));
+  });
+
+  it("lists unsure 'other' emails, but not thread-mates of job emails or linked ones", async () => {
+    const { db } = testDb();
+    await addApplication(db, { id: "app-1" });
+    await addEmail(db, { id: "unsure", confidence: 0.5 });
+    await addEmail(db, { id: "mate", threadId: "t1", confidence: 0.5 });
+    await addEmail(db, { id: "job", threadId: "t1", category: "interview" });
+    await addEmail(db, { id: "linked", confidence: 0.5 });
+    await link(db, "linked", "app-1");
+    await addEmail(db, { id: "sure", confidence: 0.95 });
+    const ids = (await unsureUnrelatedEmails(db, USER_ID, 0.8)).map((r) => r.id);
+    expect(ids).toEqual(["unsure"]);
+  });
+
+  it("prunes an unsure email once the user confirms it isn't about jobs", async () => {
+    const { db } = testDb();
+    await addEmail(db, { id: "e1", confidence: 0.5, threadId: "t1", receivedAt: at(3) });
+    await pruneConfirmedEmail(db, USER_ID, "e1", JEV, at(11));
+    expect(await email(db, "e1")).toMatchObject({ prunedAt: at(11), prunedClassifier: JEV, subject: "", threadId: "t1", receivedAt: at(3) });
+    expect(await unsureUnrelatedEmails(db, USER_ID, 0.8)).toEqual([]);
+  });
+
+  it("won't prune a confirmed email that's linked to an application", async () => {
+    const { db } = testDb();
+    await addApplication(db, { id: "app-1" });
+    await addEmail(db, { id: "e1", confidence: 0.5 });
+    await link(db, "e1", "app-1");
+    await pruneConfirmedEmail(db, USER_ID, "e1", JEV, at(11));
     expect((await email(db, "e1")).prunedAt).toBeNull();
   });
 });

@@ -2,7 +2,7 @@
  * Keeps as little as possible about emails that aren't about jobs.
  *
  */
-import { and, desc, eq, gte, inArray, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import type { Db } from "../client.server";
 import { emailLink, emailMessage } from "../schema";
@@ -53,46 +53,80 @@ export function prunedEmailsToFetchAgain(db: Db, userId: string, classifier: str
     .limit(REFETCH_PER_RUN);
 }
 
+const CLEARED = {
+  subject: "",
+  snippet: "",
+  fromName: "",
+  fromAddress: "",
+  confidence: null,
+  manualKind: null,
+  detailsAt: null,
+  eventAt: null,
+  eventText: null,
+  actionUrl: null,
+  actionText: null,
+  needsReply: null,
+  replyDoneAt: null,
+  suggestionAt: null,
+  isApplication: null,
+  suggestedCompany: null,
+  suggestedRole: null,
+  suggestionConfidence: null,
+  suggestionDismissedAt: null,
+};
+
+const isUnrelated = and(
+  isNull(emailMessage.prunedAt),
+  eq(emailMessage.category, "other"),
+  sql`not ${isLinked(emailMessage)}`,
+  sql`not ${threadHasJobEmail(emailMessage)}`,
+);
+
 /**
  * Clears everything but the stub fields from emails now known not to be about
  * jobs, recording `classifier` (the run's classifier) as what judged them.
  */
-export function pruneUnrelatedEmails(db: Db, userId: string, classifier: string, prunedAt: string) {
+export function pruneUnrelatedEmails(db: Db, userId: string, classifier: string, prunedAt: string, minConfidence: number) {
   return db
     .update(emailMessage)
-    .set({
-      prunedAt,
-      prunedClassifier: classifier,
-      subject: "",
-      snippet: "",
-      fromName: "",
-      fromAddress: "",
-      confidence: null,
-      manualKind: null,
-      detailsAt: null,
-      eventAt: null,
-      eventText: null,
-      actionUrl: null,
-      actionText: null,
-      needsReply: null,
-      replyDoneAt: null,
-      suggestionAt: null,
-      isApplication: null,
-      suggestedCompany: null,
-      suggestedRole: null,
-      suggestionConfidence: null,
-      suggestionDismissedAt: null,
-    })
+    .set({ prunedAt, prunedClassifier: classifier, ...CLEARED })
     .where(
       and(
         eq(emailMessage.userId, userId),
-        isNull(emailMessage.prunedAt),
-        eq(emailMessage.category, "other"),
+        isUnrelated,
         isNull(emailMessage.manualCategoryAt),
-        sql`not ${isLinked(emailMessage)}`,
-        sql`not ${threadHasJobEmail(emailMessage)}`,
+        or(isNull(emailMessage.confidence), gte(emailMessage.confidence, minConfidence)),
       ),
     );
+}
+
+export function unsureUnrelatedEmails(db: Db, userId: string, minConfidence: number) {
+  return db
+    .select({
+      id: emailMessage.id,
+      threadId: emailMessage.threadId,
+      subject: emailMessage.subject,
+      fromName: emailMessage.fromName,
+      fromAddress: emailMessage.fromAddress,
+      receivedAt: emailMessage.receivedAt,
+    })
+    .from(emailMessage)
+    .where(
+      and(
+        eq(emailMessage.userId, userId),
+        isUnrelated,
+        isNull(emailMessage.manualCategoryAt),
+        lt(emailMessage.confidence, minConfidence),
+      ),
+    )
+    .orderBy(desc(emailMessage.receivedAt));
+}
+
+export function pruneConfirmedEmail(db: Db, userId: string, emailId: string, classifier: string, prunedAt: string) {
+  return db
+    .update(emailMessage)
+    .set({ prunedAt, prunedClassifier: classifier, ...CLEARED })
+    .where(and(eq(emailMessage.userId, userId), eq(emailMessage.id, emailId), isUnrelated));
 }
 
 export function saveEmail(db: Db, row: typeof emailMessage.$inferInsert) {
