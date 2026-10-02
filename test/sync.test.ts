@@ -70,7 +70,7 @@ describe("syncGmail retention", () => {
     expect(await stored(db)).toMatchObject({ subject: "", category: "other", prunedClassifier: REGEX_CLASSIFIER });
   });
 
-  it.fails("records keyword rules as the judge when Jev is over budget (bug 2.1)", async () => {
+  it("records keyword rules as the judge when Jev is over budget (bug 2.1)", async () => {
     const db = connectedGmail();
     await db.insert(userSettings).values({ userId: USER_ID, monthlyBudget: 0 });
     const result = await syncGmail({ DB: {}, TYPESAFE_API_KEY: "key" } as Env, USER_ID, "manual");

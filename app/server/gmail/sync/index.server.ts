@@ -8,7 +8,7 @@ import { importedLinksMissingDetails, storedEmails } from "../../db/queries/emai
 import { claimRun, gmailAccountFor, setStage, updateSyncState } from "../../db/queries/gmail-sync.server";
 import { settingsRowFor, withDefaults } from "../../db/queries/settings.server";
 import { dollars, monthStart, tokensSince } from "../../db/queries/usage.server";
-import { activeClassifier, classifyEmails } from "../../email/classify/index.server";
+import { activeClassifier, classifyEmails, REGEX_CLASSIFIER } from "../../email/classify/index.server";
 import { pruneAfterRun } from "../../email/retention.server";
 import { refreshApplicationStatus } from "../../services/status/refresh.server";
 import type { StatusChange } from "../../services/status/rules";
@@ -72,7 +72,8 @@ export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger):
     });
     // Last, once matching, suggestions and details have had their look: clear
     // what's left that isn't about jobs.
-    await pruneAfterRun(db, run.userId, run.classifier, fellBack);
+    const judgedBy = run.useJev || !run.classifier.startsWith("jev") ? run.classifier : REGEX_CLASSIFIER;
+    await pruneAfterRun(db, run.userId, judgedBy, fellBack);
     await completeRun(db, run.userId, [
       ...plan.links.filter((link) => isRecent(link.receivedAt)).map(linkActivity),
       ...plan.statusChanges.map(({ applicationId, from, status }) =>
