@@ -14,9 +14,9 @@ export async function refreshApplicationStatus(
   db: Db,
   userId: string,
   applicationId?: string,
+  knownMinConfidence?: number,
 ): Promise<StatusChange[]> {
-  const [settingsRow] = await settingsRowFor(db, userId);
-  const { minConfidence } = withDefaults(settingsRow);
+  const minConfidence = knownMinConfidence ?? withDefaults((await settingsRowFor(db, userId))[0]).minConfidence;
   const [apps, latestStages, evidence] = await db.batch([
     applicationsFor(db, userId, applicationId),
     latestStageEmailPerApplication(db, userId, minConfidence, applicationId),

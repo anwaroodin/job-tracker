@@ -61,7 +61,7 @@ export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger):
     );
     const plan = planLinksAndStatuses(unlinked, applications, latestStages, run.settings.minConfidence);
     await finishRun(db, run, plan, fetched, usage, reclassifyComplete);
-    const reclassifiedStatuses = categoryChanges.length ? await refreshApplicationStatus(db, userId) : [];
+    const reclassifiedStatuses = categoryChanges.length ? await refreshApplicationStatus(db, userId, undefined, run.settings.minConfidence) : [];
     const details = await extractPendingDetails(env, db, run, token).catch((e) => {
       console.error("email details failed", e);
       return [];

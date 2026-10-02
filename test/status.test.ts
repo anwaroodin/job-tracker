@@ -162,6 +162,18 @@ describe("refreshApplicationStatus", () => {
     expect(await refreshApplicationStatus(db, USER_ID, "app-1")).toEqual([]);
   });
 
+  it("uses a threshold the caller already has instead of reading settings", async () => {
+    const { db } = testDb();
+    await setMinConfidence(db, 0.8);
+    await addApplication(db, { id: "app-1" });
+    await addEmail(db, { id: "e1", category: "interview", confidence: 0.6 });
+    await link(db, "e1", "app-1");
+    expect(await refreshApplicationStatus(db, USER_ID, "app-1")).toEqual([]);
+    expect(await refreshApplicationStatus(db, USER_ID, "app-1", 0.5)).toEqual([
+      { applicationId: "app-1", from: "applied", to: "interview" },
+    ]);
+  });
+
   it("leaves accepted applications alone", async () => {
     const { db } = testDb();
     await addApplication(db, { id: "app-1", status: "accepted" });
