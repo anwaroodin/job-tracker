@@ -3,7 +3,6 @@ import type { Db } from "../../db/client.server";
 import {
   createApplication,
   findRecentDuplicate,
-  getApplication,
   updateApplication,
 } from "../../db/queries/applications.server";
 import type { JobDetails } from "../../extension/input.server";
@@ -40,8 +39,8 @@ export async function trackPosting(db: Db, userId: string, posting: Posting) {
     }
     if (starred !== undefined) patch.starred = starred;
     clearBookmarkOnApply(existing.status, patch);
-    if (Object.keys(patch).length) await updateApplication(db, userId, existing.id, patch);
-    return { duplicate: true, application: await getApplication(db, userId, existing.id) };
+    const application = Object.keys(patch).length ? await updateApplication(db, userId, existing.id, patch) : existing;
+    return { duplicate: true, application };
   }
 
   const application = await createApplication(db, {

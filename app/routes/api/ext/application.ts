@@ -38,8 +38,8 @@ async function update({ request, params, context }: Route.ActionArgs) {
   const db = getDb(env.DB);
   const current = await getApplication(db, user.id, params.id);
   if (!current) return json(request, { error: "not_found" }, { status: 404 });
-  await updateApplication(db, user.id, params.id, clearBookmarkOnApply(current.status, patch));
-  return json(request, { success: true, application: await getApplication(db, user.id, params.id) });
+  const application = await updateApplication(db, user.id, params.id, clearBookmarkOnApply(current.status, patch));
+  return json(request, { success: true, application });
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
