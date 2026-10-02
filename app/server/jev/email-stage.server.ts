@@ -1,4 +1,5 @@
 import { chunk } from "~/lib/array";
+import { isEmailCategory } from "~/lib/email";
 import type { EmailCategory } from "../email/classify/rules.server";
 import { askJev, type ChoiceAnswer, type ChoiceQuestion } from "./client.server";
 
@@ -93,7 +94,9 @@ async function classifyBatch(apiKey: string, batch: StageInput[]) {
   const { model, answers, inputTokens } = await askJev<ChoiceAnswer<EmailCategory>>(apiKey, state, questions);
   const classified = batch.flatMap((email, i) => {
     const answer = answers[`email_${i}`];
-    return answer ? [[email.id, { category: answer.choice, confidence: answer.confidence }] as const] : [];
+    return answer && isEmailCategory(answer.choice)
+      ? [[email.id, { category: answer.choice, confidence: answer.confidence }] as const]
+      : [];
   });
   return { model, inputTokens, classified };
 }

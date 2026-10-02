@@ -150,7 +150,7 @@ describe("label sets", () => {
     expect([...produced].sort()).toEqual([...EMAIL_CATEGORIES].sort());
   });
 
-  it.fails("drops a Jev answer that isn't one of the categories (bug 2.6)", async () => {
+  it("drops a Jev answer that isn't one of the categories (bug 2.6)", async () => {
     jevAnswers({ x: { choice: "spam", confidence: 0.99 } });
     const input: StageInput = { id: "a", from: "", subject: "", text: "x" };
     const { results } = await classifyStagesWithJev("key", [input], 20, "snippet");
