@@ -259,6 +259,13 @@ button:focus-visible, .input:focus-visible {
   padding: 10px 16px;
   border-top: 1px solid var(--stroke-secondary);
 }
+.footer-links { display: flex; align-items: center; gap: 14px; }
+
+/* ── Setup (first run and options page) ───────────────── */
+.setup .field { margin-top: 14px; }
+.setup .btn { margin-top: 12px; }
+.setup .result[data-tone="success"] { margin-top: 10px; }
+
 .footer-count {
   font-size: 10.5px;
   font-weight: 500;

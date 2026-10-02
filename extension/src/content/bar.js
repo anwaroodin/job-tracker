@@ -151,6 +151,8 @@
     if (!res?.error) return false;
     if (res.error === "signed_out") {
       setMessage("error", "Sign in to job-tracker to save jobs.", { label: "Sign in", page: "dashboard" });
+    } else if (res.error === "not_configured") {
+      setMessage("error", "Set your dashboard address to save jobs.", { label: "Set up", page: "options" });
     } else {
       setMessage("error", res.error);
     }
