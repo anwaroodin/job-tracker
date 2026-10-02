@@ -18,11 +18,10 @@ import { useArrivals } from "~/hooks/use-arrivals";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { getApplication, updateApplication } from "~/server/db/queries/applications.server";
+import { updateApplication } from "~/server/db/queries/applications.server";
 import { settleSavedJob } from "~/server/services/status/saved.server";
 import { markReplyDone, markViewed, setEmailCategory, setEmailDismissed } from "~/server/db/queries/emails.server";
-import { getApplicationEmails } from "~/server/services/timeline/index.server";
-import { getSettings } from "~/server/db/queries/settings.server";
+import { applicationTimeline } from "~/server/services/timeline/index.server";
 import { syncGmail } from "~/server/gmail/sync/index.server";
 import { refreshApplicationStatus } from "~/server/services/status/refresh.server";
 import { TimelineItem } from "~/components/application-detail/timeline-item";
@@ -35,11 +34,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const settings = await getSettings(db, user.id);
-  const [row, emails] = await Promise.all([
-    getApplication(db, user.id, params.id),
-    getApplicationEmails(db, user.id, params.id, settings.minConfidence),
-  ]);
+  const { row, emails } = await applicationTimeline(db, user.id, params.id);
   if (!row) throw data("Not found", { status: 404 });
   const unseen = emails.filter((e) => !e.viewedAt && !e.dismissedAt).map((e) => e.id);
   if (unseen.length) await markViewed(db, user.id, unseen);

@@ -13,13 +13,17 @@ export function applicationRows(db: Db, userId: string) {
     .orderBy(desc(application.appliedAt), desc(application.updatedAt));
 }
 
-export async function getApplication(db: Db, userId: string, id: string) {
-  const rows = await db
+export function applicationById(db: Db, userId: string, id: string) {
+  return db
     .select()
     .from(application)
     .where(and(eq(application.id, id), eq(application.userId, userId)))
     .limit(1);
-  return rows[0] ?? null;
+}
+
+export async function getApplication(db: Db, userId: string, id: string) {
+  const [row] = await applicationById(db, userId, id);
+  return row ?? null;
 }
 
 export async function findRecentDuplicate(
