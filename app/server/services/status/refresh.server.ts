@@ -15,6 +15,7 @@ export async function refreshApplicationStatus(
   userId: string,
   applicationId?: string,
   knownMinConfidence?: number,
+  updatedAt = new Date().toISOString(),
 ): Promise<StatusChange[]> {
   const minConfidence = knownMinConfidence ?? withDefaults((await settingsRowFor(db, userId))[0]).minConfidence;
   const [apps, latestStages, evidence] = await db.batch([
@@ -24,7 +25,6 @@ export async function refreshApplicationStatus(
   ]);
   const latestByApplication = new Map(latestStages.map((stage) => [stage.applicationId, stage]));
   const lastEvidenceAt = new Map(evidence.map((row) => [row.applicationId, row.receivedAt]));
-  const updatedAt = new Date().toISOString();
 
   const changes = apps.flatMap((app): StatusChange[] => {
     const status = refreshedStatus(app, lastEvidenceAt.get(app.id), latestByApplication.get(app.id)?.category);

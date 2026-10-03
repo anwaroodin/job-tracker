@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GMAIL_SCOPE } from "~/lib/gmail";
 import { REGEX_CLASSIFIER } from "~/server/email/classify/index.server";
 import type { Db } from "~/server/db/client.server";
-import { emailLink, emailMessage, gmailSync, userSettings } from "~/server/db/schema";
+import { application, emailLink, emailMessage, gmailSync, userSettings } from "~/server/db/schema";
 import { setEmailCategory } from "~/server/db/queries/emails.server";
 import { getMessagesMetadata, listMessageIds } from "~/server/gmail/client.server";
 import type { GmailMessage } from "~/server/gmail/mapping.server";
@@ -142,6 +142,19 @@ describe("syncGmail matching", () => {
     await syncGmail({ DB: {} } as Env, USER_ID, "manual");
     const first = await matchedAt(db);
     expect(first).not.toBeNull();
+    await syncAgainWithNoNewMail(db);
+    expect(await matchedAt(db)).toBe(first);
+  });
+
+  it("doesn't match again just because the last sync changed a status", async () => {
+    const db = connectedGmail();
+    await addApplication(db, { id: "app-1", company: "Acme", appliedAt: new Date(Date.now() - 2 * 86_400_000).toISOString() });
+    vi.mocked(getMessagesMetadata).mockResolvedValue({ messages: [interview], missing: [], failed: [] });
+    await syncGmail({ DB: {} } as Env, USER_ID, "manual");
+    const first = await matchedAt(db);
+    const [app] = await db.select().from(application);
+    expect(app.status).toBe("interview");
+    expect(app.updatedAt <= first!).toBe(true);
     await syncAgainWithNoNewMail(db);
     expect(await matchedAt(db)).toBe(first);
   });
