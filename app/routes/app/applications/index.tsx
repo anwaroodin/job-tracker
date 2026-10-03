@@ -2,9 +2,8 @@ import { data, redirect, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/index";
 import type { loader as layoutLoader } from "../layout";
 import { useMemo, useState } from "react";
-import { NewApplication } from "~/components/applications/new-application";
-import { GmailSync } from "~/components/gmail/gmail-sync";
-import { Section, stagger } from "~/components/ui/terminal";
+import { ApplicationsHeader } from "~/components/applications/applications-header";
+import { Section } from "~/components/ui/terminal";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
@@ -119,27 +118,13 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex flex-col gap-6 sm:gap-8 font-mono text-[12.5px] uppercase tracking-[0.04em]">
       {/* ── [01] Applications Header ──────────────────────────────────────────── */}
-      <header className="rise flex flex-wrap items-end justify-between gap-4 sm:gap-6" style={stagger(0)}>
-        <div>
-          <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <b className="mr-2 font-semibold text-text-primary">[01]</b>
-            Applications
-          </p>
-          <h1 className="mt-3 sm:mt-5 max-w-2xl text-[22px] font-light leading-[1.25] tracking-tight sm:text-[30px]">
-            <span className="text-text-primary">{total} applications logged.</span>
-            <span className="block text-text-tertiary">
-              {activeCount} in flight, {offersCount} {offersCount === 1 ? "offer" : "offers"},{" "}
-              {closedCount} closed.
-            </span>
-          </h1>
-        </div>
-
-        {/* Action cluster on the right */}
-        <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto sm:ml-auto">
-          <GmailSync status={gmail} />
-          <NewApplication />
-        </div>
-      </header>
+      <ApplicationsHeader
+        total={total}
+        activeCount={activeCount}
+        offersCount={offersCount}
+        closedCount={closedCount}
+        gmail={gmail}
+      />
 
       {offersCount > 0 && <OffersBanner offersList={offersList} offersCount={offersCount} />}
 
