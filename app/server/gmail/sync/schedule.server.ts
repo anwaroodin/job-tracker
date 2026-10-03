@@ -7,6 +7,26 @@ import { syncGmail } from "./index.server";
 import { AUTH_ERROR, AUTO_SYNC_EVERY_MS, MIN_GAP_BETWEEN_RUNS_MS, MINUTE } from "./run";
 
 const STUCK_RUN_MS = 2 * MINUTE;
+const DEFAULT_SYNC_HOURS = "7-23";
+const DEFAULT_SYNC_TIMEZONE = "Europe/London";
+
+function syncHours(env: Env) {
+  const [start, end] = (env.SYNC_HOURS ?? DEFAULT_SYNC_HOURS).split("-").map(Number);
+  const valid = [start, end].every((h) => Number.isInteger(h) && h >= 0 && h <= 24);
+  return valid ? { start, end } : { start: 7, end: 23 };
+}
+
+export function isSyncHour(env: Env, now = new Date()) {
+  const { start, end } = syncHours(env);
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      hour: "numeric",
+      hourCycle: "h23",
+      timeZone: env.SYNC_TIMEZONE ?? DEFAULT_SYNC_TIMEZONE,
+    }).format(now),
+  );
+  return start <= end ? hour >= start && hour < end : hour >= start || hour < end;
+}
 
 export async function getGmailStatus(db: Db, userId: string): Promise<GmailStatus> {
   const [[row], [unseen]] = await db.batch([gmailStatusRow(db, userId), unseenActivityCount(db, userId)]);
@@ -31,7 +51,7 @@ export async function getGmailStatus(db: Db, userId: string): Promise<GmailStatu
 }
 
 export function syncGmailInBackground(env: Env, ctx: ExecutionContext, userId: string, status: GmailStatus) {
-  if (!status.connected || status.syncing || !status.autoSync) return false;
+  if (!status.connected || status.syncing || !status.autoSync || !isSyncHour(env)) return false;
   const sinceLastRun = status.lastRunAt ? Date.now() - Date.parse(status.lastRunAt) : Infinity;
   const interval = status.hasMore ? MIN_GAP_BETWEEN_RUNS_MS : AUTO_SYNC_EVERY_MS;
   if (sinceLastRun < interval) return false;
@@ -48,6 +68,7 @@ export function syncGmailInBackground(env: Env, ctx: ExecutionContext, userId: s
  * parallel invocations as the backlog grows.
  */
 export async function enqueueGmailSyncs(env: Env) {
+  if (!isSyncHour(env)) return;
   const users = await usersWithAutoSync(getDb(env.DB));
   for (const batch of chunk(users, 100)) {
     await env.GMAIL_SYNC_QUEUE.sendBatch(batch.map((u) => ({ body: { userId: u.userId } })));

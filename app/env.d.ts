@@ -16,6 +16,8 @@ declare global {
     TYPESAFE_API_KEY?: string;
     // Optional: "regex" turns Jev off even when TYPESAFE_API_KEY is set
     EMAIL_CLASSIFIER?: "jev" | "regex";
+    SYNC_HOURS?: string;
+    SYNC_TIMEZONE?: string;
   }
 }
 
