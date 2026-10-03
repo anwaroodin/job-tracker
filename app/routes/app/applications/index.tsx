@@ -32,9 +32,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
+  const applicationsQuery = listApplications(db, user.id);
   const [apps, suggestions, unsure] = await Promise.all([
-    listApplications(db, user.id),
-    applicationSuggestions(db, user.id),
+    applicationsQuery,
+    applicationSuggestions(db, user.id, applicationsQuery),
     emailsToConfirm(db, user.id),
   ]);
   const saved = apps.filter((a) => a.status === "saved");

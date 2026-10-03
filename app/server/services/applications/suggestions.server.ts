@@ -9,12 +9,15 @@ import {
   SUGGESTION_LOOKBACK_MS,
 } from "../../email/suggestions.server";
 
-export async function applicationSuggestions(db: Db, userId: string) {
-  const since = new Date(Date.now() - SUGGESTION_LOOKBACK_MS).toISOString();
-  const [emails, apps] = await suggestionRows(db, userId, MIN_APPLICATION_PROBABILITY, since);
+type ExistingApplication = { id: string; company: string; role: string; appliedAt: string };
 
-  const existingByCompany = new Map<string, (typeof apps)[number]>();
-  for (const app of apps) {
+export async function applicationSuggestions(db: Db, userId: string, applications: Promise<ExistingApplication[]>) {
+  const since = new Date(Date.now() - SUGGESTION_LOOKBACK_MS).toISOString();
+  const [emails, apps] = await Promise.all([suggestionRows(db, userId, MIN_APPLICATION_PROBABILITY, since), applications]);
+
+  const existingByCompany = new Map<string, { id: string; company: string; role: string }>();
+  for (const { id, company, role } of [...apps].sort((a, b) => b.appliedAt.localeCompare(a.appliedAt))) {
+    const app = { id, company, role };
     const key = normalizeCompany(app.company);
     if (key && !existingByCompany.has(key)) existingByCompany.set(key, app);
   }

@@ -1,6 +1,6 @@
-import { and, desc, eq, gte, inArray, isNull, ne, notInArray, sql } from "drizzle-orm";
-import { APPLICATION_CATEGORIES, DETAIL_CATEGORIES } from "~/lib/email";
+import { and, desc, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../client.server";
+import { awaitsDetails, awaitsSuggestion, isStageEmail } from "../predicates";
 import { emailLink, emailMessage } from "../schema";
 
 export function importedLinksMissingDetails(db: Db, userId: string) {
@@ -49,7 +49,7 @@ export function unlinkedStageEmails(db: Db, userId: string, since: number) {
       and(
         eq(emailMessage.userId, userId),
         gte(emailMessage.receivedAt, new Date(since).toISOString()),
-        notInArray(emailMessage.category, ["other", "deleted"]),
+        isStageEmail(emailMessage),
         sql`not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})`,
       ),
     )
@@ -71,8 +71,7 @@ export function emailsNeedingSuggestion(db: Db, userId: string, since: string, l
     .where(
       and(
         eq(emailMessage.userId, userId),
-        inArray(emailMessage.category, [...APPLICATION_CATEGORIES]),
-        isNull(emailMessage.suggestionAt),
+        awaitsSuggestion(emailMessage),
         gte(emailMessage.receivedAt, since),
         sql`not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})`,
       ),
@@ -97,8 +96,7 @@ export function emailsNeedingDetails(db: Db, userId: string, since: string, limi
     .where(
       and(
         eq(emailMessage.userId, userId),
-        inArray(emailMessage.category, [...DETAIL_CATEGORIES]),
-        isNull(emailMessage.detailsAt),
+        awaitsDetails(emailMessage),
         gte(emailMessage.receivedAt, since),
         sql`exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id} and ${emailLink.dismissedAt} is null)`,
       ),

@@ -1,14 +1,17 @@
-import { and, desc, eq, gte, isNull, ne, sql } from "drizzle-orm";
-import type { Settings } from "~/lib/settings";
+import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
+import { DEFAULT_SETTINGS } from "~/lib/settings";
 import { DOLLARS_PER_INPUT_TOKEN } from "../../jev/client.server";
 import type { StageUsage } from "../../jev/email-stage.server";
 import type { Db } from "../client.server";
-import { emailMessage, jevUsage } from "../schema";
+import { isKept } from "../predicates";
+import { emailMessage, jevUsage, userSettings } from "../schema";
+import { settingsRowFor, withDefaults } from "./settings.server";
 
 const DAY_MS = 86_400_000;
 const CHART_DAYS = 30;
 const RECENT_REQUESTS = 12;
 const TYPICAL_TOKENS_PER_EMAIL = 700;
+const ESTIMATE_USAGE_DAYS = 30;
 
 export const dollars = (tokens: number) => tokens * DOLLARS_PER_INPUT_TOKEN;
 
@@ -27,14 +30,16 @@ export function usageRows(userId: string, usage: StageUsage[], createdAt: string
   return usage.map((u) => ({ id: crypto.randomUUID(), userId, createdAt, ...u }));
 }
 
-export async function usageDashboard(db: Db, userId: string, settings: Settings) {
+export async function usageDashboard(db: Db, userId: string) {
   const now = new Date();
   const thisMonth = monthStart(now);
   const lastMonth = monthStart(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)));
   const chartStart = new Date(Date.parse(now.toISOString().slice(0, 10)) - (CHART_DAYS - 1) * DAY_MS).toISOString();
   const windowStart = chartStart < lastMonth ? chartStart : lastMonth;
 
-  const [recentRows, [allTime], latest, [emailStats]] = await db.batch([
+  const minConfidence = sql`coalesce((select ${userSettings.minConfidence} from ${userSettings} where ${userSettings.userId} = ${userId}), ${DEFAULT_SETTINGS.minConfidence})`;
+  const [[settingsRow], recentRows, [allTime], latest, [emailStats]] = await db.batch([
+    settingsRowFor(db, userId),
     db
       .select()
       .from(jevUsage)
@@ -57,14 +62,15 @@ export async function usageDashboard(db: Db, userId: string, settings: Settings)
       .select({
         stored: sql<number>`sum(case when ${emailMessage.manualCategoryAt} is null then 1 else 0 end)`,
         byJev: sql<number>`sum(case when ${emailMessage.confidence} is not null then 1 else 0 end)`,
-        unsure: sql<number>`sum(case when ${emailMessage.confidence} < ${settings.minConfidence} and ${emailMessage.manualCategoryAt} is null then 1 else 0 end)`,
+        unsure: sql<number>`sum(case when ${emailMessage.confidence} < ${minConfidence} and ${emailMessage.manualCategoryAt} is null then 1 else 0 end)`,
         corrected: sql<number>`sum(case when ${emailMessage.manualCategoryAt} is not null and coalesce(${emailMessage.manualKind}, 'corrected') = 'corrected' then 1 else 0 end)`,
         confirmed: sql<number>`sum(case when ${emailMessage.manualKind} = 'confirmed' then 1 else 0 end)`,
       })
       .from(emailMessage)
       // Stubs of emails pruned as unrelated to jobs aren't stored emails any more.
-      .where(and(eq(emailMessage.userId, userId), ne(emailMessage.category, "deleted"), isNull(emailMessage.prunedAt))),
+      .where(and(eq(emailMessage.userId, userId), isKept(emailMessage), ne(emailMessage.category, "deleted"))),
   ]);
+  const settings = withDefaults(settingsRow);
 
   const inMonth = recentRows.filter((r) => r.createdAt >= thisMonth);
   const lastMonthRows = recentRows.filter((r) => r.createdAt >= lastMonth && r.createdAt < thisMonth);
@@ -105,6 +111,7 @@ export async function usageDashboard(db: Db, userId: string, settings: Settings)
     },
     lastMonthCost: dollars(sum(lastMonthRows, (r) => r.inputTokens)),
     allTime: { cost: dollars(allTimeTokens), requests: Number(allTime?.requests ?? 0), since: allTime?.first ?? null },
+    settings,
     budget: settings.monthlyBudget,
     daily,
     recent: latest.map((r) => ({ ...r, cost: dollars(r.inputTokens) })),
@@ -121,12 +128,18 @@ export async function usageDashboard(db: Db, userId: string, settings: Settings)
 export type UsageDashboard = Awaited<ReturnType<typeof usageDashboard>>;
 
 export async function reclassifyEstimate(db: Db, userId: string) {
+  const since = new Date(Date.now() - ESTIMATE_USAGE_DAYS * DAY_MS).toISOString();
   const [[emails], [usage]] = await db.batch([
     db
       .select({ count: sql<number>`count(*)` })
       .from(emailMessage)
       .where(
-        and(eq(emailMessage.userId, userId), ne(emailMessage.category, "deleted"), sql`${emailMessage.manualCategoryAt} is null`),
+        and(
+          eq(emailMessage.userId, userId),
+          isKept(emailMessage),
+          ne(emailMessage.category, "deleted"),
+          sql`${emailMessage.manualCategoryAt} is null`,
+        ),
       ),
     db
       .select({
@@ -134,7 +147,7 @@ export async function reclassifyEstimate(db: Db, userId: string) {
         emails: sql<number>`coalesce(sum(case when ${jevUsage.source} = 'snippet' then ${jevUsage.emails} else 0 end), 0)`,
       })
       .from(jevUsage)
-      .where(eq(jevUsage.userId, userId)),
+      .where(and(eq(jevUsage.userId, userId), gte(jevUsage.createdAt, since))),
   ]);
   const count = Number(emails?.count ?? 0);
   const perEmail = usage?.emails ? Number(usage.tokens) / Number(usage.emails) : TYPICAL_TOKENS_PER_EMAIL;

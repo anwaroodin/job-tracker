@@ -21,3 +21,5 @@ export const CLOSED_STATUSES = ["rejected", "withdrawn", "ghosted", "accepted"];
 export const ACTIVE_STATUSES = new Set(["applied", "screening", "interview", "assessment"]);
 
 export const OFFER_STATUSES = new Set(["offer", "accepted"]);
+
+export const isStageCategory = (category: string) => category !== "other" && category !== "deleted";

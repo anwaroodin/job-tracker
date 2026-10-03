@@ -6,7 +6,6 @@ import { formatDollars } from "~/lib/settings";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { getSettings } from "~/server/db/queries/settings.server";
 import { usageDashboard } from "~/server/db/queries/usage.server";
 import { activeClassifier, jevAvailable } from "~/server/email/classify/index.server";
 import { DOLLARS_PER_INPUT_TOKEN } from "~/server/jev/client.server";
@@ -15,8 +14,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const settings = await getSettings(db, user.id);
-  const usage = await usageDashboard(db, user.id, settings);
+  const usage = await usageDashboard(db, user.id);
+  const { settings } = usage;
   return {
     usage,
     settings,

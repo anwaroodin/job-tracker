@@ -31,10 +31,6 @@ export const profile = sqliteTable("profile", {
   retailKeywordsJson: text("retail_keywords_json")
     .notNull()
     .default(sql`'[]'`),
-  gmailEmail: text("gmail_email"),
-  gmailRefreshToken: text("gmail_refresh_token"),
-  gmailClientId: text("gmail_client_id"),
-  gmailClientSecret: text("gmail_client_secret"),
   updatedAt: text("updated_at").notNull(),
 });
 

@@ -24,6 +24,7 @@ export interface Run {
   needsReclassify: boolean;
   classifier: string;
   previousClassifier: string | null;
+  applicationsChanged: boolean;
 }
 
 export interface Fetched {
