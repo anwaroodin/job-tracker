@@ -1,15 +1,7 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../client.server";
 import { awaitsDetails, awaitsSuggestion, isStageEmail } from "../predicates";
 import { emailLink, emailMessage } from "../schema";
-
-export function importedLinksMissingDetails(db: Db, userId: string) {
-  return db
-    .selectDistinct({ id: emailLink.id })
-    .from(emailLink)
-    .leftJoin(emailMessage, and(eq(emailMessage.userId, emailLink.userId), eq(emailMessage.id, emailLink.id)))
-    .where(and(eq(emailLink.userId, userId), isNull(emailLink.dismissedAt), sql`${emailMessage.id} is null`));
-}
 
 export function storedEmails(db: Db, userId: string) {
   return db
@@ -124,13 +116,6 @@ export function setCategory(db: Db, userId: string, change: { id: string; catego
       detailsAt: sql`case when ${emailMessage.category} = ${change.category} then ${emailMessage.detailsAt} else null end`,
     })
     .where(and(eq(emailMessage.userId, userId), eq(emailMessage.id, change.id)));
-}
-
-export function markLinksViewed(db: Db, userId: string, ids: string[], viewedAt: string) {
-  return db
-    .update(emailLink)
-    .set({ viewedAt })
-    .where(and(eq(emailLink.userId, userId), inArray(emailLink.id, ids), sql`${emailLink.viewedAt} is null`));
 }
 
 export function linkEmail(db: Db, userId: string, emailId: string, applicationId: string) {

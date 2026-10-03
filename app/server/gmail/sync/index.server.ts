@@ -5,7 +5,7 @@ import { asBatch } from "../../db/batch.server";
 import { getDb, type Db } from "../../db/client.server";
 import { activityInserts, type NewActivity } from "../../db/queries/activity.server";
 import { earliestApplication, latestApplicationUpdate } from "../../db/queries/applications.server";
-import { importedLinksMissingDetails, storedEmails } from "../../db/queries/email-sync.server";
+import { storedEmails } from "../../db/queries/email-sync.server";
 import { claimRun, gmailAccountFor, setStage, updateSyncState } from "../../db/queries/gmail-sync.server";
 import { settingsRowFor, withDefaults } from "../../db/queries/settings.server";
 import { dollars, monthStart, tokensSince } from "../../db/queries/usage.server";
@@ -138,14 +138,12 @@ async function startRun(db: Db, env: Env, userId: string, trigger: SyncTrigger):
   const classifierChanged = claimed[0].classifier !== classifier;
   const needsReclassify = classifierChanged && (useJev || !wantsJev);
   const applicationsChanged = !claimed[0].matchedAt || (latestApplication?.updatedAt ?? "") > claimed[0].matchedAt;
-  const importedLinks = applicationsChanged ? await importedLinksMissingDetails(db, userId) : [];
 
   return {
     userId,
     startedAt,
     accountId: gmailAccount?.id ?? null,
     since: searchWindowStart(claimed[0].syncedThrough, firstApplication?.appliedAt),
-    importedLinkIds: importedLinks.map((l) => l.id),
     settings,
     useJev,
     needsReclassify,

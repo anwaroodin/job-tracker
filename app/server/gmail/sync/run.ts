@@ -18,7 +18,6 @@ export interface Run {
   startedAt: string;
   accountId: string | null;
   since: number;
-  importedLinkIds: string[];
   settings: Settings;
   useJev: boolean;
   needsReclassify: boolean;

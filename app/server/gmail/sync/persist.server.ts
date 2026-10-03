@@ -3,7 +3,7 @@ import { ANALYTICS_CACHE, invalidate, UNREAD_COUNTS_CACHE } from "../../cache.se
 import { asBatch, MAX_IDS_PER_STATEMENT } from "../../db/batch.server";
 import type { Db } from "../../db/client.server";
 import { markThreadsForRefetch, saveEmail } from "../../db/queries/email-retention.server";
-import { linkEmail, markLinksViewed, setCategory, unlinkedStageEmails } from "../../db/queries/email-sync.server";
+import { linkEmail, setCategory, unlinkedStageEmails } from "../../db/queries/email-sync.server";
 import { updateSyncState } from "../../db/queries/gmail-sync.server";
 import { applicationsFor, latestStageEmailPerApplication, setApplicationStatus } from "../../db/queries/status.server";
 import { insertUsage, usageRows } from "../../db/queries/usage.server";
@@ -30,12 +30,9 @@ export async function saveAndLoadForMatching(
   categoryChanges: CategoryChange[],
 ) {
   const rows = toEmailRows(run.userId, fetched.messages, fetched.missing, classifications);
-  const savedIds = new Set(rows.map((r) => r.id));
-  const importedNowSaved = run.importedLinkIds.filter((id) => savedIds.has(id));
   const writes = [
     ...rows.map((row) => saveEmail(db, row)),
     ...categoryChanges.map((change) => setCategory(db, run.userId, change)),
-    ...chunk(importedNowSaved, MAX_IDS_PER_STATEMENT).map((ids) => markLinksViewed(db, run.userId, ids, run.startedAt)),
   ];
   const matched = run.applicationsChanged || writes.length > 0;
   if (!matched) return { matched, unlinked: [], applications: [], latestStages: [] };

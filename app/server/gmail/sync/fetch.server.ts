@@ -31,9 +31,8 @@ export async function fetchNewMessages(token: string, db: Db, run: Run): Promise
   ]);
 
   const known = new Set(storedIds.map((r) => r.id));
-  const unseenOldestFirst = listed.ids.filter((id) => !known.has(id)).reverse();
-  // New mail first; stubs use whatever room is left in this run.
-  const newMail = [...new Set([...run.importedLinkIds, ...unseenOldestFirst])];
+  // New mail first, oldest first; stubs use whatever room is left in this run.
+  const newMail = listed.ids.filter((id) => !known.has(id)).reverse();
   const fetchAgain = toFetchAgain.map((r) => r.id).filter((id) => !newMail.includes(id));
   const thisRun = [...newMail, ...fetchAgain].slice(0, MAX_FETCH_PER_RUN);
 
