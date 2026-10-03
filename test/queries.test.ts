@@ -55,11 +55,33 @@ describe("suggestion activity", () => {
     await addEmail(db, { id: "tracked", category: "applied" });
     await link(db, "tracked", "app");
     const items = ["open", "dismissed", "tracked"].map((emailId) => ({ kind: "suggestion" as const, emailId }));
-    await db.batch(asBatch([...activityInserts(db, USER_ID, items, at(4)), ...activityInserts(db, USER_ID, [{ kind: "email", emailId: "tracked" }], at(4))]));
+    await db.batch(asBatch([...activityInserts(db, USER_ID, items, at(4)), ...activityInserts(db, USER_ID, [{ kind: "email", applicationId: "app", emailId: "tracked" }], at(4))]));
 
     const feed = await recentActivity(db, USER_ID);
     expect(feed.map((item) => item.kind).sort()).toEqual(["email", "suggestion"]);
     expect((await unseenActivityCount(db, USER_ID))[0].count).toBe(2);
+  });
+
+  it("drops email notifications whose link was removed or points elsewhere", async () => {
+    const { db } = testDb();
+    await addApplication(db, { id: "app" });
+    await addApplication(db, { id: "other" });
+    await addEmail(db, { id: "linked", category: "interview" });
+    await addEmail(db, { id: "removed", category: "interview" });
+    await link(db, "linked", "app");
+    await link(db, "removed", "app", at(5));
+    await db.batch(
+      asBatch(
+        activityInserts(db, USER_ID, [
+          { kind: "email", applicationId: "app", emailId: "linked" },
+          { kind: "email", applicationId: "other", emailId: "linked" },
+          { kind: "reply", applicationId: "app", emailId: "removed" },
+          { kind: "status", applicationId: "app", detail: { to: "interview" } },
+        ], at(6)),
+      ),
+    );
+    const feed = await recentActivity(db, USER_ID);
+    expect(feed.map((item) => `${item.kind}:${item.applicationId}`).sort()).toEqual(["email:app", "status:app"]);
   });
 
   it("matches later emails to a dismissed suggestion by thread or company", () => {
