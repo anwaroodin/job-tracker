@@ -50,10 +50,8 @@ export async function action({ request, context }: Route.ActionArgs) {
     const previous = await getSettings(db, user.id);
     const next = parseSettings(parseJson(form.get("settings")));
     await saveSettings(db, user.id, next);
-    if (next.minConfidence !== previous.minConfidence) {
-      await updateSyncState(db, user.id, { matchedAt: null });
-      await refreshApplicationStatus(db, user.id, undefined, next.minConfidence);
-    }
+    await updateSyncState(db, user.id, { matchedAt: null });
+    if (next.minConfidence !== previous.minConfidence) await refreshApplicationStatus(db, user.id, undefined, next.minConfidence);
     return { saved: true };
   }
   throw data("Unknown intent", { status: 400 });

@@ -68,14 +68,18 @@ export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger):
     ];
     await finishRun(db, run, plan, fetched, usage, reclassifyComplete, [...new Set(jobEmailIds)], matched);
     const reclassifiedStatuses = categoryChanges.length ? await refreshApplicationStatus(db, userId, undefined, run.settings.minConfidence, run.startedAt) : [];
-    const details = await extractPendingDetails(env, db, run, token).catch((e) => {
-      console.error("email details failed", e);
-      return [];
-    });
-    const suggestions = await suggestUntrackedApplications(env, db, run, token).catch((e) => {
-      console.error("suggestions failed", e);
-      return [];
-    });
+    const details = matched
+      ? await extractPendingDetails(env, db, run, token).catch((e) => {
+          console.error("email details failed", e);
+          return [];
+        })
+      : [];
+    const suggestions = matched
+      ? await suggestUntrackedApplications(env, db, run, token).catch((e) => {
+          console.error("suggestions failed", e);
+          return [];
+        })
+      : [];
     // Last, once matching, suggestions and details have had their look: clear
     // what's left that isn't about jobs.
     const judgedBy = run.useJev || !run.classifier.startsWith("jev") ? run.classifier : REGEX_CLASSIFIER;
@@ -120,19 +124,19 @@ function statusActivity({ applicationId, from, to }: StatusChange): NewActivity 
 
 async function startRun(db: Db, env: Env, userId: string, trigger: SyncTrigger): Promise<Run | null> {
   const startedAt = new Date().toISOString();
-  const [claimed, [gmailAccount], [firstApplication], [latestApplication], [settingsRow], [spent]] = await db.batch([
+  const [claimed, [gmailAccount], [firstApplication], [latestApplication], [settingsRow]] = await db.batch([
     claimRun(db, userId, startedAt, MIN_GAP_BETWEEN_RUNS_MS, trigger === "manual" ? null : AUTO_SYNC_EVERY_MS),
     gmailAccountFor(db, userId),
     earliestApplication(db, userId),
     latestApplicationUpdate(db, userId),
     settingsRowFor(db, userId),
-    tokensSince(db, userId, monthStart()),
   ]);
   if (!claimed.length) return null;
 
   const settings = withDefaults(settingsRow);
   const classifier = activeClassifier(env, settings);
   const wantsJev = classifier.startsWith("jev");
+  const [spent] = wantsJev && settings.monthlyBudget !== null ? await tokensSince(db, userId, monthStart()) : [];
   const overBudget = settings.monthlyBudget !== null && dollars(Number(spent?.tokens ?? 0)) >= settings.monthlyBudget;
   const useJev = wantsJev && !overBudget;
   const classifierChanged = claimed[0].classifier !== classifier;

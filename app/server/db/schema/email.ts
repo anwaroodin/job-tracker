@@ -3,7 +3,6 @@ import {
   awaitsDetails,
   awaitsSuggestion,
   hasUpNextDetails,
-  isKept,
   isStageEmail,
   isStub,
   isUnprunedOther,
@@ -86,7 +85,6 @@ export const emailMessage = sqliteTable(
     awaitingDetails: index("email_message_awaiting_details_idx").on(t.userId, t.receivedAt).where(awaitsDetails(t)),
     unprunedOther: index("email_message_unpruned_other_idx").on(t.userId, t.receivedAt).where(isUnprunedOther(t)),
     stubs: index("email_message_stub_idx").on(t.userId, t.prunedClassifier).where(isStub(t)),
-    kept: index("email_message_kept_idx").on(t.userId).where(isKept(t)),
     upNext: index("email_message_up_next_idx").on(t.userId, t.receivedAt).where(hasUpNextDetails(t)),
   }),
 );
