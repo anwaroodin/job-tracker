@@ -109,7 +109,7 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
         {/* Sticky while it's short enough to fit on screen; with people listed it scrolls with the page. */}
         <aside
           className={cn(
-            "flex flex-col gap-12 self-start lg:col-start-2 lg:row-start-1",
+            "flex flex-col gap-12 w-full lg:self-start lg:col-start-2 lg:row-start-1",
             contacts.length === 0 && "lg:sticky lg:top-16",
           )}
         >

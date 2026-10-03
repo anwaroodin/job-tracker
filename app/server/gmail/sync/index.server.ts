@@ -1,10 +1,11 @@
+import { isStageCategory } from "~/lib/status";
 import type { SyncResult } from "~/types/gmail";
 import { createAuth } from "../../auth/config.server";
 import { asBatch } from "../../db/batch.server";
 import { getDb, type Db } from "../../db/client.server";
 import { activityInserts, type NewActivity } from "../../db/queries/activity.server";
-import { earliestApplication } from "../../db/queries/applications.server";
-import { importedLinksMissingDetails, storedEmails } from "../../db/queries/email-sync.server";
+import { earliestApplication, latestApplicationUpdate } from "../../db/queries/applications.server";
+import { storedEmails } from "../../db/queries/email-sync.server";
 import { claimRun, gmailAccountFor, setStage, updateSyncState } from "../../db/queries/gmail-sync.server";
 import { settingsRowFor, withDefaults } from "../../db/queries/settings.server";
 import { dollars, monthStart, tokensSince } from "../../db/queries/usage.server";
@@ -52,7 +53,7 @@ export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger):
     const categoryChanges = changedCategories(reclassified, classifications);
     const reclassifyComplete = reclassified.length === stored.length;
 
-    const { unlinked, applications, latestStages } = await saveAndLoadForMatching(
+    const { matched, unlinked, applications, latestStages } = await saveAndLoadForMatching(
       db,
       run,
       fetched,
@@ -60,20 +61,29 @@ export async function syncGmail(env: Env, userId: string, trigger: SyncTrigger):
       categoryChanges,
     );
     const plan = planLinksAndStatuses(unlinked, applications, latestStages, run.settings.minConfidence);
-    await finishRun(db, run, plan, fetched, usage, reclassifyComplete);
-    const reclassifiedStatuses = categoryChanges.length ? await refreshApplicationStatus(db, userId, undefined, run.settings.minConfidence) : [];
-    const details = await extractPendingDetails(env, db, run, token).catch((e) => {
-      console.error("email details failed", e);
-      return [];
-    });
-    const suggestions = await suggestUntrackedApplications(env, db, run, token).catch((e) => {
-      console.error("suggestions failed", e);
-      return [];
-    });
+    const jobEmailIds = [
+      ...fetched.messages.filter((m) => isStageCategory(classifications.get(m.id)?.category ?? "other")).map((m) => m.id),
+      ...categoryChanges.filter((change) => isStageCategory(change.category)).map((change) => change.id),
+      ...plan.links.map((link) => link.emailId),
+    ];
+    await finishRun(db, run, plan, fetched, usage, reclassifyComplete, [...new Set(jobEmailIds)], matched);
+    const reclassifiedStatuses = categoryChanges.length ? await refreshApplicationStatus(db, userId, undefined, run.settings.minConfidence, run.startedAt) : [];
+    const details = matched
+      ? await extractPendingDetails(env, db, run, token).catch((e) => {
+          console.error("email details failed", e);
+          return [];
+        })
+      : [];
+    const suggestions = matched
+      ? await suggestUntrackedApplications(env, db, run, token).catch((e) => {
+          console.error("suggestions failed", e);
+          return [];
+        })
+      : [];
     // Last, once matching, suggestions and details have had their look: clear
     // what's left that isn't about jobs.
     const judgedBy = run.useJev || !run.classifier.startsWith("jev") ? run.classifier : REGEX_CLASSIFIER;
-    await pruneAfterRun(db, run.userId, judgedBy, run.settings.minConfidence, fellBack);
+    if (matched || fellBack.size) await pruneAfterRun(db, run.userId, judgedBy, run.settings.minConfidence, fellBack);
     await completeRun(db, run.userId, [
       ...plan.links.filter((link) => isRecent(link.receivedAt)).map(linkActivity),
       ...plan.statusChanges.map(({ applicationId, from, status }) =>
@@ -114,35 +124,36 @@ function statusActivity({ applicationId, from, to }: StatusChange): NewActivity 
 
 async function startRun(db: Db, env: Env, userId: string, trigger: SyncTrigger): Promise<Run | null> {
   const startedAt = new Date().toISOString();
-  const [claimed, [gmailAccount], importedLinks, [firstApplication], [settingsRow], [spent]] = await db.batch([
+  const [claimed, [gmailAccount], [firstApplication], [latestApplication], [settingsRow]] = await db.batch([
     claimRun(db, userId, startedAt, MIN_GAP_BETWEEN_RUNS_MS, trigger === "manual" ? null : AUTO_SYNC_EVERY_MS),
     gmailAccountFor(db, userId),
-    importedLinksMissingDetails(db, userId),
     earliestApplication(db, userId),
+    latestApplicationUpdate(db, userId),
     settingsRowFor(db, userId),
-    tokensSince(db, userId, monthStart()),
   ]);
   if (!claimed.length) return null;
 
   const settings = withDefaults(settingsRow);
   const classifier = activeClassifier(env, settings);
   const wantsJev = classifier.startsWith("jev");
+  const [spent] = wantsJev && settings.monthlyBudget !== null ? await tokensSince(db, userId, monthStart()) : [];
   const overBudget = settings.monthlyBudget !== null && dollars(Number(spent?.tokens ?? 0)) >= settings.monthlyBudget;
   const useJev = wantsJev && !overBudget;
   const classifierChanged = claimed[0].classifier !== classifier;
   const needsReclassify = classifierChanged && (useJev || !wantsJev);
+  const applicationsChanged = !claimed[0].matchedAt || (latestApplication?.updatedAt ?? "") > claimed[0].matchedAt;
 
   return {
     userId,
     startedAt,
     accountId: gmailAccount?.id ?? null,
     since: searchWindowStart(claimed[0].syncedThrough, firstApplication?.appliedAt),
-    importedLinkIds: importedLinks.map((l) => l.id),
     settings,
     useJev,
     needsReclassify,
     classifier,
     previousClassifier: claimed[0].classifier,
+    applicationsChanged,
   };
 }
 

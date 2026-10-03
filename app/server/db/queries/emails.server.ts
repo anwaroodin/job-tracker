@@ -5,6 +5,9 @@ import { CLOSED_STATUSES } from "~/lib/status";
 import { cached, invalidate, UNREAD_COUNTS_CACHE } from "../../cache.server";
 import { asBatch, MAX_IDS_PER_STATEMENT } from "../batch.server";
 import type { Db } from "../client.server";
+import { hasUpNextDetails, isStageEmail, isUnreadLink } from "../predicates";
+import { markThreadsForRefetch } from "./email-retention.server";
+import { updateSyncState } from "./gmail-sync.server";
 import { application, emailLink, emailMessage } from "../schema";
 
 // Same reasoning as ANALYTICS_TTL_SECONDS in services/overview/analytics.server.ts:
@@ -61,8 +64,7 @@ async function computeUnreadEmailCounts(db: Db, userId: string) {
     .where(
       and(
         eq(emailLink.userId, userId),
-        sql`${emailLink.viewedAt} is null`,
-        isNull(emailLink.dismissedAt),
+        isUnreadLink(emailLink),
         ne(emailMessage.category, "deleted"),
       ),
     )
@@ -84,15 +86,19 @@ export async function markViewed(db: Db, userId: string, ids: string[]) {
 }
 
 export async function setEmailCategory(db: Db, userId: string, emailId: string, category: EmailCategory) {
-  await db
-    .update(emailMessage)
-    .set({
-      category,
-      manualCategoryAt: new Date().toISOString(),
-      manualKind: sql`case when ${emailMessage.category} = ${category} then 'confirmed' else 'corrected' end`,
-      detailsAt: sql`case when ${emailMessage.category} = ${category} then ${emailMessage.detailsAt} else null end`,
-    })
-    .where(and(eq(emailMessage.userId, userId), eq(emailMessage.id, emailId), ne(emailMessage.category, "deleted")));
+  await db.batch([
+    db
+      .update(emailMessage)
+      .set({
+        category,
+        manualCategoryAt: new Date().toISOString(),
+        manualKind: sql`case when ${emailMessage.category} = ${category} then 'confirmed' else 'corrected' end`,
+        detailsAt: sql`case when ${emailMessage.category} = ${category} then ${emailMessage.detailsAt} else null end`,
+      })
+      .where(and(eq(emailMessage.userId, userId), eq(emailMessage.id, emailId), ne(emailMessage.category, "deleted"))),
+    markThreadsForRefetch(db, userId, [emailId]),
+    updateSyncState(db, userId, { matchedAt: null }),
+  ]);
 }
 
 export async function setEmailDismissed(
@@ -134,12 +140,15 @@ export function upNextRows(db: Db, userId: string, today: string, replySince: st
       eventAt: emailMessage.eventAt,
       replyNeeded: sql<number>`case when ${needsReply} then 1 else 0 end`,
     })
-    .from(emailLink)
-    .innerJoin(emailMessage, and(eq(emailMessage.userId, emailLink.userId), eq(emailMessage.id, emailLink.id)))
+    .from(emailMessage)
+    .crossJoin(emailLink)
     .innerJoin(application, and(eq(application.id, emailLink.applicationId), eq(application.userId, emailLink.userId)))
     .where(
       and(
-        eq(emailLink.userId, userId),
+        eq(emailMessage.userId, userId),
+        hasUpNextDetails(emailMessage),
+        eq(emailLink.userId, emailMessage.userId),
+        eq(emailLink.id, emailMessage.id),
         isNull(emailLink.dismissedAt),
         notInArray(application.status, CLOSED_STATUSES),
         or(gte(emailMessage.eventAt, today), needsReply),
@@ -149,37 +158,31 @@ export function upNextRows(db: Db, userId: string, today: string, replySince: st
 }
 
 export function suggestionRows(db: Db, userId: string, minProbability: number, since: string) {
-  return db.batch([
-    db
-      .select({
-        id: emailMessage.id,
-        threadId: emailMessage.threadId,
-        category: emailMessage.category,
-        company: emailMessage.suggestedCompany,
-        role: emailMessage.suggestedRole,
-        subject: emailMessage.subject,
-        fromName: emailMessage.fromName,
-        fromAddress: emailMessage.fromAddress,
-        receivedAt: emailMessage.receivedAt,
-      })
-      .from(emailMessage)
-      .where(
-        and(
-          eq(emailMessage.userId, userId),
-          inArray(emailMessage.category, [...APPLICATION_CATEGORIES]),
-          gte(emailMessage.isApplication, minProbability),
-          isNull(emailMessage.suggestionDismissedAt),
-          gte(emailMessage.receivedAt, since),
-          sql`not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})`,
-        ),
-      )
-      .orderBy(asc(emailMessage.receivedAt)),
-    db
-      .select({ id: application.id, company: application.company, role: application.role })
-      .from(application)
-      .where(eq(application.userId, userId))
-      .orderBy(desc(application.appliedAt)),
-  ]);
+  return db
+    .select({
+      id: emailMessage.id,
+      threadId: emailMessage.threadId,
+      category: emailMessage.category,
+      company: emailMessage.suggestedCompany,
+      role: emailMessage.suggestedRole,
+      subject: emailMessage.subject,
+      fromName: emailMessage.fromName,
+      fromAddress: emailMessage.fromAddress,
+      receivedAt: emailMessage.receivedAt,
+    })
+    .from(emailMessage)
+    .where(
+      and(
+        eq(emailMessage.userId, userId),
+        isStageEmail(emailMessage),
+        inArray(emailMessage.category, [...APPLICATION_CATEGORIES]),
+        gte(emailMessage.isApplication, minProbability),
+        isNull(emailMessage.suggestionDismissedAt),
+        gte(emailMessage.receivedAt, since),
+        sql`not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})`,
+      ),
+    )
+    .orderBy(asc(emailMessage.receivedAt));
 }
 
 export async function linkEmailsToApplication(db: Db, userId: string, applicationId: string, emailIds: string[]) {
@@ -208,7 +211,8 @@ export async function linkEmailsToApplication(db: Db, userId: string, applicatio
       .values(part.map((e) => ({ id: e.id, applicationId, userId, viewedAt })))
       .onConflictDoNothing(),
   );
-  await db.batch(asBatch(inserts));
+  const marks = chunk(emails.map((e) => e.id), MAX_IDS_PER_STATEMENT).map((ids) => markThreadsForRefetch(db, userId, ids));
+  await db.batch(asBatch([...inserts, ...marks]));
   await invalidate(UNREAD_COUNTS_CACHE, userId);
 }
 

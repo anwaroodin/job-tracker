@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { getApplication } from "~/server/db/queries/applications.server";
+import { applicationSuggestions } from "~/server/services/applications/suggestions.server";
 import { trackPosting } from "~/server/services/applications/track.server";
 import { settleSavedJob } from "~/server/services/status/saved.server";
 import { USER_ID, testDb } from "./db";
-import { addApplication } from "./fixtures";
+import { addApplication, addEmail } from "./fixtures";
 
 vi.mock("~/server/cache.server", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -75,5 +76,25 @@ describe("settleSavedJob", () => {
     await addApplication(db, { id: "a1", status: "interview" });
     expect(await settleSavedJob(db, USER_ID, "a1", "removed")).toBe(false);
     expect(await getApplication(db, USER_ID, "a1")).not.toBeNull();
+  });
+});
+
+describe("applicationSuggestions", () => {
+  it("groups an untracked email and points it at the latest application at that company", async () => {
+    const { db } = testDb();
+    await addEmail(db, {
+      id: "s1",
+      category: "applied",
+      isApplication: 0.9,
+      suggestedCompany: "Acme",
+      suggestedRole: "Engineer",
+      receivedAt: new Date().toISOString(),
+    });
+    const apps = [
+      { id: "old", company: "Acme Ltd", role: "Designer", appliedAt: "2026-01-01T00:00:00.000Z" },
+      { id: "new", company: "acme", role: "Analyst", appliedAt: "2026-06-01T00:00:00.000Z" },
+    ];
+    const [suggestion] = await applicationSuggestions(db, USER_ID, Promise.resolve(apps));
+    expect(suggestion).toMatchObject({ company: "Acme", role: "Engineer", emailIds: ["s1"], existing: { id: "new" } });
   });
 });

@@ -2,9 +2,10 @@
  * Keeps as little as possible about emails that aren't about jobs.
  *
  */
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import type { Db } from "../client.server";
+import { isStub, isUnprunedOther, STUB_REFETCH_FOR_THREAD } from "../predicates";
 import { emailLink, emailMessage } from "../schema";
 
 /** How many stubs one sync run downloads again, alongside new mail. */
@@ -32,25 +33,47 @@ function threadHasJobEmail(e: typeof emailMessage): SQL {
   ))`;
 }
 
-export function prunedEmailsToFetchAgain(db: Db, userId: string, classifier: string | null, since: number) {
-  const judgedByAnother = classifier
-    ? sql`(coalesce(${emailMessage.prunedClassifier}, '') != ${classifier} and ${gte(
-        emailMessage.receivedAt,
-        new Date(since).toISOString(),
-      )})`
-    : sql`0`;
+function stubsWhere(db: Db, userId: string, condition: SQL | undefined) {
   return db
-    .select({ id: emailMessage.id })
+    .select({ id: emailMessage.id, receivedAt: emailMessage.receivedAt })
     .from(emailMessage)
+    .where(and(eq(emailMessage.userId, userId), isStub(emailMessage), condition));
+}
+
+export async function prunedEmailsToFetchAgain(db: Db, userId: string, classifier: string | null, since: number) {
+  const recentFrom = new Date(since).toISOString();
+  const [inJobThread, ...judgedByAnother] = await db.batch([
+    stubsWhere(db, userId, eq(emailMessage.prunedClassifier, STUB_REFETCH_FOR_THREAD)),
+    ...(classifier
+      ? [
+          stubsWhere(db, userId, isNull(emailMessage.prunedClassifier)),
+          stubsWhere(db, userId, lt(emailMessage.prunedClassifier, classifier)),
+          stubsWhere(db, userId, gt(emailMessage.prunedClassifier, classifier)),
+        ]
+      : []),
+  ]);
+  const recent = judgedByAnother.flat().filter((row) => row.receivedAt >= recentFrom);
+  const byId = new Map([...inJobThread, ...recent].map((row) => [row.id, row]));
+  return [...byId.values()]
+    .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt))
+    .slice(0, REFETCH_PER_RUN)
+    .map(({ id }) => ({ id }));
+}
+
+export function markThreadsForRefetch(db: Db, userId: string, jobEmailIds: string[]) {
+  return db
+    .update(emailMessage)
+    .set({ prunedClassifier: STUB_REFETCH_FOR_THREAD })
     .where(
       and(
         eq(emailMessage.userId, userId),
-        isNotNull(emailMessage.prunedAt),
-        sql`(${threadHasJobEmail(emailMessage)} or ${judgedByAnother})`,
+        isStub(emailMessage),
+        sql`${emailMessage.threadId} in (${db
+          .select({ threadId: other.threadId })
+          .from(other)
+          .where(and(eq(other.userId, userId), inArray(other.id, jobEmailIds)))})`,
       ),
-    )
-    .orderBy(desc(emailMessage.receivedAt))
-    .limit(REFETCH_PER_RUN);
+    );
 }
 
 const CLEARED = {
@@ -76,8 +99,7 @@ const CLEARED = {
 };
 
 const isUnrelated = and(
-  isNull(emailMessage.prunedAt),
-  eq(emailMessage.category, "other"),
+  isUnprunedOther(emailMessage),
   sql`not ${isLinked(emailMessage)}`,
   sql`not ${threadHasJobEmail(emailMessage)}`,
 );

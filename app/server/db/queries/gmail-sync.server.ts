@@ -4,7 +4,7 @@ import type { SyncStage } from "~/types/gmail";
 import type { Db } from "../client.server";
 import { account, emailMessage, gmailSync, userSettings } from "../schema";
 
-export const isGmailAccount = and(eq(account.providerId, "google"), like(account.scope, `%${GMAIL_SCOPE}%`));
+const isGmailAccount = and(eq(account.providerId, "google"), like(account.scope, `%${GMAIL_SCOPE}%`));
 
 export function gmailStatusRow(db: Db, userId: string) {
   return db
@@ -50,7 +50,7 @@ export function claimRun(db: Db, userId: string, startedAt: string, gapMs: numbe
       set: { lastRunAt: startedAt, stage: "checking", stageCount: null },
       setWhere: sql`${gmailSync.lastRunAt} is null or (${due})`,
     })
-    .returning({ syncedThrough: gmailSync.syncedThrough, classifier: gmailSync.classifier });
+    .returning({ syncedThrough: gmailSync.syncedThrough, classifier: gmailSync.classifier, matchedAt: gmailSync.matchedAt });
 }
 
 export function gmailAccountFor(db: Db, userId: string) {

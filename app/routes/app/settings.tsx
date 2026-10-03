@@ -15,7 +15,7 @@ import { getDb } from "~/server/db/client.server";
 import { getSettings, saveSettings } from "~/server/db/queries/settings.server";
 import { reclassifyEstimate } from "~/server/db/queries/usage.server";
 import { jevAvailable } from "~/server/email/classify/index.server";
-import { requestReclassify } from "~/server/db/queries/gmail-sync.server";
+import { requestReclassify, updateSyncState } from "~/server/db/queries/gmail-sync.server";
 import { syncGmail } from "~/server/gmail/sync/index.server";
 import { refreshApplicationStatus } from "~/server/services/status/refresh.server";
 import { Setting } from "~/components/settings/setting-row";
@@ -50,6 +50,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     const previous = await getSettings(db, user.id);
     const next = parseSettings(parseJson(form.get("settings")));
     await saveSettings(db, user.id, next);
+    await updateSyncState(db, user.id, { matchedAt: null });
     if (next.minConfidence !== previous.minConfidence) await refreshApplicationStatus(db, user.id, undefined, next.minConfidence);
     return { saved: true };
   }

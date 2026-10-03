@@ -16,6 +16,7 @@ export const gmailSync = sqliteTable("gmail_sync", {
   lastFetched: integer("last_fetched"),
   lastLinked: integer("last_linked"),
   lastFinishedAt: text("last_finished_at"),
+  matchedAt: text("matched_at"),
 });
 
 export type GmailSync = typeof gmailSync.$inferSelect;

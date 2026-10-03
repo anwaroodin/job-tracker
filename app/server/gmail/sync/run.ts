@@ -18,12 +18,12 @@ export interface Run {
   startedAt: string;
   accountId: string | null;
   since: number;
-  importedLinkIds: string[];
   settings: Settings;
   useJev: boolean;
   needsReclassify: boolean;
   classifier: string;
   previousClassifier: string | null;
+  applicationsChanged: boolean;
 }
 
 export interface Fetched {

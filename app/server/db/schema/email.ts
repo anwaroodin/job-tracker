@@ -1,4 +1,13 @@
 import { index, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  awaitsDetails,
+  awaitsSuggestion,
+  hasUpNextDetails,
+  isStageEmail,
+  isStub,
+  isUnprunedOther,
+  isUnreadLink,
+} from "../predicates";
 import { user } from "./auth";
 import { application } from "./application";
 
@@ -22,6 +31,7 @@ export const emailLink = sqliteTable(
     // index that starts with userId and falls back to driving the join from
     // email_message (the bigger table) instead of this one.
     byUser: index("email_link_user_idx").on(t.userId, t.id),
+    unread: index("email_link_unread_idx").on(t.userId, t.applicationId).where(isUnreadLink(t)),
   }),
 );
 
@@ -70,6 +80,12 @@ export const emailMessage = sqliteTable(
       t.receivedAt,
     ),
     byUserThread: index("email_message_user_thread_idx").on(t.userId, t.threadId),
+    stage: index("email_message_stage_idx").on(t.userId, t.receivedAt).where(isStageEmail(t)),
+    awaitingSuggestion: index("email_message_awaiting_suggestion_idx").on(t.userId, t.receivedAt).where(awaitsSuggestion(t)),
+    awaitingDetails: index("email_message_awaiting_details_idx").on(t.userId, t.receivedAt).where(awaitsDetails(t)),
+    unprunedOther: index("email_message_unpruned_other_idx").on(t.userId, t.receivedAt).where(isUnprunedOther(t)),
+    stubs: index("email_message_stub_idx").on(t.userId, t.prunedClassifier).where(isStub(t)),
+    upNext: index("email_message_up_next_idx").on(t.userId, t.receivedAt).where(hasUpNextDetails(t)),
   }),
 );
 

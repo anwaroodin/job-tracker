@@ -1,9 +1,17 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { ActivityItem, ActivityKind } from "~/lib/activity";
 import type { Db } from "../client.server";
-import { activity, application, emailMessage } from "../schema";
+import { activity, application, emailLink, emailMessage } from "../schema";
 
 const RECENT_ACTIVITY = 100;
+const UNSEEN_CAP = 100;
+
+const isLive = sql`(${activity.kind} != 'suggestion' or exists (
+  select 1 from ${emailMessage}
+  where ${emailMessage.userId} = ${activity.userId} and ${emailMessage.id} = ${activity.emailId}
+    and ${emailMessage.suggestionDismissedAt} is null
+    and not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})
+))`;
 
 export interface NewActivity {
   kind: ActivityKind;
@@ -27,10 +35,13 @@ export function activityInserts(db: Db, userId: string, items: NewActivity[], cr
 }
 
 export function unseenActivityCount(db: Db, userId: string) {
-  return db
-    .select({ count: sql<number>`count(*)` })
+  const unseen = db
+    .select({ id: activity.id })
     .from(activity)
-    .where(and(eq(activity.userId, userId), isNull(activity.seenAt)));
+    .where(and(eq(activity.userId, userId), isNull(activity.seenAt), isLive))
+    .limit(UNSEEN_CAP)
+    .as("unseen");
+  return db.select({ count: sql<number>`count(*)` }).from(unseen);
 }
 
 export async function recentActivity(db: Db, userId: string): Promise<ActivityItem[]> {
@@ -48,7 +59,7 @@ export async function recentActivity(db: Db, userId: string): Promise<ActivityIt
     .from(activity)
     .leftJoin(application, eq(application.id, activity.applicationId))
     .leftJoin(emailMessage, and(eq(emailMessage.userId, activity.userId), eq(emailMessage.id, activity.emailId)))
-    .where(eq(activity.userId, userId))
+    .where(and(eq(activity.userId, userId), isLive))
     .orderBy(desc(activity.createdAt))
     .limit(RECENT_ACTIVITY);
   return rows.map(({ seenAt, detail, kind, ...row }) => ({

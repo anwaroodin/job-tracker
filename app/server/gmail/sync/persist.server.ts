@@ -2,8 +2,8 @@ import { chunk } from "~/lib/array";
 import { ANALYTICS_CACHE, invalidate, UNREAD_COUNTS_CACHE } from "../../cache.server";
 import { asBatch, MAX_IDS_PER_STATEMENT } from "../../db/batch.server";
 import type { Db } from "../../db/client.server";
-import { saveEmail } from "../../db/queries/email-retention.server";
-import { linkEmail, markLinksViewed, setCategory, unlinkedStageEmails } from "../../db/queries/email-sync.server";
+import { markThreadsForRefetch, saveEmail } from "../../db/queries/email-retention.server";
+import { linkEmail, setCategory, unlinkedStageEmails } from "../../db/queries/email-sync.server";
 import { updateSyncState } from "../../db/queries/gmail-sync.server";
 import { applicationsFor, latestStageEmailPerApplication, setApplicationStatus } from "../../db/queries/status.server";
 import { insertUsage, usageRows } from "../../db/queries/usage.server";
@@ -30,8 +30,12 @@ export async function saveAndLoadForMatching(
   categoryChanges: CategoryChange[],
 ) {
   const rows = toEmailRows(run.userId, fetched.messages, fetched.missing, classifications);
-  const savedIds = new Set(rows.map((r) => r.id));
-  const importedNowSaved = run.importedLinkIds.filter((id) => savedIds.has(id));
+  const writes = [
+    ...rows.map((row) => saveEmail(db, row)),
+    ...categoryChanges.map((change) => setCategory(db, run.userId, change)),
+  ];
+  const matched = run.applicationsChanged || writes.length > 0;
+  if (!matched) return { matched, unlinked: [], applications: [], latestStages: [] };
 
   const unlinkedQuery = unlinkedStageEmails(db, run.userId, Math.min(run.since, Date.now() - MAX_LOOKBACK_MS));
   const applicationsQuery = applicationsFor(db, run.userId);
@@ -39,9 +43,7 @@ export async function saveAndLoadForMatching(
 
   const results = await db.batch(
     asBatch([
-      ...rows.map((row) => saveEmail(db, row)),
-      ...categoryChanges.map((change) => setCategory(db, run.userId, change)),
-      ...chunk(importedNowSaved, MAX_IDS_PER_STATEMENT).map((ids) => markLinksViewed(db, run.userId, ids, run.startedAt)),
+      ...writes,
       unlinkedQuery,
       applicationsQuery,
       latestStagesQuery,
@@ -52,7 +54,7 @@ export async function saveAndLoadForMatching(
     Awaited<typeof applicationsQuery>,
     Awaited<typeof latestStagesQuery>,
   ];
-  return { unlinked, applications, latestStages };
+  return { matched, unlinked, applications, latestStages };
 }
 
 export async function finishRun(
@@ -62,12 +64,15 @@ export async function finishRun(
   fetched: Fetched,
   usage: StageUsage[],
   reclassifyComplete: boolean,
+  jobEmailIds: string[],
+  matched: boolean,
 ) {
   const classifierUpToDate = run.classifier === run.previousClassifier || (run.needsReclassify && reclassifyComplete);
   await db.batch(
     asBatch([
       ...usageRows(run.userId, usage, run.startedAt).map((row) => insertUsage(db, row)),
       ...plan.links.map((link) => linkEmail(db, run.userId, link.emailId, link.applicationId)),
+      ...chunk(jobEmailIds, MAX_IDS_PER_STATEMENT).map((ids) => markThreadsForRefetch(db, run.userId, ids)),
       ...plan.statusChanges.map((change) =>
         setApplicationStatus(
           db,
@@ -85,6 +90,7 @@ export async function finishRun(
         lastFetched: fetched.messages.length,
         lastLinked: plan.links.length,
         ...(fetched.more ? {} : { syncedThrough: run.startedAt }),
+        ...(matched ? { matchedAt: run.startedAt } : {}),
       }),
     ]),
   );

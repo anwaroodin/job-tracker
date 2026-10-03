@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { REGEX_CLASSIFIER } from "~/server/email/classify/index.server";
 import type { Db } from "~/server/db/client.server";
 import { emailMessage } from "~/server/db/schema";
 import {
   markJudgedBy,
+  markThreadsForRefetch,
   pruneConfirmedEmail,
   prunedEmailsToFetchAgain,
   pruneUnrelatedEmails,
@@ -12,8 +13,14 @@ import {
   unsureUnrelatedEmails,
 } from "~/server/db/queries/email-retention.server";
 import { requestReclassify } from "~/server/db/queries/gmail-sync.server";
+import { linkEmailsToApplication, setEmailCategory } from "~/server/db/queries/emails.server";
 import { USER_ID, testDb } from "./db";
 import { addApplication, addEmail, at, link } from "./fixtures";
+
+vi.mock("~/server/cache.server", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  invalidate: vi.fn(),
+}));
 
 const JEV = "jev:1";
 const LONG_AGO = Date.UTC(2026, 0, 1);
@@ -138,9 +145,43 @@ describe("fetching removed emails again", () => {
   it("re-fetches a stub once a job email joins its thread", async () => {
     const { db } = testDb();
     await pruned(db, "e1", { threadId: "t1" });
+    await pruned(db, "e3", { threadId: "t2" });
     expect(await toFetchAgain(db)).toEqual([]);
     await addEmail(db, { id: "e2", threadId: "t1", category: "offer" });
+    await markThreadsForRefetch(db, USER_ID, ["e2"]);
     expect(await toFetchAgain(db)).toEqual(["e1"]);
+  });
+
+  it("re-fetches stubs in a job thread whatever their age, even while the classifier can't run", async () => {
+    const { db } = testDb();
+    await pruned(db, "old", { threadId: "t1", receivedAt: "2020-01-01T00:00:00.000Z" });
+    await addEmail(db, { id: "job", threadId: "t1", category: "interview" });
+    await markThreadsForRefetch(db, USER_ID, ["job"]);
+    expect(await toFetchAgain(db, null)).toEqual(["old"]);
+  });
+
+  it("marks a thread's stubs when an email in it is labelled by hand", async () => {
+    const { db } = testDb();
+    await pruned(db, "e1", { threadId: "t1" });
+    await addEmail(db, { id: "e2", threadId: "t1", confidence: 0.5 });
+    await setEmailCategory(db, USER_ID, "e2", "interview");
+    expect(await toFetchAgain(db)).toEqual(["e1"]);
+  });
+
+  it("marks a thread's stubs when its emails are linked to an application", async () => {
+    const { db } = testDb();
+    await addApplication(db, { id: "app-1" });
+    await pruned(db, "e1", { threadId: "t1" });
+    await addEmail(db, { id: "e2", threadId: "t1", category: "applied" });
+    await linkEmailsToApplication(db, USER_ID, "app-1", ["e2"]);
+    expect(await toFetchAgain(db)).toEqual(["e1"]);
+  });
+
+  it("only re-fetches stubs judged by another classifier within the lookback window", async () => {
+    const { db } = testDb();
+    await pruned(db, "old", { receivedAt: "2025-06-01T00:00:00.000Z" });
+    await pruned(db, "recent", { receivedAt: at(3) });
+    expect(await toFetchAgain(db, REGEX_CLASSIFIER)).toEqual(["recent"]);
   });
 
   it("re-fetches stubs judged by a different classifier", async () => {

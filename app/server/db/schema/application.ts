@@ -34,8 +34,6 @@ export const application = sqliteTable(
     autoFilled: integer("auto_filled", { mode: "boolean" })
       .notNull()
       .default(true),
-    assessmentDue: text("assessment_due"),
-    assessmentCompleted: integer("assessment_completed", { mode: "boolean" }),
     manualStatusAt: text("manual_status_at"),
     appliedAt: text("applied_at").notNull(),
     updatedAt: text("updated_at").notNull(),
@@ -43,6 +41,9 @@ export const application = sqliteTable(
   (t) => ({
     byUserApplied: index("app_user_applied_idx").on(t.userId, t.appliedAt),
     byUserStatus: index("app_user_status_idx").on(t.userId, t.status),
+    byUserUpdated: index("app_user_updated_idx").on(t.userId, t.updatedAt),
+    byUserUrl: index("app_user_url_idx").on(t.userId, t.url, t.appliedAt),
+    byUserCompanyRole: index("app_user_company_role_idx").on(t.userId, sql`lower(${t.company})`, sql`lower(${t.role})`, t.appliedAt),
   }),
 );
 

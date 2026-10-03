@@ -1,15 +1,7 @@
-import { and, desc, eq, gte, inArray, isNull, ne, notInArray, sql } from "drizzle-orm";
-import { APPLICATION_CATEGORIES, DETAIL_CATEGORIES } from "~/lib/email";
+import { and, desc, eq, gte, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../client.server";
+import { awaitsDetails, awaitsSuggestion, isStageEmail } from "../predicates";
 import { emailLink, emailMessage } from "../schema";
-
-export function importedLinksMissingDetails(db: Db, userId: string) {
-  return db
-    .selectDistinct({ id: emailLink.id })
-    .from(emailLink)
-    .leftJoin(emailMessage, and(eq(emailMessage.userId, emailLink.userId), eq(emailMessage.id, emailLink.id)))
-    .where(and(eq(emailLink.userId, userId), isNull(emailLink.dismissedAt), sql`${emailMessage.id} is null`));
-}
 
 export function storedEmails(db: Db, userId: string) {
   return db
@@ -49,7 +41,7 @@ export function unlinkedStageEmails(db: Db, userId: string, since: number) {
       and(
         eq(emailMessage.userId, userId),
         gte(emailMessage.receivedAt, new Date(since).toISOString()),
-        notInArray(emailMessage.category, ["other", "deleted"]),
+        isStageEmail(emailMessage),
         sql`not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})`,
       ),
     )
@@ -60,6 +52,7 @@ export function emailsNeedingSuggestion(db: Db, userId: string, since: string, l
   return db
     .select({
       id: emailMessage.id,
+      threadId: emailMessage.threadId,
       category: emailMessage.category,
       receivedAt: emailMessage.receivedAt,
       subject: emailMessage.subject,
@@ -71,14 +64,22 @@ export function emailsNeedingSuggestion(db: Db, userId: string, since: string, l
     .where(
       and(
         eq(emailMessage.userId, userId),
-        inArray(emailMessage.category, [...APPLICATION_CATEGORIES]),
-        isNull(emailMessage.suggestionAt),
+        awaitsSuggestion(emailMessage),
         gte(emailMessage.receivedAt, since),
         sql`not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})`,
       ),
     )
     .orderBy(desc(emailMessage.receivedAt))
     .limit(limit);
+}
+
+export function dismissedSuggestions(db: Db, userId: string, since: string) {
+  return db
+    .select({ threadId: emailMessage.threadId, company: emailMessage.suggestedCompany, role: emailMessage.suggestedRole })
+    .from(emailMessage)
+    .where(
+      and(eq(emailMessage.userId, userId), gte(emailMessage.receivedAt, since), isNotNull(emailMessage.suggestionDismissedAt)),
+    );
 }
 
 export function emailsNeedingDetails(db: Db, userId: string, since: string, limit: number) {
@@ -97,8 +98,7 @@ export function emailsNeedingDetails(db: Db, userId: string, since: string, limi
     .where(
       and(
         eq(emailMessage.userId, userId),
-        inArray(emailMessage.category, [...DETAIL_CATEGORIES]),
-        isNull(emailMessage.detailsAt),
+        awaitsDetails(emailMessage),
         gte(emailMessage.receivedAt, since),
         sql`exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id} and ${emailLink.dismissedAt} is null)`,
       ),
@@ -116,13 +116,6 @@ export function setCategory(db: Db, userId: string, change: { id: string; catego
       detailsAt: sql`case when ${emailMessage.category} = ${change.category} then ${emailMessage.detailsAt} else null end`,
     })
     .where(and(eq(emailMessage.userId, userId), eq(emailMessage.id, change.id)));
-}
-
-export function markLinksViewed(db: Db, userId: string, ids: string[], viewedAt: string) {
-  return db
-    .update(emailLink)
-    .set({ viewedAt })
-    .where(and(eq(emailLink.userId, userId), inArray(emailLink.id, ids), sql`${emailLink.viewedAt} is null`));
 }
 
 export function linkEmail(db: Db, userId: string, emailId: string, applicationId: string) {

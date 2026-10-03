@@ -5,7 +5,7 @@ import type { ProfileForm } from "~/types/profile";
 
 const nowIso = () => new Date().toISOString();
 
-export const EMPTY_PROFILE: ProfileForm = {
+const EMPTY_PROFILE: ProfileForm = {
   personal: {
     firstName: "",
     lastName: "",
