@@ -6,12 +6,20 @@ import { activity, application, emailLink, emailMessage } from "../schema";
 const RECENT_ACTIVITY = 100;
 const UNSEEN_CAP = 100;
 
-const isLive = sql`(${activity.kind} != 'suggestion' or exists (
-  select 1 from ${emailMessage}
-  where ${emailMessage.userId} = ${activity.userId} and ${emailMessage.id} = ${activity.emailId}
-    and ${emailMessage.suggestionDismissedAt} is null
-    and not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})
-))`;
+const isLive = sql`(case ${activity.kind}
+  when 'status' then 1
+  when 'suggestion' then exists (
+    select 1 from ${emailMessage}
+    where ${emailMessage.userId} = ${activity.userId} and ${emailMessage.id} = ${activity.emailId}
+      and ${emailMessage.suggestionDismissedAt} is null
+      and not exists (select 1 from ${emailLink} where ${emailLink.userId} = ${emailMessage.userId} and ${emailLink.id} = ${emailMessage.id})
+  )
+  else exists (
+    select 1 from ${emailLink}
+    where ${emailLink.userId} = ${activity.userId} and ${emailLink.id} = ${activity.emailId}
+      and ${emailLink.applicationId} = ${activity.applicationId} and ${emailLink.dismissedAt} is null
+  )
+end)`;
 
 export interface NewActivity {
   kind: ActivityKind;

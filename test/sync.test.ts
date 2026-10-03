@@ -8,6 +8,7 @@ import { setEmailCategory } from "~/server/db/queries/emails.server";
 import { getMessagesMetadata, listMessageIds } from "~/server/gmail/client.server";
 import type { GmailMessage } from "~/server/gmail/mapping.server";
 import { syncGmail } from "~/server/gmail/sync/index.server";
+import { planLinksAndStatuses } from "~/server/gmail/sync/plan.server";
 import { USER_ID, testDb } from "./db";
 import { addApplication } from "./fixtures";
 
@@ -164,5 +165,14 @@ describe("syncGmail matching", () => {
     await syncGmail({ DB: {} } as Env, USER_ID, "manual");
     await setEmailCategory(db, USER_ID, "m1", "interview");
     expect(await matchedAt(db)).toBeNull();
+  });
+});
+
+describe("planLinksAndStatuses", () => {
+  it("never links an email to a saved posting", () => {
+    const email = { id: "e1", category: "interview", subject: "Interview with Murphy AI", snippet: "", fromName: "Murphy AI", fromAddress: "jobs@murphy.ai", receivedAt: "2026-09-10T00:00:00.000Z", manualCategoryAt: null, confidence: 0.99 } as Parameters<typeof planLinksAndStatuses>[0][number];
+    const saved = { id: "saved", company: "Murphy AI", role: "Engineer", appliedAt: "2026-09-09T00:00:00.000Z", status: "saved", manualStatusAt: null };
+    expect(planLinksAndStatuses([email], [saved], [], 0.5)).toEqual({ links: [], statusChanges: [] });
+    expect(planLinksAndStatuses([email], [{ ...saved, status: "applied" }], [], 0.5).links).toHaveLength(1);
   });
 });

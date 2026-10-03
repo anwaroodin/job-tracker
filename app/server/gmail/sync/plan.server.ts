@@ -13,9 +13,10 @@ export function planLinksAndStatuses(
   const latestByApplication = new Map(latestStages.map((stage) => [stage.applicationId, stage]));
   const needsStatusCheck = new Set<string>();
   const links: Plan["links"] = [];
+  const matchable = applications.filter((app) => app.status !== "saved");
 
   for (const email of unlinked) {
-    const candidates = applicationsStillOpenFor(email, applications, latestByApplication);
+    const candidates = applicationsStillOpenFor(email, matchable, latestByApplication);
     const match = matchApplication(email, candidates);
     if (!match) continue;
 
