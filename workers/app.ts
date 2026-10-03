@@ -1,4 +1,5 @@
 import { RouterContextProvider, createRequestHandler } from "react-router";
+import { sessionCookies } from "~/server/auth/session.server";
 import { envContext, execContext } from "~/server/context.server";
 import { syncGmail } from "~/server/gmail/sync/index.server";
 import { enqueueGmailSyncs } from "~/server/gmail/sync/schedule.server";
@@ -19,7 +20,12 @@ export default {
     const context = new RouterContextProvider();
     context.set(envContext, env);
     context.set(execContext, ctx);
-    return requestHandler(request, context);
+    const cookies: string[] = [];
+    const response = await sessionCookies.run(cookies, () => requestHandler(request, context));
+    if (!cookies.length) return response;
+    const withCookies = new Response(response.body, response);
+    for (const cookie of new Set(cookies)) withCookies.headers.append("Set-Cookie", cookie);
+    return withCookies;
   },
   async scheduled(_controller, env, ctx) {
     ctx.waitUntil(enqueueGmailSyncs(env));

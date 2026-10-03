@@ -1,11 +1,10 @@
 import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
-import { DEFAULT_SETTINGS } from "~/lib/settings";
 import { DOLLARS_PER_INPUT_TOKEN } from "../../jev/client.server";
 import type { StageUsage } from "../../jev/email-stage.server";
 import type { Db } from "../client.server";
 import { isKept } from "../predicates";
-import { emailMessage, jevUsage, userSettings } from "../schema";
-import { settingsRowFor, withDefaults } from "./settings.server";
+import { emailMessage, jevUsage } from "../schema";
+import { minConfidenceFor, settingsRowFor, withDefaults } from "./settings.server";
 
 const DAY_MS = 86_400_000;
 const CHART_DAYS = 30;
@@ -37,7 +36,7 @@ export async function usageDashboard(db: Db, userId: string) {
   const chartStart = new Date(Date.parse(now.toISOString().slice(0, 10)) - (CHART_DAYS - 1) * DAY_MS).toISOString();
   const windowStart = chartStart < lastMonth ? chartStart : lastMonth;
 
-  const minConfidence = sql`coalesce((select ${userSettings.minConfidence} from ${userSettings} where ${userSettings.userId} = ${userId}), ${DEFAULT_SETTINGS.minConfidence})`;
+  const minConfidence = minConfidenceFor(userId);
   const [[settingsRow], recentRows, [allTime], latest, [emailStats]] = await db.batch([
     settingsRowFor(db, userId),
     db

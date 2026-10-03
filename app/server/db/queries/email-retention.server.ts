@@ -122,7 +122,7 @@ export function pruneUnrelatedEmails(db: Db, userId: string, classifier: string,
     );
 }
 
-export function unsureUnrelatedEmails(db: Db, userId: string, minConfidence: number) {
+export function unsureUnrelatedEmails(db: Db, userId: string, minConfidence: number | SQL<number>) {
   return db
     .select({
       id: emailMessage.id,

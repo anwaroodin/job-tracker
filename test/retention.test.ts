@@ -1,3 +1,4 @@
+import { minConfidenceFor } from "~/server/db/queries/settings.server";
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { REGEX_CLASSIFIER } from "~/server/email/classify/index.server";
@@ -121,6 +122,8 @@ describe("unsure emails waiting for the user", () => {
     await addEmail(db, { id: "sure", confidence: 0.95 });
     const ids = (await unsureUnrelatedEmails(db, USER_ID, 0.8)).map((r) => r.id);
     expect(ids).toEqual(["unsure"]);
+    const withSavedThreshold = (await unsureUnrelatedEmails(db, USER_ID, minConfidenceFor(USER_ID))).map((r) => r.id);
+    expect(withSavedThreshold).toEqual(["unsure"]);
   });
 
   it("prunes an unsure email once the user confirms it isn't about jobs", async () => {
