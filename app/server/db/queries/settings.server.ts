@@ -1,10 +1,14 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { DEFAULT_SETTINGS, parseSettings, type Settings } from "~/lib/settings";
 import type { Db } from "../client.server";
 import { userSettings, type UserSettings } from "../schema";
 
 export function settingsRowFor(db: Db, userId: string) {
   return db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
+}
+
+export function minConfidenceFor(userId: string) {
+  return sql<number>`coalesce((select ${userSettings.minConfidence} from ${userSettings} where ${userSettings.userId} = ${userId}), ${DEFAULT_SETTINGS.minConfidence})`;
 }
 
 export function withDefaults(row: UserSettings | undefined): Settings {

@@ -8,7 +8,7 @@ import {
   pruneUnrelatedEmails,
   unsureUnrelatedEmails,
 } from "../db/queries/email-retention.server";
-import { getSettings } from "../db/queries/settings.server";
+import { getSettings, minConfidenceFor } from "../db/queries/settings.server";
 import { activeClassifier, REGEX_CLASSIFIER } from "./classify/index.server";
 
 /**
@@ -39,6 +39,5 @@ export async function confirmNotAboutJobs(env: Env, db: Db, userId: string, emai
 }
 
 export async function emailsToConfirm(db: Db, userId: string): Promise<UnsureEmail[]> {
-  const { minConfidence } = await getSettings(db, userId);
-  return unsureUnrelatedEmails(db, userId, minConfidence);
+  return unsureUnrelatedEmails(db, userId, minConfidenceFor(userId));
 }
