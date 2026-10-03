@@ -77,6 +77,24 @@ export function normalizeCompany(company: string) {
     .replace(/[^a-z0-9]/g, "");
 }
 
+interface SuggestionMatch {
+  threadId: string | null;
+  company: string | null;
+  role: string | null;
+}
+
+const suggestionKey = (company: string, role: string | null) =>
+  `${normalizeCompany(company)}|${isRole(role) ? role.toLowerCase() : ""}`;
+
+export function matchesDismissed(dismissed: SuggestionMatch[]) {
+  const threads = new Set(dismissed.map((d) => d.threadId));
+  const keys = new Set(
+    dismissed.flatMap((d) => (isCompany(d.company) ? [suggestionKey(d.company, d.role), suggestionKey(d.company, null)] : [])),
+  );
+  return ({ threadId, company, role }: SuggestionMatch) =>
+    (!!threadId && threads.has(threadId)) || (isCompany(company) && !!normalizeCompany(company) && keys.has(suggestionKey(company, role)));
+}
+
 function knownFormat({ subject, text, links = [] }: SuggestionSource, wantTrusted: boolean) {
   let company: string | null = null;
   let role: string | null = null;

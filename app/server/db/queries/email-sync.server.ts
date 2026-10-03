@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../client.server";
 import { awaitsDetails, awaitsSuggestion, isStageEmail } from "../predicates";
 import { emailLink, emailMessage } from "../schema";
@@ -60,6 +60,7 @@ export function emailsNeedingSuggestion(db: Db, userId: string, since: string, l
   return db
     .select({
       id: emailMessage.id,
+      threadId: emailMessage.threadId,
       category: emailMessage.category,
       receivedAt: emailMessage.receivedAt,
       subject: emailMessage.subject,
@@ -78,6 +79,15 @@ export function emailsNeedingSuggestion(db: Db, userId: string, since: string, l
     )
     .orderBy(desc(emailMessage.receivedAt))
     .limit(limit);
+}
+
+export function dismissedSuggestions(db: Db, userId: string, since: string) {
+  return db
+    .select({ threadId: emailMessage.threadId, company: emailMessage.suggestedCompany, role: emailMessage.suggestedRole })
+    .from(emailMessage)
+    .where(
+      and(eq(emailMessage.userId, userId), gte(emailMessage.receivedAt, since), isNotNull(emailMessage.suggestionDismissedAt)),
+    );
 }
 
 export function emailsNeedingDetails(db: Db, userId: string, since: string, limit: number) {
