@@ -53,6 +53,8 @@ export function createAuth(env: Env, request?: Request) {
     session: {
       expiresIn: 60 * 60 * 24 * 30, // 30 days
       updateAge: 60 * 60 * 24, // refresh cookie once per day
+      // Skips the KV/D1 session lookup for 5 minutes; a revoked session lasts at most that long.
+      cookieCache: { enabled: true, maxAge: 5 * 60 },
       storeSessionInDatabase: true,
     },
     verification: { storeInDatabase: true },
