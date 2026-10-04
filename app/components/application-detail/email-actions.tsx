@@ -1,4 +1,5 @@
-import { Check, Ellipsis, Unlink } from "lucide-react";
+import { ArrowRightLeft, Check, Ellipsis, Unlink } from "lucide-react";
+import { useState } from "react";
 import { useFetcher } from "react-router";
 import type { TimelineEmail } from "~/types/timeline";
 import {
@@ -11,9 +12,19 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { STATUS_COLORS } from "~/components/ui/terminal";
 import { EMAIL_CATEGORIES } from "~/lib/email";
+import { MoveEmailDialog, type MoveTarget } from "~/components/application-detail/move-email-dialog";
 
-export function EmailActions({ email, unlinkOnly }: { email: TimelineEmail; unlinkOnly?: boolean }) {
+export function EmailActions({
+  email,
+  unlinkOnly,
+  move,
+}: {
+  email: TimelineEmail;
+  unlinkOnly?: boolean;
+  move?: { company: string; applications: MoveTarget[] };
+}) {
   const fetcher = useFetcher();
+  const [moving, setMoving] = useState(false);
   const busy = fetcher.state !== "idle";
   const pendingCategory = fetcher.formData?.get("category");
   const current = typeof pendingCategory === "string" ? pendingCategory : email.category;
@@ -77,12 +88,27 @@ export function EmailActions({ email, unlinkOnly }: { email: TimelineEmail; unli
               <DropdownMenuSeparator />
             </>
           )}
+          {move && (
+            <DropdownMenuItem onSelect={() => setMoving(true)}>
+              <ArrowRightLeft />
+              Wrong application…
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onSelect={() => submit({ intent: "unlink" })}>
             <Unlink />
             Unlink from application
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {move && (
+        <MoveEmailDialog
+          email={email}
+          company={move.company}
+          applications={move.applications}
+          open={moving}
+          onOpenChange={setMoving}
+        />
+      )}
     </div>
   );
 }

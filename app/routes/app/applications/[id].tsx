@@ -18,9 +18,10 @@ import { useArrivals } from "~/hooks/use-arrivals";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { updateApplication } from "~/server/db/queries/applications.server";
+import { createApplication, updateApplication } from "~/server/db/queries/applications.server";
+import { applicationsFor } from "~/server/db/queries/status.server";
 import { settleSavedJob } from "~/server/services/status/saved.server";
-import { markReplyDone, markViewed, setEmailCategory, setEmailDismissed } from "~/server/db/queries/emails.server";
+import { markReplyDone, markViewed, moveEmail, setEmailCategory, setEmailDismissed } from "~/server/db/queries/emails.server";
 import { applicationTimeline } from "~/server/services/timeline/index.server";
 import { syncGmail } from "~/server/gmail/sync/index.server";
 import { refreshApplicationStatus } from "~/server/services/status/refresh.server";
@@ -30,15 +31,23 @@ import { UnlinkedEmails } from "~/components/application-detail/unlinked-emails"
 import { useNewOnArrival } from "~/components/application-detail/use-new-on-arrival";
 import { Progress } from "~/components/application-detail/progress";
 
+const MAX_FIELD_LENGTH = 200;
+
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const { row, emails } = await applicationTimeline(db, user.id, params.id);
+  const [{ row, emails }, apps] = await Promise.all([
+    applicationTimeline(db, user.id, params.id),
+    applicationsFor(db, user.id),
+  ]);
   if (!row) throw data("Not found", { status: 404 });
   const unseen = emails.filter((e) => !e.viewedAt && !e.dismissedAt).map((e) => e.id);
   if (unseen.length) await markViewed(db, user.id, unseen);
-  return { row, emails, accountEmail: user.email };
+  const otherApplications = apps
+    .filter((a) => a.id !== row.id && a.status !== "saved")
+    .map(({ id, company, role, appliedAt }) => ({ id, company, role, appliedAt }));
+  return { row, emails, otherApplications, accountEmail: user.email };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -63,6 +72,27 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     await markReplyDone(db, user.id, emailId);
     return { ok: true };
   }
+  if (intent === "move") {
+    let target = String(form.get("applicationId") ?? "");
+    if (!target) {
+      const company = String(form.get("company") ?? "").trim().slice(0, MAX_FIELD_LENGTH);
+      const role = String(form.get("role") ?? "").trim().slice(0, MAX_FIELD_LENGTH);
+      if (!company || !role) return { error: "Company and role are required" };
+      const appliedAt = new Date(String(form.get("appliedAt") ?? ""));
+      target = crypto.randomUUID();
+      await createApplication(db, {
+        id: target,
+        userId: user.id,
+        company,
+        role,
+        autoFilled: false,
+        ...(Number.isNaN(appliedAt.getTime()) ? {} : { appliedAt: appliedAt.toISOString() }),
+      });
+    }
+    if (!(await moveEmail(db, user.id, params.id, emailId, target))) return { error: "Couldn't move that email" };
+    await Promise.all([refreshApplicationStatus(db, user.id, params.id), refreshApplicationStatus(db, user.id, target)]);
+    return redirect(`/applications/${target}`);
+  }
   if (intent === "categorize") {
     const category = form.get("category");
     if (!isEmailCategory(category)) throw data("Unknown category", { status: 400 });
@@ -79,7 +109,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 export default function ApplicationDetail({ loaderData }: Route.ComponentProps) {
   // A saved posting hasn't been applied to yet: show it as the job listing.
   if (loaderData.row.status === "saved") return <SavedListing job={loaderData.row} />;
-  return <TrackedApplication loaderData={loaderData} />;
+  return <TrackedApplication key={loaderData.row.id} loaderData={loaderData} />;
 }
 
 function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
@@ -99,6 +129,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
   ]);
   const source = hostOf(row.url);
   const contacts = parseContacts(row.contactsJson);
+  const move = { company: row.company, applications: loaderData.otherApplications };
 
   return (
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
@@ -153,6 +184,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
                   isNew={isNew(e)}
                   arrived={isArrival(e.id)}
                   href={gmailThreadUrl(accountEmail, e.threadId || e.id)}
+                  move={move}
                 />
               ))}
             </ol>

@@ -4,6 +4,8 @@ import { shouldFollowEmail } from "../../services/status/rules";
 import { matchApplication } from "./match.server";
 import type { Plan, StoredEmail, TrackedApplication, LatestStage } from "./run";
 
+const APPLIED_EMAIL_WINDOW_MS = 14 * 86_400_000;
+
 export function planLinksAndStatuses(
   unlinked: StoredEmail[],
   applications: TrackedApplication[],
@@ -50,6 +52,7 @@ function applicationsStillOpenFor(
   return applications.filter((app) => {
     const latest = latestByApplication.get(app.id);
     const rejectedBeforeThisEmail = latest?.category === "rejected" && latest.receivedAt < email.receivedAt;
-    return !rejectedBeforeThisEmail;
+    const appliedLongBefore = Date.parse(email.receivedAt) - Date.parse(app.appliedAt) > APPLIED_EMAIL_WINDOW_MS;
+    return !rejectedBeforeThisEmail && !appliedLongBefore;
   });
 }

@@ -227,3 +227,28 @@ export async function dismissSuggestions(db: Db, userId: string, emailIds: strin
   );
   await db.batch(asBatch(updates));
 }
+
+export async function moveEmail(db: Db, userId: string, fromApplicationId: string, emailId: string, toApplicationId: string) {
+  const [[target], [link]] = await db.batch([
+    db
+      .select({ id: application.id })
+      .from(application)
+      .where(and(eq(application.id, toApplicationId), eq(application.userId, userId), ne(application.status, "saved"))),
+    db
+      .select({ id: emailLink.id })
+      .from(emailLink)
+      .where(and(eq(emailLink.userId, userId), eq(emailLink.applicationId, fromApplicationId), eq(emailLink.id, emailId))),
+  ]);
+  if (!target || !link || fromApplicationId === toApplicationId) return false;
+  await db.batch([
+    db
+      .delete(emailLink)
+      .where(and(eq(emailLink.userId, userId), eq(emailLink.applicationId, fromApplicationId), eq(emailLink.id, emailId))),
+    db
+      .insert(emailLink)
+      .values({ id: emailId, applicationId: toApplicationId, userId, viewedAt: new Date().toISOString() })
+      .onConflictDoUpdate({ target: [emailLink.id, emailLink.applicationId], set: { dismissedAt: null } }),
+  ]);
+  await invalidate(UNREAD_COUNTS_CACHE, userId);
+  return true;
+}
