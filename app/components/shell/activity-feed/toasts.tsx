@@ -51,7 +51,7 @@ export function ActivityToasts({ initial }: { initial: GmailStatus }) {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-4 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:p-0"
+      className="pointer-events-none fixed inset-x-0 bottom-[var(--bottom-nav)] z-50 flex justify-end p-4 sm:inset-x-auto sm:right-6 sm:bottom-[calc(var(--bottom-nav)+1.5rem)] sm:p-0"
     >
       <AnimatePresence>
         {toast && (

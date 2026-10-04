@@ -10,8 +10,6 @@ declare global {
     SESSION_SECRET: string;
     GOOGLE_CLIENT_ID: string;
     GOOGLE_CLIENT_SECRET: string;
-    // Optional: comma-separated allowlist while single-user
-    ALLOWED_EMAILS?: string;
     // Optional: classifies emails with Jev when set, otherwise the regex classifier is used
     TYPESAFE_API_KEY?: string;
     // Optional: "regex" turns Jev off even when TYPESAFE_API_KEY is set

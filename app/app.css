@@ -35,6 +35,14 @@
 
   --stroke-primary: rgba(255, 255, 255, 0.11);
   --stroke-secondary: rgba(255, 255, 255, 0.06);
+
+  --bottom-nav: calc(3.5rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --bottom-nav: 0px;
+  }
 }
 
 @theme {
@@ -103,6 +111,13 @@ body {
 
 body {
   overflow-x: clip;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none;
+  }
 }
 
 html body[data-scroll-locked] {

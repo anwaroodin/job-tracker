@@ -6,7 +6,6 @@
  *   GOOGLE_CLIENT_ID     — OAuth client id
  *   GOOGLE_CLIENT_SECRET — OAuth client secret
  *   GOOGLE_REDIRECT_URI  — e.g. https://job-tracker.<subdomain>.workers.dev/auth/callback
- *   ALLOWED_EMAILS       — comma-separated allowlist while single-user
  *   TYPESAFE_API_KEY     — optional, classifies emails with Jev (regex when unset)
  *
  * Vars:
@@ -21,7 +20,23 @@
 	],
 	"main": "./workers/app.ts",
 	"observability": {
-		"enabled": true
+		"enabled": true,
+		"head_sampling_rate": 1,
+		"redact_query_string": false,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"invocation_logs": true,
+			"persist": true
+		},
+		"traces": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"persist": true
+		},
+		"issues": {
+			"enabled": true
+		}
 	},
 	"upload_source_maps": true,
 	"assets": {
@@ -48,6 +63,27 @@
 			"bucket_name": "job-tracker-cvs"
 		}
 	],
+	"queues": {
+		"producers": [
+			{
+				"binding": "GMAIL_SYNC_QUEUE",
+				"queue": "gmail-sync"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "gmail-sync",
+				"max_batch_size": 5,
+				"max_retries": 3,
+				"dead_letter_queue": "gmail-sync-dlq"
+			}
+		]
+	},
+	"triggers": {
+		"crons": [
+			"*/30 * * * *"
+		]
+	},
 	"vars": {
 		"APP_URL": "replace_with_url"
 	}

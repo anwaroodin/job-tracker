@@ -12,7 +12,11 @@ import "./app.css";
 
 export const meta: Route.MetaFunction = () => [{ title: "job-tracker" }];
 
-export const links: Route.LinksFunction = () => [{ rel: "stylesheet", href: "/webfonts.css" }];
+export const links: Route.LinksFunction = () => [
+  { rel: "stylesheet", href: "/webfonts.css" },
+  { rel: "manifest", href: "/manifest.webmanifest" },
+  { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,7 +25,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="color-scheme" content="dark" />
-        <meta name="theme-color" content="#07080a" />
+        <meta name="theme-color" content="#0c0c0e" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="job-tracker" />
         <Meta />
         <Links />
       </head>

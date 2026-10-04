@@ -6,7 +6,6 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { GMAIL_SCOPE } from "~/lib/gmail";
 import { getDb } from "../db/client.server";
 import { updateSyncState } from "../db/queries/gmail-sync.server";
-import { assertAllowed } from "./allowlist.server";
 import { kvStorage } from "./kv-storage.server";
 
 export function createAuth(env: Env, request?: Request) {
@@ -28,17 +27,7 @@ export function createAuth(env: Env, request?: Request) {
       },
     },
 
-    // Allowlist while single-user — a stray sign-in shouldn't grant access.
-    // Runs on every sign-in/sign-up.
     databaseHooks: {
-      user: {
-        create: {
-          before: async (data) => {
-            assertAllowed(env, data.email);
-            return { data };
-          },
-        },
-      },
       account: {
         update: {
           after: async (acc) => {

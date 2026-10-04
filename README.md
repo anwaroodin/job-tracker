@@ -68,7 +68,7 @@ job-tracker/
 │   ├── types/                  Types shared by the server and the UI
 │   ├── lib/                    Client-safe helpers, constants and client state
 │   └── server/                 Server-only code (never imported by components)
-│       ├── auth/               Better Auth config, sessions (KV), allowlist
+│       ├── auth/               Better Auth config, sessions (KV)
 │       ├── db/                 Drizzle client, schema/ (one file per table), queries/ (the only place SQL lives)
 │       ├── services/           Business rules: status transitions, applications, timeline, overview, search
 │       ├── email/              Classification, retention (privacy rules), details, suggestions
@@ -118,7 +118,6 @@ Set up your production secrets:
 npx wrangler secret put SESSION_SECRET        # any 32+ byte random string
 npx wrangler secret put GOOGLE_CLIENT_ID
 npx wrangler secret put GOOGLE_CLIENT_SECRET
-npx wrangler secret put ALLOWED_EMAILS        # optional, comma-separated list
 npx wrangler secret put TYPESAFE_API_KEY      # optional, enables Jev classification
 ```
 
@@ -130,7 +129,6 @@ For **local development**, create a `.dev.vars` file in the root directory:
 SESSION_SECRET=dev-secret-please-change
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-ALLOWED_EMAILS=you@example.com
 TYPESAFE_API_KEY=                 # optional
 ```
 
