@@ -5,17 +5,20 @@ import { Button } from "~/components/ui/button";
 import { actionLabel, eventLabel, formatEventAt } from "~/lib/email";
 import { TimelineItem } from "~/components/application-detail/timeline-item";
 import { EmailActions } from "~/components/application-detail/email-actions";
+import type { MoveTarget } from "~/components/application-detail/move-email-dialog";
 
 export function EmailItem({
   email,
   href,
   isNew,
   arrived,
+  move,
 }: {
   email: TimelineEmail;
   href: string;
   isNew: boolean;
   arrived: boolean;
+  move: { company: string; applications: MoveTarget[] };
 }) {
   if (email.category === "deleted") {
     return (
@@ -55,7 +58,7 @@ export function EmailItem({
       confirmed={email.confirmed}
       needsReply={email.needsReply}
       footer={<EmailDetails email={email} />}
-      actions={<EmailActions email={email} />}
+      actions={<EmailActions email={email} move={move} />}
     />
   );
 }
