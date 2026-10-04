@@ -35,6 +35,14 @@
 
   --stroke-primary: rgba(255, 255, 255, 0.11);
   --stroke-secondary: rgba(255, 255, 255, 0.06);
+
+  --bottom-nav: calc(3.5rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --bottom-nav: 0px;
+  }
 }
 
 @theme {
