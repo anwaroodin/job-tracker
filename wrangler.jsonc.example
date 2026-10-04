@@ -6,7 +6,6 @@
  *   GOOGLE_CLIENT_ID     — OAuth client id
  *   GOOGLE_CLIENT_SECRET — OAuth client secret
  *   GOOGLE_REDIRECT_URI  — e.g. https://job-tracker.<subdomain>.workers.dev/auth/callback
- *   ALLOWED_EMAILS       — comma-separated allowlist while single-user
  *   TYPESAFE_API_KEY     — optional, classifies emails with Jev (regex when unset)
  *
  * Vars:
