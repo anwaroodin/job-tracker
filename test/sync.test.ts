@@ -175,4 +175,11 @@ describe("planLinksAndStatuses", () => {
     expect(planLinksAndStatuses([email], [saved], [], 0.5)).toEqual({ links: [], statusChanges: [] });
     expect(planLinksAndStatuses([email], [{ ...saved, status: "applied" }], [], 0.5).links).toHaveLength(1);
   });
+
+  it("treats an applied email weeks after an application as a new application", () => {
+    const email = { id: "e1", category: "applied", subject: "Thanks for applying to Deliveroo", snippet: "", fromName: "Deliveroo", fromAddress: "jobs@deliveroo.com", receivedAt: "2026-09-10T00:00:00.000Z", manualCategoryAt: null, confidence: 0.99 } as Parameters<typeof planLinksAndStatuses>[0][number];
+    const old = { id: "old", company: "Deliveroo", role: "Engineer", appliedAt: "2026-06-01T00:00:00.000Z", status: "applied", manualStatusAt: null };
+    expect(planLinksAndStatuses([email], [old], [], 0.5).links).toHaveLength(0);
+    expect(planLinksAndStatuses([email], [{ ...old, appliedAt: "2026-09-09T00:00:00.000Z" }], [], 0.5).links).toHaveLength(1);
+  });
 });
