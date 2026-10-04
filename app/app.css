@@ -111,6 +111,13 @@ body {
 
 body {
   overflow-x: clip;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none;
+  }
 }
 
 html body[data-scroll-locked] {
