@@ -90,7 +90,11 @@ export interface TailorRequest {
 export interface RunnerUsage {
   costUsd: number;
   inputTokens: number;
+  cachedTokens: number;
   outputTokens: number;
+}
+
+export interface PlanUsage {
   fiveHour: number | null;
   sevenDay: number | null;
 }

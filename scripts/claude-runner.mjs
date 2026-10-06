@@ -1,5 +1,9 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 
 const PORT = Number(process.env.RUNNER_PORT) || 4317;
 const TIMEOUT_MS = 10 * 60 * 1000;
@@ -7,21 +11,37 @@ const MODEL = process.env.RUNNER_MODEL || "opus";
 const WEB_TOOLS = ["WebSearch", "WebFetch"];
 const MODEL_NAME = /^[a-z0-9.\-[\]]{2,60}$/i;
 const EFFORTS = new Set(["low", "medium", "high", "xhigh", "max"]);
+const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const ORIGINS = new Set(["http://localhost:5173", process.env.JOB_TRACKER_URL?.replace(/\/$/, "")].filter(Boolean));
 
 let busy = false;
 
-const percent = (window) => (typeof window?.utilization === "number" ? Math.round(window.utilization * 100) : null);
-
-function usageOf(reply, windows) {
+function usageOf(reply) {
   const u = reply.usage ?? {};
   return {
     costUsd: reply.total_cost_usd ?? 0,
-    inputTokens: (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0),
+    inputTokens: (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0),
+    cachedTokens: u.cache_read_input_tokens ?? 0,
     outputTokens: u.output_tokens ?? 0,
-    fiveHour: percent(windows?.five_hour),
-    sevenDay: percent(windows?.seven_day),
   };
+}
+
+async function claudeToken() {
+  const stored =
+    process.platform === "darwin"
+      ? (await promisify(execFile)("security", ["find-generic-password", "-s", "Claude Code-credentials", "-w"])).stdout
+      : await readFile(join(homedir(), ".claude", ".credentials.json"), "utf8");
+  return JSON.parse(stored).claudeAiOauth.accessToken;
+}
+
+async function planUsage() {
+  const res = await fetch(USAGE_URL, {
+    headers: { Authorization: `Bearer ${await claudeToken()}`, "anthropic-beta": "oauth-2025-04-20" },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`Usage request failed (${res.status})`);
+  const body = await res.json();
+  return { fiveHour: body.five_hour?.utilization ?? null, sevenDay: body.seven_day?.utilization ?? null };
 }
 
 function runClaude({ system, schema, input, model, effort, web }) {
@@ -34,8 +54,7 @@ function runClaude({ system, schema, input, model, effort, web }) {
     "--setting-sources", "",
     "--no-session-persistence",
     ...(EFFORTS.has(effort) ? ["--effort", effort] : []),
-    "--output-format", "stream-json",
-    "--verbose",
+    "--output-format", "json",
     "--system-prompt", system,
     "--json-schema", JSON.stringify(schema),
   ];
@@ -48,17 +67,9 @@ function runClaude({ system, schema, input, model, effort, web }) {
     child.on("error", reject);
     child.on("close", (code) => {
       try {
-        const events = out.split("\n").flatMap((line) => {
-          try {
-            return [JSON.parse(line)];
-          } catch {
-            return [];
-          }
-        });
-        const reply = events.findLast((e) => e.type === "result");
-        const windows = events.findLast((e) => e.type === "rate_limit_event")?.rate_limit_info?.unifiedWindows;
-        if (!reply || reply.is_error || !reply.structured_output) throw new Error(reply?.result || "Claude returned no result");
-        resolve({ result: reply.structured_output, usage: usageOf(reply, windows) });
+        const reply = JSON.parse(out);
+        if (reply.is_error || !reply.structured_output) throw new Error(reply.result || "Claude returned no result");
+        resolve({ result: reply.structured_output, usage: usageOf(reply) });
       } catch (e) {
         reject(new Error(code ? `claude exited with ${code}: ${err.trim() || out.trim()}` : e.message));
       }
@@ -101,6 +112,12 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "OPTIONS") return send(204);
   if (req.method === "GET" && req.url === "/health") return send(200, { ok: true, busy, model: MODEL });
+  if (req.method === "GET" && req.url === "/usage") {
+    return planUsage().then(
+      (usage) => send(200, usage),
+      (e) => send(503, { error: e.message }),
+    );
+  }
   if (req.method !== "POST" || req.url !== "/run") return send(404, { error: "Not found" });
   if (busy) return send(409, { error: "Already tailoring something. Try again when it's done." });
 
@@ -110,7 +127,7 @@ const server = createServer(async (req, res) => {
     const request = await readJson(req);
     console.log(`Running ${request.web ? "research" : "tailoring"} with ${MODEL_NAME.test(request.model ?? "") ? request.model : MODEL} (${request.effort ?? "default"} effort)…`);
     const { result, usage } = await runClaude(request);
-    console.log(`Done in ${Math.round((Date.now() - started) / 1000)}s, $${usage.costUsd.toFixed(3)} at API prices, 5-hour ${usage.fiveHour}%, week ${usage.sevenDay}%`);
+    console.log(`Done in ${Math.round((Date.now() - started) / 1000)}s: $${usage.costUsd.toFixed(3)} at API prices, ${usage.inputTokens} tokens in, ${usage.cachedTokens} cached, ${usage.outputTokens} out`);
     send(200, { result, usage });
   } catch (e) {
     console.error(e.message);

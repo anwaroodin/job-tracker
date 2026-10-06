@@ -175,7 +175,7 @@ Tailoring and company research need [Claude Code](https://claude.com/claude-code
 npm run runner    # Listens on http://127.0.0.1:4317
 ```
 
-It only accepts requests from `http://localhost:5173` and from `JOB_TRACKER_URL`. Set these in `.env` if you need them:
+It only accepts requests from `http://localhost:5173` and from `JOB_TRACKER_URL`. To show how much of your Claude limits each run uses, it reads your Claude Code login (the macOS keychain, or `~/.claude/.credentials.json`) and asks `api.anthropic.com` for your current usage, the same way Claude Code's `/usage` does. The token never leaves the runner otherwise. Set these in `.env` if you need them:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |

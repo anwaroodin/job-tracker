@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useFetcher, useRevalidator } from "react-router";
 import { Button } from "~/components/ui/button";
-import { runnerAvailable, runOnRunner } from "~/lib/runner";
-import type { RunnerUsage, TailorRequest } from "~/types/cv";
+import { planUsage, runnerAvailable, runOnRunner } from "~/lib/runner";
+import type { PlanUsage, RunnerUsage, TailorRequest } from "~/types/cv";
 import { RunCost, useRunCosts } from "./run-cost";
 
 const MODELS = [
@@ -70,9 +70,13 @@ export function TailorPanel({
   const [model, setModel] = useModel();
   const [strategy, setStrategy] = useState("keywords");
   const costs = useRunCosts();
+  const [now, setNow] = useState<PlanUsage | null>(null);
 
   useEffect(() => {
-    runnerAvailable().then((ok) => setRunner(ok ? "ready" : "offline"));
+    runnerAvailable().then((ok) => {
+      setRunner(ok ? "ready" : "offline");
+      if (ok) planUsage().then(setNow);
+    });
   }, []);
 
   const guard = async (job: () => Promise<void>) => {
@@ -89,6 +93,7 @@ export function TailorPanel({
   const tailor = () =>
     guard(async () => {
       const stages: RunnerUsage[] = [];
+      const before = await planUsage();
       let step = await postStep({ applicationId, strategy });
       while (!("done" in step)) {
         setProgress(STAGE_LABELS[step.stage] ?? "Working…");
@@ -96,7 +101,9 @@ export function TailorPanel({
         stages.push(usage);
         step = await postStep({ applicationId, stage: step.stage, result, state: step.state });
       }
-      costs.record(model, "tailor", stages);
+      const after = await planUsage();
+      setNow(after);
+      costs.record(model, "tailor", { stages, before, after });
       revalidator.revalidate();
     });
 
@@ -104,8 +111,11 @@ export function TailorPanel({
     guard(async () => {
       if (!research) return;
       setProgress("Searching the web for the company's values and what it looks for…");
-      const { result, usage } = await runOnRunner({ ...research, model });
-      costs.record(model, "research", [usage]);
+      const before = await planUsage();
+      const { result, usage } = await runOnRunner({ model, ...research });
+      const after = await planUsage();
+      setNow(after);
+      costs.record(research.model ?? model, "research", { stages: [usage], before, after });
       fetcher.submit({ intent: "research", result: JSON.stringify(result) }, { method: "post" });
     });
 
@@ -141,7 +151,7 @@ export function TailorPanel({
           {retailor ? "Tailor again" : "Tailor with Claude"}
         </Button>
       </div>
-      <RunCost calibrations={costs.calibrations} model={model} last={costs.last} />
+      <RunCost calibrations={costs.calibrations} model={model} researchModel={research?.model ?? model} now={now} last={costs.last} />
       <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
         {runner === "offline" && (
           <>

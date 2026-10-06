@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
-import { calibrate, estimatePct, totalOf, type Calibration, type RunKind } from "~/lib/run-cost";
-import type { RunnerUsage } from "~/types/cv";
+import { type ReactNode, useEffect, useState } from "react";
+import { BarRow, Leader } from "~/components/ui/terminal";
+import { calibrate, estimatePct, totalOf, usedPct, type Calibration, type LimitWindow, type Run, type RunKind } from "~/lib/run-cost";
+import type { PlanUsage } from "~/types/cv";
 
 const STORAGE_KEY = "job-tracker/claude-usage";
 
-interface LastRun {
+interface LastRun extends Run {
   model: string;
-  stages: RunnerUsage[];
 }
 
 export function useRunCosts() {
@@ -19,10 +19,10 @@ export function useRunCosts() {
     } catch {}
   }, []);
 
-  const record = (model: string, kind: RunKind, stages: RunnerUsage[]) => {
-    setLast({ model, stages });
+  const record = (model: string, kind: RunKind, run: Run) => {
+    setLast({ model, ...run });
     setCalibrations((previous) => {
-      const next = { ...previous, [model]: calibrate(previous[model], stages, kind) };
+      const next = { ...previous, [model]: calibrate(previous[model], run, kind) };
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       } catch {}
@@ -33,38 +33,91 @@ export function useRunCosts() {
   return { calibrations, last, record };
 }
 
-const pct = (value: number | null) => (value === null ? "?" : value < 0.5 ? "under 1%" : `about ${Math.round(value)}%`);
-const tokens = (n: number) => `${Math.round(n / 1000)}k`;
+const ADDED = "var(--color-text-primary)";
+const LEVELS: [number, string][] = [
+  [90, "var(--color-red-primary)"],
+  [75, "var(--color-orange-primary)"],
+  [0, "var(--color-green-primary)"],
+];
+const levelColor = (usedPct: number) => LEVELS.find(([floor]) => usedPct >= floor)![1];
+const CELLS = 28;
+const WINDOWS: { window: LimitWindow; label: string }[] = [
+  { window: "fiveHour", label: "5-hour" },
+  { window: "sevenDay", label: "Week" },
+];
 
-function limits(calibration: Calibration | undefined, costUsd: number) {
-  return `${pct(estimatePct(calibration, "fiveHour", costUsd))} of your 5-hour limit and ${pct(estimatePct(calibration, "sevenDay", costUsd))} of your week`;
+const tokens = (n: number) => `${Math.round(n / 1000)}k`;
+const pct = (n: number) => `${Math.round(n)}%`;
+
+function Heading({ children }: { children: ReactNode }) {
+  return <p className="mb-1 mt-4 text-[10.5px] tracking-[0.1em] text-text-tertiary first:mt-0">{children}</p>;
 }
 
-export function RunCost({ calibrations, model, last }: { calibrations: Record<string, Calibration>; model: string; last: LastRun | null }) {
-  const calibration = calibrations[model];
-  const tailorCost = calibration?.lastCost.tailor;
-  const researchCost = calibration?.lastCost.research;
-  const now = last?.stages[last.stages.length - 1];
-
+function Change({ label, from, by, approx = false }: { label: string; from: number; by: number | null; approx?: boolean }) {
+  const mark = approx ? "~" : "";
   return (
-    <div className="flex flex-col gap-1 font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
-      {last && now && (
-        <p>
-          Last run: ${totalOf(last.stages, "costUsd").toFixed(2)} at API prices, {tokens(totalOf(last.stages, "inputTokens"))} tokens in and{" "}
-          {tokens(totalOf(last.stages, "outputTokens"))} out, so {limits(calibrations[last.model], totalOf(last.stages, "costUsd"))}. You're now at{" "}
-          {now.fiveHour ?? "?"}% of your 5-hour limit and {now.sevenDay ?? "?"}% of your week.
-        </p>
+    <BarRow
+      label={label}
+      value={by === null ? pct(from) : by < 0.5 && approx ? "<1%" : `+${mark}${pct(by)}`}
+      share={from}
+      color={levelColor(from + (by ?? 0))}
+      extra={by ? { share: by, color: ADDED } : undefined}
+      cells={CELLS}
+      valueClass="w-12"
+      noteClass="w-28"
+      note={by === null ? undefined : `${pct(from)} → ${mark}${pct(from + by)}`}
+    />
+  );
+}
+
+function Forecast({ label, now, costUsd, calibration }: { label: string; now: number; costUsd: number | undefined; calibration: Calibration | undefined }) {
+  const next = costUsd === undefined ? null : estimatePct(calibration, "fiveHour", costUsd);
+  return next === null ? null : <Change label={label} from={now} by={next} approx />;
+}
+
+export function RunCost({
+  calibrations,
+  model,
+  researchModel,
+  now,
+  last,
+}: {
+  calibrations: Record<string, Calibration>;
+  model: string;
+  researchModel: string;
+  now: PlanUsage | null;
+  last: LastRun | null;
+}) {
+  const fiveHour = now?.fiveHour;
+  return (
+    <div className="max-w-2xl">
+      {now && (
+        <>
+          <Heading>Claude limits</Heading>
+          {WINDOWS.map(({ window, label }) => {
+            const value = now[window];
+            const run = last && last.after === now ? usedPct(last, window) : null;
+            return value === null ? null : <Change key={window} label={label} from={run === null ? value : value - run} by={run} />;
+          })}
+        </>
       )}
-      <p>
-        {tailorCost === undefined && researchCost === undefined
-          ? "Run once on this model to see how much of your Claude limits it uses."
-          : [
-              tailorCost !== undefined && `Tailoring on this model uses ${limits(calibration, tailorCost)}.`,
-              researchCost !== undefined && `Company research uses ${limits(calibration, researchCost)}.`,
-            ]
-              .filter(Boolean)
-              .join(" ")}
-      </p>
+      {fiveHour != null && (
+        <>
+          <Heading>Next run · 5-hour limit</Heading>
+          <Forecast label="Tailoring" now={fiveHour} costUsd={calibrations[model]?.lastCost.tailor} calibration={calibrations[model]} />
+          <Forecast label="Research" now={fiveHour} costUsd={calibrations[researchModel]?.lastCost.research} calibration={calibrations[researchModel]} />
+        </>
+      )}
+      {last && (
+        <>
+          <Heading>Last run</Heading>
+          <Leader label="Cost">${totalOf(last.stages, "costUsd").toFixed(2)} at API prices</Leader>
+          <Leader label="Tokens">
+            {tokens(totalOf(last.stages, "inputTokens"))} in · {tokens(totalOf(last.stages, "cachedTokens"))} cached ·{" "}
+            {tokens(totalOf(last.stages, "outputTokens"))} out
+          </Leader>
+        </>
+      )}
     </div>
   );
 }

@@ -68,13 +68,22 @@ export function Leader({ label, children }: { label: string; children: React.Rea
   );
 }
 
-/** Block-glyph bar: `████████░░░░░░`. */
-export function Bar({ share, color, cells }: { share: number; color: string; cells: number }) {
-  const filled = Math.round((Math.max(0, Math.min(100, share)) / 100) * cells);
+export interface BarExtra {
+  share: number;
+  color: string;
+}
+
+const cellsFor = (share: number, cells: number) => Math.round((Math.max(0, Math.min(100, share)) / 100) * cells);
+
+/** Block-glyph bar: `████████░░░░░░`, with an optional second segment after the first. */
+export function Bar({ share, color, cells, extra }: { share: number; color: string; cells: number; extra?: BarExtra }) {
+  const filled = cellsFor(share, cells);
+  const added = extra && extra.share > 0 ? Math.min(cells - filled, Math.max(1, cellsFor(share + extra.share, cells) - filled)) : 0;
   return (
     <span aria-hidden className="block min-w-0 select-none overflow-hidden whitespace-pre tracking-[-0.05em]">
       <span style={{ color }}>{"█".repeat(filled)}</span>
-      <span className="text-white/[0.1]">{"░".repeat(cells - filled)}</span>
+      {extra && <span style={{ color: extra.color }}>{"█".repeat(added)}</span>}
+      <span className="text-white/[0.1]">{"░".repeat(cells - filled - added)}</span>
     </span>
   );
 }
@@ -88,22 +97,26 @@ export function BarRow({
   note,
   labelClass,
   valueClass,
+  noteClass,
+  extra,
 }: {
   label: string;
   value: React.ReactNode;
   share: number;
   color: string;
   cells: number;
+  extra?: BarExtra;
   note?: string;
   labelClass?: string;
   valueClass?: string;
+  noteClass?: string;
 }) {
   return (
     <div className="flex items-baseline gap-4 py-[5px]">
       <span className={cn("w-[92px] shrink-0 truncate text-text-secondary", labelClass)}>{label}</span>
-      <Bar share={share} color={color} cells={cells} />
+      <Bar share={share} color={color} cells={cells} extra={extra} />
       <span className={cn("w-8 shrink-0 text-right text-text-primary", valueClass)}>{value}</span>
-      <span className="hidden w-14 text-right text-text-tertiary sm:block">{note}</span>
+      <span className={cn("hidden w-14 text-right text-text-tertiary sm:block", noteClass)}>{note}</span>
     </div>
   );
 }

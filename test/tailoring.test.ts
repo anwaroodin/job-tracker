@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calibrate, estimatePct } from "~/lib/run-cost";
+import { calibrate, estimatePct, usedPct } from "~/lib/run-cost";
 import { wordDiff } from "~/lib/word-diff";
 import { cleanResearch, researchRequest } from "~/server/cv/research";
 import { atsScore, cleanJobKeywords, contentText, keywordGaps } from "~/server/cv/tailoring/keywords";
@@ -200,21 +200,23 @@ describe("company research", () => {
 });
 
 describe("run cost", () => {
-  const stage = (costUsd: number, fiveHour: number | null, sevenDay: number | null) => ({ costUsd, inputTokens: 0, outputTokens: 0, fiveHour, sevenDay });
+  const stage = (costUsd: number) => ({ costUsd, inputTokens: 0, cachedTokens: 0, outputTokens: 0 });
 
-  it("learns how many percent of each limit a dollar of API-priced usage takes", () => {
-    const run = [stage(0.5, 40, 70), stage(1, 41, 70), stage(1, 43, 71), stage(0.5, 44, 71)];
+  it("learns how many percent of each limit a dollar takes from readings before and after a run", () => {
+    const run = { stages: [stage(1), stage(2)], before: { fiveHour: 28, sevenDay: 76 }, after: { fiveHour: 31, sevenDay: 77 } };
+    expect(usedPct(run, "fiveHour")).toBe(3);
     const calibration = calibrate(undefined, run, "tailor");
-    expect(calibration.fiveHour).toEqual({ pct: 4, usd: 2.5 });
+    expect(calibration.fiveHour).toEqual({ pct: 3, usd: 3 });
     expect(calibration.lastCost).toEqual({ tailor: 3 });
-    expect(estimatePct(calibration, "fiveHour", 3)).toBeCloseTo(4.8);
-    expect(estimatePct(calibration, "sevenDay", 3)).toBeCloseTo(1.2);
+    expect(estimatePct(calibration, "fiveHour", 2)).toBe(2);
+    expect(estimatePct(calibration, "sevenDay", 6)).toBe(2);
   });
 
-  it("ignores a run whose window reset or that has one reading", () => {
-    const reset = calibrate(undefined, [stage(1, 90, 70), stage(1, 2, 71)], "tailor");
+  it("ignores a run whose window reset or that has no readings", () => {
+    const reset = calibrate(undefined, { stages: [stage(1)], before: { fiveHour: 90, sevenDay: 70 }, after: { fiveHour: 2, sevenDay: 71 } }, "tailor");
     expect(reset.fiveHour).toEqual({ pct: 0, usd: 0 });
-    expect(estimatePct(calibrate(reset, [stage(1, 3, 71)], "research"), "fiveHour", 1)).toBeNull();
+    expect(reset.sevenDay).toEqual({ pct: 1, usd: 1 });
+    expect(estimatePct(calibrate(undefined, { stages: [stage(1)], before: null, after: null }, "research"), "fiveHour", 1)).toBeNull();
   });
 });
 
