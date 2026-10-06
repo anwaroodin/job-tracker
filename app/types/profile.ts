@@ -21,17 +21,6 @@ export interface ProfileForm {
     requiresSponsorship: boolean;
     noticePeriod: string;
     availableImmediately: boolean;
-  };
-  softwareCV: {
-    summary: string;
-    skills: string;
-    coverLetter: string;
-    salary: string;
-  };
-  retailCV: {
-    summary: string;
-    skills: string;
-    coverLetter: string;
     salary: string;
   };
 }

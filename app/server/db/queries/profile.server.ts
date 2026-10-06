@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "../client.server";
 import { profile } from "../schema";
-import type { ProfileForm } from "~/types/profile";
 import { EMPTY_CV } from "~/lib/cv";
 import { cleanCv } from "../../cv/clean";
 import type { Cv } from "~/types/cv";
+import type { ProfileForm } from "~/types/profile";
 
 const nowIso = () => new Date().toISOString();
 
@@ -31,9 +31,8 @@ const EMPTY_PROFILE: ProfileForm = {
     requiresSponsorship: false,
     noticePeriod: "",
     availableImmediately: true,
+    salary: "",
   },
-  softwareCV: { summary: "", skills: "", coverLetter: "", salary: "" },
-  retailCV: { summary: "", skills: "", coverLetter: "", salary: "" },
 };
 
 export async function getProfile(db: Db, userId: string): Promise<ProfileForm> {
@@ -48,8 +47,6 @@ export async function getProfile(db: Db, userId: string): Promise<ProfileForm> {
       githubUrl: profile.githubUrl,
       portfolioUrl: profile.portfolioUrl,
       eligibilityJson: profile.eligibilityJson,
-      softwareCvJson: profile.softwareCvJson,
-      retailCvJson: profile.retailCvJson,
     })
     .from(profile)
     .where(eq(profile.userId, userId))
@@ -78,8 +75,6 @@ export async function getProfile(db: Db, userId: string): Promise<ProfileForm> {
       portfolio: row.portfolioUrl ?? "",
     },
     eligibility: parse(row.eligibilityJson, EMPTY_PROFILE.eligibility),
-    softwareCV: parse(row.softwareCvJson, EMPTY_PROFILE.softwareCV),
-    retailCV: parse(row.retailCvJson, EMPTY_PROFILE.retailCV),
   };
 }
 
@@ -95,8 +90,6 @@ export async function saveProfile(db: Db, userId: string, form: ProfileForm) {
     githubUrl: form.personal.github || null,
     portfolioUrl: form.personal.portfolio || null,
     eligibilityJson: JSON.stringify(form.eligibility ?? {}),
-    softwareCvJson: JSON.stringify(form.softwareCV ?? {}),
-    retailCvJson: JSON.stringify(form.retailCV ?? {}),
     updatedAt: nowIso(),
   };
   await db
