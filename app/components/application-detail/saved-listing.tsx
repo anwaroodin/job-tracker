@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
 import { ContactList } from "~/components/application-detail/contact-list";
+import { CompanyLogo } from "~/components/applications/company-logo";
 import { FlagToggle } from "~/components/applications/flag-toggle";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { RichText } from "~/components/ui/rich-text";
@@ -50,10 +51,13 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
             <StatusBadge status={job.status} />
             <FlagToggle id={job.id} status={job.status} flagged={job.starred} />
           </p>
-          <h1 className="mt-4 max-w-3xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary normal-case sm:text-[30px]">
-            {job.role}
-            <span className="block uppercase text-text-tertiary">{job.company}</span>
-          </h1>
+          <div className="mt-4 flex items-start gap-4">
+            <CompanyLogo company={job.company} logoUrl={job.logoUrl} className="mt-1 size-11 text-[16px]" />
+            <h1 className="max-w-3xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary normal-case sm:text-[30px]">
+              {job.role}
+              <span className="block uppercase text-text-tertiary">{job.company}</span>
+            </h1>
+          </div>
           <FactChips facts={listingFacts(job)} className="mt-5" />
         </div>
 

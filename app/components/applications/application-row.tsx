@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { CompanyLogo } from "~/components/applications/company-logo";
 import { FlagMark } from "~/components/applications/flag-toggle";
 import { NewBadge } from "~/components/ui/new-badge";
 import { StatusBadge } from "~/components/ui/status-badge";
@@ -98,7 +99,8 @@ export function ApplicationRowItem(props: ApplicationRowItemProps) {
     >
       {/* Column 1: Company + Location */}
       <div className="min-w-0 col-start-1 row-start-1 sm:col-auto sm:row-auto">
-        <div className="flex items-baseline gap-1.5 truncate">
+        <div className="flex items-center gap-2 truncate">
+          <CompanyLogo company={app.company} logoUrl={app.logoUrl} />
           {app.starred && <FlagMark status={app.status} />}
           <span
             title={app.company}

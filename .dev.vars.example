@@ -9,3 +9,6 @@ GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 # Optional: classify emails with Jev (https://typesafe.ai). Without it the regex classifier is used.
 # Set EMAIL_CLASSIFIER=regex to turn Jev off while keeping the key.
 TYPESAFE_API_KEY=
+
+# Optional: company logos looked up by name with Logo.dev (https://www.logo.dev). Use the publishable key.
+LOGO_DEV_TOKEN=

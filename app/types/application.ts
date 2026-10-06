@@ -5,6 +5,7 @@ export type { Application, NewApplication } from "~/server/db/schema";
 export type ApplicationRowData = Application & { unread?: number };
 
 export type SavedJobData = Pick<Application, "id" | "company" | "role"> & {
+  logoUrl?: string | null;
   url?: string | null;
   location?: string | null;
   starred?: boolean | null;
@@ -27,6 +28,7 @@ export type SavedListingJob = Pick<
   | "salary"
   | "postedAt"
   | "applicants"
+  | "logoUrl"
   | "contactsJson"
   | "cvType"
   | "category"

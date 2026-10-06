@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
+import { CompanyLogo } from "~/components/applications/company-logo";
 import { FlagMark } from "~/components/applications/flag-toggle";
 import { fmtDate } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
@@ -89,7 +90,8 @@ export function SavedApplicationRowItem({
       >
         {/* Company Column */}
         <div className="min-w-0">
-          <div className="flex items-baseline gap-1.5 truncate">
+          <div className="flex items-center gap-2 truncate">
+            <CompanyLogo company={job.company} logoUrl={job.logoUrl} />
             <FlagMark status="saved" />
             <span
               title={job.company}

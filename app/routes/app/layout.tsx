@@ -22,7 +22,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const path = new URL(request.url).pathname.replace(/\.data$/, "");
   const openApplication = /^\/applications\/([^/]+)$/.exec(path)?.[1];
   const unreadTotal = Object.entries(unread).reduce((sum, [id, n]) => (id === openApplication ? sum : sum + n), 0);
-  return { user, gmail, unread, unreadTotal };
+  return { user, gmail, unread, unreadTotal, logoToken: env.LOGO_DEV_TOKEN || null };
 }
 
 export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {

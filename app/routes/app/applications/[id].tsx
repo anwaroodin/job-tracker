@@ -2,6 +2,7 @@ import { data, Link, redirect, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/[id]";
 import type { loader as layoutLoader } from "../layout";
 import { ContactList } from "~/components/application-detail/contact-list";
+import { CompanyLogo } from "~/components/applications/company-logo";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { FlagToggle } from "~/components/applications/flag-toggle";
 import { GmailSync } from "~/components/gmail/gmail-sync";
@@ -143,10 +144,13 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
         </p>
 
         <div className="min-w-0">
-          <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-            {row.company}
-            <span className="block text-text-tertiary">{row.role}</span>
-          </h1>
+          <div className="flex items-start gap-4">
+            <CompanyLogo company={row.company} logoUrl={row.logoUrl} className="mt-1 size-11 text-[16px]" />
+            <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
+              {row.company}
+              <span className="block text-text-tertiary">{row.role}</span>
+            </h1>
+          </div>
           <FactChips facts={listingFacts(row)} className="mt-5" />
         </div>
 
