@@ -5,7 +5,7 @@ import { Button } from "~/components/ui/button";
 import { ContactList } from "~/components/application-detail/contact-list";
 import { FlagToggle } from "~/components/applications/flag-toggle";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
-import { JobDescription } from "~/components/application-detail/job-description";
+import { RichText } from "~/components/ui/rich-text";
 import { StatusBadge } from "~/components/ui/status-badge";
 import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
@@ -141,7 +141,7 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
         <div className="lg:col-start-1 lg:row-start-1">
           <Section n="03" title="Job description" hint={source || undefined} i={2}>
             {job.description ? (
-              <JobDescription text={job.description} />
+              <RichText text={job.description} />
             ) : (
               <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
                 No description was captured with this posting.{" "}

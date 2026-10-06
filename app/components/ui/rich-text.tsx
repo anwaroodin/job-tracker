@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cn } from "~/lib/cn";
 
 type Block = { kind: "heading"; text: string } | { kind: "list"; items: string[] } | { kind: "paragraph"; text: string };
@@ -6,13 +7,12 @@ const BULLET = /^(?:[•·▪◦●‣∙*–\-→➔➜►▸✓✔]|\d{1,2}[.)
 const HEADING_MAX = 60;
 
 /**
- * Splits a captured description into blocks. The extension marks headings
- * with "## " and list items with "• ", but many listings write headings as
- * plain lines, so a short line ending in ":" or leading into a list is read
- * as a heading too.
+ * Splits light markup into blocks. The extension marks headings with "## "
+ * and list items with "• ", but many listings write headings as plain lines,
+ * so a short line ending in ":" or leading into a list is read as a heading too.
  */
-function parse(description: string): Block[] {
-  const lines = description.split("\n").map((l) => l.trim());
+function parse(text: string): Block[] {
+  const lines = text.split("\n").map((l) => l.trim());
   const blocks: Block[] = [];
 
   lines.forEach((line, i) => {
@@ -39,8 +39,20 @@ function parse(description: string): Block[] {
   return blocks;
 }
 
-/** A captured job description laid out like the original listing. */
-export function JobDescription({ text, className }: { text: string; className?: string }) {
+function inline(text: string): ReactNode[] {
+  return text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
+    i % 2 ? (
+      <strong key={i} className="font-medium text-text-primary">
+        {part}
+      </strong>
+    ) : (
+      part
+    ),
+  );
+}
+
+/** Light markup (a captured job description, Claude's notes) laid out as headings, lists and paragraphs. */
+export function RichText({ text, className }: { text: string; className?: string }) {
   return (
     <div className={cn("flex max-w-[72ch] flex-col font-sans text-[14px] normal-case leading-[1.7] tracking-normal", className)}>
       {parse(text).map((block, i) => {
@@ -53,7 +65,7 @@ export function JobDescription({ text, className }: { text: string; className?: 
               <span aria-hidden className="mr-2 text-text-tertiary">
                 ##
               </span>
-              {block.text}
+              {inline(block.text)}
             </h3>
           );
         }
@@ -65,7 +77,7 @@ export function JobDescription({ text, className }: { text: string; className?: 
                   <span aria-hidden className="font-mono text-text-tertiary">
                     ›
                   </span>
-                  <span>{item}</span>
+                  <span>{inline(item)}</span>
                 </li>
               ))}
             </ul>
@@ -73,7 +85,7 @@ export function JobDescription({ text, className }: { text: string; className?: 
         }
         return (
           <p key={i} className="mb-3 text-text-secondary">
-            {block.text}
+            {inline(block.text)}
           </p>
         );
       })}

@@ -5,7 +5,7 @@ import { ContactList } from "~/components/application-detail/contact-list";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { FlagToggle } from "~/components/applications/flag-toggle";
 import { GmailSync } from "~/components/gmail/gmail-sync";
-import { JobDescription } from "~/components/application-detail/job-description";
+import { RichText } from "~/components/ui/rich-text";
 import { SavedListing } from "~/components/application-detail/saved-listing";
 import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
 import { StatusBadge } from "~/components/ui/status-badge";
@@ -240,7 +240,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
         {row.description && (
           <div className="lg:col-start-1 lg:row-start-2">
             <Section n="05" title="Job description" hint={source || undefined} i={4}>
-              <JobDescription text={row.description} />
+              <RichText text={row.description} />
             </Section>
           </div>
         )}
