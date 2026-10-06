@@ -106,6 +106,15 @@ export interface Person {
   website: string;
 }
 
+export interface TailoredCvCard {
+  applicationId: string;
+  company: string;
+  role: string;
+  version: number;
+  createdAt: string;
+  cv: CvContent;
+}
+
 export interface TypstCv {
   author: Person;
   summary: string;

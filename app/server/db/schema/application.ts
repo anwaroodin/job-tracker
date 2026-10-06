@@ -30,6 +30,8 @@ export const application = sqliteTable(
     contactsJson: text("contacts_json")
       .notNull()
       .default(sql`'[]'`),
+    jdKeywordsJson: text("jd_keywords_json"),
+    researchJson: text("research_json"),
     starred: integer("starred", { mode: "boolean" }).notNull().default(false),
     autoFilled: integer("auto_filled", { mode: "boolean" })
       .notNull()
