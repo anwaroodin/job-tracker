@@ -24,4 +24,7 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  environments: {
+    ssr: { optimizeDeps: { exclude: ["typst-wasm"] } },
+  },
 });
