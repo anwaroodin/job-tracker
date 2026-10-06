@@ -9,6 +9,8 @@ A Chrome extension that captures a job's details, fills the application form fro
 3. Click the extension's icon and enter your dashboard's address (for example `https://job-tracker.<subdomain>.workers.dev`, or `localhost:5173` for `npm run dev`).
 4. Sign in on the dashboard in the same Chrome profile. The extension uses that session; there is no separate login.
 
+To share the extension, run `npm run extension:zip` from the repo root. It writes `dist/job-tracker-extension-<version>.zip`; the recipient unzips it and loads that folder with **Load unpacked** as above.
+
 There's no build step. The popup and service worker are ES modules; content scripts are classic scripts that share `globalThis.__jobTracker` and load in the order listed in `manifest.json`.
 
 After changing the extension, click reload on `chrome://extensions` and refresh open tabs.

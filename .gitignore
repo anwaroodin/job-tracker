@@ -17,5 +17,7 @@ worker-configuration.d.ts
 !.env.example
 scripts/*
 !scripts/claude-runner.mjs
+!scripts/zip-extension.mjs
 migrations/
 wrangler.jsonc
+/dist/

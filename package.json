@@ -15,7 +15,8 @@
     "db:migrate:remote": "wrangler d1 migrations apply job-tracker-db --remote",
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
-    "runner": "node --env-file-if-exists=.env scripts/claude-runner.mjs"
+    "runner": "node --env-file-if-exists=.env scripts/claude-runner.mjs",
+    "extension:zip": "node scripts/zip-extension.mjs"
   },
   "dependencies": {
     "@legendapp/state": "^2.1.15",
