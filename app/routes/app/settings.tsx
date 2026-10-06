@@ -98,7 +98,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
         <div>
           <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <b className="mr-2 font-semibold text-text-primary">[05]</b>Settings
+            <b className="mr-2 font-semibold text-text-primary">[06]</b>Settings
           </p>
           <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
             Settings

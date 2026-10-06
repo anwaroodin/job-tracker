@@ -2,6 +2,9 @@ import { eq } from "drizzle-orm";
 import type { Db } from "../client.server";
 import { profile } from "../schema";
 import type { ProfileForm } from "~/types/profile";
+import { EMPTY_CV } from "~/lib/cv";
+import { cleanCv } from "../../cv/clean";
+import type { Cv } from "~/types/cv";
 
 const nowIso = () => new Date().toISOString();
 
@@ -100,4 +103,40 @@ export async function saveProfile(db: Db, userId: string, form: ProfileForm) {
     .insert(profile)
     .values(row)
     .onConflictDoUpdate({ target: profile.userId, set: row });
+}
+
+export async function getCv(db: Db, userId: string): Promise<Cv> {
+  const [row] = await db
+    .select({ json: profile.cvJson })
+    .from(profile)
+    .where(eq(profile.userId, userId))
+    .limit(1);
+  if (!row?.json) return EMPTY_CV;
+  try {
+    return cleanCv(JSON.parse(row.json));
+  } catch {
+    return EMPTY_CV;
+  }
+}
+
+export function saveCv(db: Db, userId: string, cv: Cv) {
+  const now = nowIso();
+  const set = { cvJson: JSON.stringify(cv), cvUpdatedAt: now, updatedAt: now };
+  return db
+    .insert(profile)
+    .values({ userId, ...set })
+    .onConflictDoUpdate({ target: profile.userId, set });
+}
+
+export async function getCvTemplate(db: Db, userId: string) {
+  const [row] = await db.select({ template: profile.cvTemplate }).from(profile).where(eq(profile.userId, userId)).limit(1);
+  return row?.template ?? null;
+}
+
+export function saveCvTemplate(db: Db, userId: string, template: string | null) {
+  const set = { cvTemplate: template, updatedAt: nowIso() };
+  return db
+    .insert(profile)
+    .values({ userId, ...set })
+    .onConflictDoUpdate({ target: profile.userId, set });
 }

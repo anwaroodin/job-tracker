@@ -33,6 +33,7 @@ export default [
     route("overview", "routes/app/overview.tsx"),
     route("applications", "routes/app/applications/index.tsx"),
     route("applications/:id", "routes/app/applications/[id].tsx"),
+    route("cv", "routes/app/cv.tsx"),
     route("profile", "routes/app/profile.tsx"),
     route("usage", "routes/app/usage.tsx"),
     route("settings", "routes/app/settings.tsx"),
