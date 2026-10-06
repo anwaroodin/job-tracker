@@ -33,6 +33,16 @@ Connect Gmail (read-only) and job-tracker syncs application emails in the backgr
 - **Usage & settings:** a usage page tracks Jev spend against an optional monthly budget, and a settings page controls the classifier, confidence threshold and syncing.
 - **Privacy:** only job-related email is kept. Once an email is known not to be about jobs, its subject, sender and snippet are deleted, and only its Gmail id, thread and date remain so it isn't downloaded again. Emails Jev isn't sure about are kept and listed on the Applications page until you mark them as not about jobs (which deletes them) or give them a category. Emails in the same thread as a job email are kept, and a removed email is fetched again if a job email later joins its thread or the classifier changes.
 
+### CV and tailoring
+
+Keep one master CV and get a version tailored to each job:
+
+- **CV:** import a PDF or paste your CV, edit it, and preview it rendered with [Typst](https://typst.app) from a template you can change. The PDF is compiled on the Worker.
+- **Tailoring:** a pipeline ported from [Resume-Matcher](https://github.com/srbhr/Resume-Matcher) (Apache-2.0) extracts the job's keywords, plans which skills to target, and asks Claude for targeted edits. Each edit is checked in code against your CV before it's applied, so titles, companies, dates and skills you don't have can't be invented. It also writes a cover letter.
+- **Match score:** keyword match, skills coverage and section completeness, before and after tailoring, with every change shown word by word.
+- **Company research:** Claude searches the web for what the company values and looks for, and the cover letter uses it.
+- **Runs on your Claude subscription:** a small local runner calls Claude Code on your machine, so tailoring uses your own Claude plan rather than an API key. The page shows how much of your 5-hour and weekly limits each run uses.
+
 <div align="center">
   <img src="./images/extension.png" alt="browser-extension" />
   <p>Browser Extension</p>
@@ -47,6 +57,8 @@ Connect Gmail (read-only) and job-tracker syncs application emails in the backgr
 - **Sessions:** Cloudflare KV (read on every request; D1 keeps a copy)
 - **Authentication:** [Better Auth](https://better-auth.com/) + Google OAuth
 - **Styling:** Tailwind CSS v4 & Radix UI primitives
+- **CV rendering:** [Typst](https://typst.app) compiled on the Worker with [typst-wasm](https://www.npmjs.com/package/typst-wasm); PDF import with [unpdf](https://github.com/unjs/unpdf)
+- **Tailoring:** [Claude Code](https://claude.com/claude-code) through a local runner
 
 ## Project Structure
 
@@ -73,11 +85,13 @@ job-tracker/
 │       ├── services/           Business rules: status transitions, applications, timeline, overview, search
 │       ├── email/              Classification, retention (privacy rules), details, suggestions
 │       ├── gmail/              Gmail API client, payload mapping, sync/ (the sync pipeline)
+│       ├── cv/                 CV import and Typst rendering; tailoring/ (the tailoring pipeline and its prompts)
 │       ├── jev/                TypeSafe Jev questions (optional AI classification)
 │       ├── storage/            R2 helpers (CV uploads, upcoming)
 │       └── extension/          Extension API HTTP helpers and input validation
 ├── test/                       Vitest suite (npm test), runs against the real migrations
 ├── extension/                  Chrome extension (see extension/README.md)
+├── scripts/                    The local Claude runner (claude-runner.mjs) and the extension packager (zip-extension.mjs)
 ├── workers/
 │   └── app.ts                  Cloudflare Worker entry point
 ├── migrations/                 Drizzle SQL migrations
@@ -153,11 +167,28 @@ npm run deploy    # Build and deploy to Cloudflare Workers
 
 Load the `extension/` folder unpacked from `chrome://extensions`, click its icon and enter your dashboard's address (your Worker's URL), then sign in on the dashboard. See [extension/README.md](./extension/README.md) for details.
 
+### 7. Tailor with Claude (optional)
+
+Tailoring and company research need [Claude Code](https://claude.com/claude-code) installed and signed in on the same machine as your browser. Start the runner:
+
+```bash
+npm run runner    # Listens on http://127.0.0.1:4317
+```
+
+It only accepts requests from `http://localhost:5173` and from `JOB_TRACKER_URL`. Set these in `.env` if you need them:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `JOB_TRACKER_URL` | none | Your deployed dashboard's address, so it can use the runner too |
+| `RUNNER_MODEL` | `opus` | Model used when the page doesn't pick one |
+| `RUNNER_PORT` | `4317` | Port to listen on |
+
 ## Roadmap
 
 - [ ] Support CV upload/download via R2 signed URLs
 - [x] Gmail integration for automatic follow-up tracking
 - [x] Browser extension companion app interacting with the Workers API
+- [x] Master CV with Typst rendering, and a tailored CV and cover letter per job
 - [ ] Data importer for legacy JSON job tracking formats
 
 ## Contributing
