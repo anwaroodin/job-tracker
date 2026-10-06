@@ -150,6 +150,7 @@
     slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const httpUrl = (href) => {
+    if (typeof href !== "string" || !href.trim()) return "";
     try {
       const url = new URL(href, location.href);
       return /^https?:$/.test(url.protocol) ? url.toString() : "";
