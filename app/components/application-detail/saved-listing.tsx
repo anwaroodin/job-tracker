@@ -1,4 +1,4 @@
-import { ArrowUpRight, Check, Trash2 } from "lucide-react";
+import { ArrowUpRight, Check, FileText, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
@@ -66,6 +66,12 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
               </a>
             </Button>
           )}
+          <Button asChild variant="secondary">
+            <Link to={`/applications/${job.id}/cv`}>
+              <FileText />
+              Tailor CV
+            </Link>
+          </Button>
           <Button type="button" variant="secondary" disabled={busy} onClick={() => act({ intent: "saved-applied" })}>
             <Check />
             Mark applied

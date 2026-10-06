@@ -214,7 +214,11 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
             {row.postedAt && <Leader label="Posted">{fmtDate(row.postedAt)}</Leader>}
             {row.applicants && <Leader label="Applicants">{row.applicants}</Leader>}
             {row.category && <Leader label="Level">{row.category}</Leader>}
-            <Leader label="CV">{row.cvType}</Leader>
+            <Leader label="CV">
+              <Link to={`/applications/${row.id}/cv`} className="text-accent-primary transition-colors hover:text-accent-secondary">
+                Tailor ↗
+              </Link>
+            </Leader>
             <Leader label="Applied">{fmtDate(row.appliedAt)}</Leader>
             <Leader label="Updated">{fmtDate(row.updatedAt)}</Leader>
             {source && (
