@@ -61,6 +61,11 @@ function request(stage: Stage, prompt: string, schema: object): TailorRequest {
   return { system: SYSTEM_PROMPTS[stage], schema, input: prompt, effort: EFFORT[stage] };
 }
 
+function researchFor(ctx: TailorContext) {
+  const r = ctx.research;
+  return r ? json({ values: r.values, lookingFor: r.lookingFor, news: r.news }) : "Nothing found.";
+}
+
 function keywordsRequest(ctx: TailorContext) {
   return request("keywords", fill(EXTRACT_KEYWORDS_PROMPT, { job_description: sanitise(ctx.jobDescription) }), KEYWORDS_SCHEMA);
 }
@@ -72,6 +77,7 @@ function planRequest(ctx: TailorContext, jk: JobKeywords) {
       existing_skills: ctx.master.skills.flatMap((g) => g.items).join(", ") || "None",
       job_keywords: keywordsForPrompt(jk),
       job_description: sanitise(ctx.jobDescription),
+      company_research: researchFor(ctx),
       original_resume: json(resumeView(ctx.master)),
     }),
     PLAN_SCHEMA,
@@ -87,6 +93,7 @@ function diffsRequest(ctx: TailorContext, jk: JobKeywords, state: TailorState) {
       job_keywords: keywordsForPrompt(jk),
       skill_targets: targets,
       job_description: sanitise(ctx.jobDescription),
+      company_research: researchFor(ctx),
       original_resume: json(resumeView(ctx.master)),
     }),
     DIFFS_SCHEMA,
@@ -99,13 +106,12 @@ function emphasisStep(jk: JobKeywords, state: TailorState): Step {
 }
 
 function letterRequest(ctx: TailorContext, tailored: CvContent) {
-  const research = ctx.research ? { values: ctx.research.values, lookingFor: ctx.research.lookingFor, news: ctx.research.news } : "";
   return request(
     "letter",
     fill(COVER_LETTER_PROMPT, {
       job_description: sanitise(ctx.jobDescription),
       resume_data: json(resumeView(tailored)),
-      company_research: research ? json(research) : "Nothing found.",
+      company_research: researchFor(ctx),
     }),
     LETTER_SCHEMA,
   );

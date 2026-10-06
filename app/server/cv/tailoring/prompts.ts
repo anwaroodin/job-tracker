@@ -41,6 +41,7 @@ Rules:
 4. Do not include skills unrelated to the JD.
 5. Do not include certifications.
 6. Generate reasons in British English.
+7. Use the company research only to judge which of the candidate's skills this company values most.
 
 Existing resume skills:
 {existing_skills}
@@ -50,6 +51,9 @@ JD keywords and skills:
 
 Job Description:
 {job_description}
+
+What the company says it values and looks for (may be empty):
+{company_research}
 
 Resume JSON:
 {original_resume}
@@ -80,6 +84,7 @@ RULES:
 10. Exception to rule 2: you may add a skill only if it appears in the verified skill targets below
 11. By DEFAULT, scan the summary and every work, project, and education description for content that already demonstrates a job-description keyword or skill, and reframe that text using the job description's terminology where it is not already phrased that way (per rule 9, leave content that already aligns well), while preserving the candidate's actual accomplishment. Do NOT add new work, metrics, or responsibilities; only restate existing content in the JD's language, and verify every reframe stays factually accurate.
 12. Preserve original capitalization, especially for proper nouns, technical terms (e.g., REST, API, AWS), and acronyms. Do not change the casing of words that were capitalized in the original.
+13. Use the company research only to decide which of the candidate's real experience to emphasise. Never copy its wording, slogans or values into the resume, and never claim the candidate shares a value the resume doesn't show.
 
 PATHS you can target:
 - "summary" — the resume summary text
@@ -101,6 +106,9 @@ Verified skill targets:
 
 Job Description:
 {job_description}
+
+What the company says it values and looks for (may be empty):
+{company_research}
 
 Original Resume:
 {original_resume}

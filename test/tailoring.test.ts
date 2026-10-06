@@ -185,6 +185,18 @@ describe("pipeline", () => {
 });
 
 describe("company research", () => {
+  it("is given to the skill plan and the edits, with a rule against copying it", () => {
+    const research = { summary: "", values: ["Ship small, ship often"], lookingFor: ["Owners"], culture: [], news: [], sources: [], researchedAt: "" };
+    const ctx: TailorContext = { master: CV, jobDescription: JOB, keywords: KEYWORDS, research };
+    const plan = startTailoring(ctx, "keywords");
+    if (!("request" in plan)) throw new Error("expected a request");
+    expect(plan.request.input).toContain("Ship small, ship often");
+    const diffs = continueTailoring(ctx, "plan", { target_skills: [] }, plan.state);
+    if (!("request" in diffs)) throw new Error("expected a request");
+    expect(diffs.request.input).toContain("Ship small, ship often");
+    expect(diffs.request.input).toContain("Never copy its wording");
+  });
+
   it("asks for web tools and keeps only safe links from the reply", () => {
     expect(researchRequest({ company: "Acme", role: "PM", description: "Build things", url: "" })).toMatchObject({ web: true, effort: "medium" });
     const research = cleanResearch({
