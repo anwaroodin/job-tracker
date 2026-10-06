@@ -22,6 +22,7 @@ export default [
   route("api/activity", "routes/api/activity.ts"),
   route("api/search", "routes/api/search.ts"),
   route("api/cv/render", "routes/api/cv/render.ts"),
+  route("api/cv/tailor", "routes/api/cv/tailor.ts"),
   
   ...prefix("auth", [
     route("login", "routes/auth/login.tsx"),
@@ -33,6 +34,7 @@ export default [
     route("overview", "routes/app/overview.tsx"),
     route("applications", "routes/app/applications/index.tsx"),
     route("applications/:id", "routes/app/applications/[id].tsx"),
+    route("applications/:id/cv", "routes/app/applications/cv.tsx"),
     route("cv", "routes/app/cv.tsx"),
     route("profile", "routes/app/profile.tsx"),
     route("usage", "routes/app/usage.tsx"),
