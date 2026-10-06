@@ -52,6 +52,12 @@ export interface Cv {
 
 export type CvImportResult = { cv: Cv; lines: number } | { error: string };
 
+export interface CoverLetter {
+  greeting: string;
+  paragraphs: string[];
+  signOff: string;
+}
+
 export interface CvContent {
   summary: string;
   summaryBold?: string[];
@@ -60,6 +66,34 @@ export interface CvContent {
   projects: CvProject[];
   skills: SkillGroup[];
   certifications: string[];
+}
+
+export interface TailoredCv extends CvContent {
+  coverLetter: CoverLetter;
+  edits?: ResumeChange[];
+  rejectedEdits?: number;
+  score?: { before: AtsScore; after: AtsScore };
+  strategy?: string;
+  changes: string[];
+  flags: string[];
+}
+
+export interface TailorRequest {
+  system: string;
+  schema: object;
+  input: string;
+  model?: string;
+  web?: boolean;
+}
+
+export interface CompanyResearch {
+  summary: string;
+  values: string[];
+  lookingFor: string[];
+  culture: string[];
+  news: string[];
+  sources: { title: string; url: string }[];
+  researchedAt: string;
 }
 
 export interface Person {
@@ -83,3 +117,40 @@ export interface TypstCv {
   certifications: string[];
 }
 
+export interface JobKeywords {
+  company: string;
+  role: string;
+  requiredSkills: string[];
+  preferredSkills: string[];
+  experienceRequirements: string[];
+  educationRequirements: string[];
+  keyResponsibilities: string[];
+  keywords: string[];
+  experienceYears: number | null;
+  seniorityLevel: string;
+}
+
+export interface ResumeChange {
+  path: string;
+  action: "replace" | "append" | "reorder" | "add_skill";
+  original: string | null;
+  value: string | string[];
+  reason: string;
+}
+
+export interface SkillTarget {
+  skill: string;
+  source: "existing" | "jd_added" | "supported_by_resume";
+  reason: string;
+}
+
+export interface AtsScore {
+  overall: number;
+  keywordMatch: number;
+  skillsCoverage: number;
+  sectionCompleteness: number;
+  keywords: { term: string; kind: "required" | "preferred" | "keyword"; found: boolean }[];
+  missing: string[];
+  injectable: string[];
+  recommendations: string[];
+}

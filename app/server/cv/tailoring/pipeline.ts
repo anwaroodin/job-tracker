@@ -1,0 +1,211 @@
+import type { CompanyResearch, CvContent, JobKeywords, ResumeChange, SkillTarget, TailoredCv, TailorRequest } from "~/types/cv";
+import { cleanCv, list, obj, str, strings } from "../clean";
+import { coverLetterFrom } from "../tailored";
+import { applyEmphasis, cleanEmphasis, type Emphasis, emphasisSlots, verifyEmphasis } from "./emphasis";
+import { atsScore, cleanJobKeywords, contentText, keywordGaps, keywordsForPrompt } from "./keywords";
+import {
+  COVER_LETTER_PROMPT,
+  DIFF_IMPROVE_PROMPT,
+  DIFF_STRATEGY_INSTRUCTIONS,
+  EMPHASIS_PROMPT,
+  EXTRACT_KEYWORDS_PROMPT,
+  fill,
+  KEYWORD_INJECTION_PROMPT,
+  SKILL_TARGET_PLAN_PROMPT,
+  STRATEGIES,
+  SYSTEM_PROMPTS,
+  type Strategy,
+} from "./prompts";
+import { alignWithMaster, MAX_NOTE_CHARS, mergeInjected, removeAiPhrases, verifySkillPlan, withInjectedEdits } from "./refine";
+import { applyDiffs, resumeView, verifyDiffResult } from "./resume";
+import { DIFFS_SCHEMA, EMPHASIS_SCHEMA, INJECT_SCHEMA, KEYWORDS_SCHEMA, LETTER_SCHEMA, PLAN_SCHEMA } from "./schemas";
+
+export type Stage = "keywords" | "plan" | "diffs" | "inject" | "emphasis" | "letter";
+
+export interface TailorState {
+  strategy: Strategy;
+  targets: SkillTarget[];
+  tailored: CvContent | null;
+  edits: ResumeChange[];
+  rejected: number;
+  warnings: string[];
+  notes: string[];
+  emphasis: Emphasis;
+}
+
+export interface TailorContext {
+  master: CvContent;
+  jobDescription: string;
+  keywords: JobKeywords | null;
+  research: CompanyResearch | null;
+}
+
+export type Step = { stage: Stage; request: TailorRequest; state: TailorState } | { keywords: JobKeywords } | { done: TailoredCv };
+
+const MAX_JOB_CHARS = 12_000;
+const INJECTION = /ignore\s+(all\s+)?previous\s+instructions|disregard\s+(all\s+)?above|forget\s+(everything|all)|new\s+instructions?:|system\s*:|<\s*\/?\s*system\s*>|\[\s*\/?\s*INST\s*\]/gi;
+
+const sanitise = (text: string) => text.slice(0, MAX_JOB_CHARS).replace(INJECTION, "[REDACTED]");
+const json = (value: unknown) => JSON.stringify(value);
+
+function request(stage: Stage, prompt: string, schema: object): TailorRequest {
+  return { system: SYSTEM_PROMPTS[stage], schema, input: prompt };
+}
+
+function keywordsRequest(ctx: TailorContext) {
+  return request("keywords", fill(EXTRACT_KEYWORDS_PROMPT, { job_description: sanitise(ctx.jobDescription) }), KEYWORDS_SCHEMA);
+}
+
+function planRequest(ctx: TailorContext, jk: JobKeywords) {
+  return request(
+    "plan",
+    fill(SKILL_TARGET_PLAN_PROMPT, {
+      existing_skills: ctx.master.skills.flatMap((g) => g.items).join(", ") || "None",
+      job_keywords: keywordsForPrompt(jk),
+      job_description: sanitise(ctx.jobDescription),
+      original_resume: json(resumeView(ctx.master)),
+    }),
+    PLAN_SCHEMA,
+  );
+}
+
+function diffsRequest(ctx: TailorContext, jk: JobKeywords, state: TailorState) {
+  const targets = state.targets.map((t) => `- ${t.skill} (${t.source}): ${t.reason}`).join("\n") || "No verified skill targets.";
+  return request(
+    "diffs",
+    fill(DIFF_IMPROVE_PROMPT, {
+      strategy_instruction: DIFF_STRATEGY_INSTRUCTIONS[state.strategy],
+      job_keywords: keywordsForPrompt(jk),
+      skill_targets: targets,
+      job_description: sanitise(ctx.jobDescription),
+      original_resume: json(resumeView(ctx.master)),
+    }),
+    DIFFS_SCHEMA,
+  );
+}
+
+function emphasisStep(jk: JobKeywords, state: TailorState): Step {
+  const lines = emphasisSlots(state.tailored!).map(([path, text]) => `${path}: ${text}`).join("\n");
+  return { stage: "emphasis", request: request("emphasis", fill(EMPHASIS_PROMPT, { job_keywords: keywordsForPrompt(jk), lines }), EMPHASIS_SCHEMA), state };
+}
+
+function letterRequest(ctx: TailorContext, tailored: CvContent) {
+  const research = ctx.research ? { values: ctx.research.values, lookingFor: ctx.research.lookingFor, news: ctx.research.news } : "";
+  return request(
+    "letter",
+    fill(COVER_LETTER_PROMPT, {
+      job_description: sanitise(ctx.jobDescription),
+      resume_data: json(resumeView(tailored)),
+      company_research: research ? json(research) : "Nothing found.",
+    }),
+    LETTER_SCHEMA,
+  );
+}
+
+function polished(ctx: TailorContext, jk: JobKeywords, state: TailorState, cv: CvContent): TailorState {
+  const { cv: cleaned, removed: phrases } = removeAiPhrases(cv, ctx.jobDescription);
+  const { cv: aligned, removed } = alignWithMaster(cleaned, ctx.master, jk, ctx.jobDescription);
+  const warnings = [...state.warnings];
+  if (phrases.length) warnings.push(`Replaced AI-sounding phrases: ${phrases.join(", ")}.`);
+  if (removed.length) warnings.push(`Removed skills or certifications not backed by your CV or the job: ${removed.join(", ")}.`);
+  return { ...state, tailored: aligned, warnings };
+}
+
+export function startTailoring(ctx: TailorContext, strategy: Strategy): Step {
+  const state: TailorState = { strategy, targets: [], tailored: null, edits: [], rejected: 0, warnings: [], notes: [], emphasis: {} };
+  if (!ctx.keywords) return { stage: "keywords", request: keywordsRequest(ctx), state };
+  return { stage: "plan", request: planRequest(ctx, ctx.keywords), state };
+}
+
+export function continueTailoring(ctx: TailorContext, stage: Stage, result: unknown, state: TailorState): Step {
+  if (stage === "keywords") return { keywords: cleanJobKeywords(result) };
+  const jk = ctx.keywords;
+  if (!jk) throw new Error("Job keywords are missing");
+
+  if (stage === "plan") {
+    const plan = verifySkillPlan(result, ctx.master, jk, ctx.jobDescription);
+    const warnings = plan.rejected.length ? [...state.warnings, `${plan.rejected.length} unsupported skill target(s) rejected: ${plan.rejected.join(", ")}.`] : state.warnings;
+    const next = { ...state, targets: plan.accepted, warnings, notes: plan.notes ? [plan.notes] : [] };
+    return { stage: "diffs", request: diffsRequest(ctx, jk, next), state: next };
+  }
+
+  if (stage === "diffs") {
+    const changes = cleanChanges(obj(result).changes);
+    const { result: tailored, applied, rejected } = applyDiffs(ctx.master, changes, state.targets, state.strategy === "full");
+    const warnings = [...state.warnings, ...verifyDiffResult(ctx.master, tailored, applied)];
+    if (rejected.length) warnings.push(`${rejected.length} change(s) rejected during verification.`);
+    const notes = [...state.notes, str(obj(result).strategy_notes, MAX_NOTE_CHARS)].filter(Boolean);
+    const next: TailorState = { ...state, tailored, edits: applied, rejected: rejected.length, warnings, notes };
+    const { injectable } = keywordGaps(jk, contentText(tailored), contentText(ctx.master));
+    if (!injectable.length) {
+      return emphasisStep(jk, polished(ctx, jk, next, tailored));
+    }
+    const prompt = fill(KEYWORD_INJECTION_PROMPT, {
+      keywords_to_inject: json(injectable),
+      current_resume: json(resumeView(tailored)),
+      master_resume: json(resumeView(ctx.master)),
+      job_description: sanitise(ctx.jobDescription).slice(0, 2000),
+    });
+    return { stage: "inject", request: request("inject", prompt, INJECT_SCHEMA), state: next };
+  }
+
+  const tailored = state.tailored ?? ctx.master;
+  if (stage === "inject") {
+    const merged = mergeInjected(tailored, result);
+    return emphasisStep(jk, polished(ctx, jk, { ...state, edits: withInjectedEdits(state.edits, ctx.master, tailored, merged) }, merged));
+  }
+
+  if (stage === "emphasis") {
+    return { stage: "letter", request: letterRequest(ctx, tailored), state: { ...state, emphasis: verifyEmphasis(tailored, result) } };
+  }
+
+  const masterText = contentText(ctx.master);
+  return {
+    done: {
+      ...applyEmphasis(tailored, state.emphasis),
+      coverLetter: coverLetterFrom(result),
+      changes: state.notes,
+      flags: state.warnings,
+      edits: state.edits,
+      rejectedEdits: state.rejected,
+      score: { before: atsScore(ctx.master, jk, masterText), after: atsScore(tailored, jk, masterText) },
+      strategy: state.strategy,
+    },
+  };
+}
+
+function cleanChanges(raw: unknown): ResumeChange[] {
+  const actions = new Set(["replace", "append", "reorder", "add_skill"]);
+  return list(raw)
+    .map((c) => obj(c))
+    .filter((c) => actions.has(String(c.action)))
+    .map((c) => ({
+      path: str(c.path, 120),
+      action: c.action as ResumeChange["action"],
+      original: typeof c.original === "string" ? c.original : null,
+      value: Array.isArray(c.value) ? strings(c.value, 200) : str(c.value, 1500),
+      reason: str(c.reason, 500),
+    }));
+}
+
+export function cleanState(raw: unknown): TailorState {
+  const r = obj(raw);
+  const tailored = r.tailored ? obj(r.tailored) : null;
+  const { summaries: _summaries, targetRoles: _targetRoles, ...cleaned } = cleanCv({ ...tailored, summaries: [] });
+  return {
+    strategy: STRATEGIES.includes(r.strategy as Strategy) ? (r.strategy as Strategy) : "keywords",
+    targets: list(r.targets).map((t) => ({
+      skill: str(obj(t).skill, 80),
+      source: (["existing", "jd_added", "supported_by_resume"].includes(String(obj(t).source)) ? obj(t).source : "existing") as SkillTarget["source"],
+      reason: str(obj(t).reason, 300),
+    })),
+    tailored: tailored ? { ...cleaned, summary: str(tailored.summary, 1500) } : null,
+    edits: cleanChanges(r.edits),
+    rejected: Number(r.rejected) || 0,
+    warnings: strings(r.warnings, 500),
+    notes: strings(r.notes, MAX_NOTE_CHARS),
+    emphasis: cleanEmphasis(r.emphasis),
+  };
+}
+
+export const isStrategy = (value: unknown): value is Strategy => STRATEGIES.includes(value as Strategy);
