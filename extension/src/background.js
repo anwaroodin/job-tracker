@@ -15,6 +15,7 @@
  *   job:update   { applicationId, patch }       → { application }
  *   job:apply    { record, applicationId?, keepStatus, open, applyUrl? } → { application }
  *   fill:get     {}                             → { values, company, role, sourceUrl } | null
+ *                (values use the application's tailored summary and cover letter when it has them)
  *   fill:stop    {}
  *   fill:progress { filled }                    (relayed to the tab's top frame)
  *   open         { page: "dashboard" | "application" | "options", applicationId? }
@@ -22,7 +23,7 @@
  * "not_configured" while no dashboard address is set (see config.js).
  */
 import { NotConfiguredError, dashboardUrl, getDashboardOrigin } from "./config.js";
-import { AuthError, getProfile, logApplication, lookupApplication, updateApplication } from "./lib/api.js";
+import { AuthError, getProfile, getTailored, logApplication, lookupApplication, updateApplication } from "./lib/api.js";
 import { detectCategory, detectCvType } from "./lib/cv.js";
 import { formValues } from "./lib/profile.js";
 import { findTracked, normaliseUrl, rememberTracked } from "./lib/tracked.js";
@@ -60,7 +61,8 @@ const summary = ({ id, status, starred, cvType, category, description, contactsJ
 
 /**
  * @typedef {{ attempt: string, company: string, role: string, cvType: string,
- *   fillHere: boolean, expiresAt: number, sourceUrl?: string, armedUntil?: number }} Pending
+ *   fillHere: boolean, expiresAt: number, sourceUrl?: string, armedUntil?: number,
+ *   tailored?: { summary: string | null, coverLetter: string | null } }} Pending
  */
 
 let queue = Promise.resolve();
@@ -86,8 +88,8 @@ function withPending(fn) {
  * first tab counts, so other jobs opened from the listing aren't filled.
  */
 function adopt(pending, tabId, parent, now) {
-  const { attempt, company, role, cvType } = parent;
-  pending[tabId] = { attempt, company, role, cvType, fillHere: true, expiresAt: now + APPLY_TAB_MS };
+  const { attempt, company, role, cvType, tailored } = parent;
+  pending[tabId] = { attempt, company, role, cvType, tailored, fillHere: true, expiresAt: now + APPLY_TAB_MS };
   parent.armedUntil = 0;
 }
 
@@ -216,6 +218,15 @@ async function applyToJob({ record, applicationId, keepStatus, open, applyUrl },
     throw error;
   }
 
+  if (autofill) {
+    const tailored = await getTailored(application.id).catch(() => null);
+    if (tailored?.coverLetter || tailored?.summary) {
+      await withPending((pending) => {
+        for (const entry of Object.values(pending)) if (entry.attempt === attempt) entry.tailored = tailored;
+      });
+    }
+  }
+
   if (open === "link" && /^https?:\/\//.test(applyUrl ?? "")) {
     const opened = await chrome.tabs.create({ url: applyUrl, openerTabId: tab.id, index: tab.index + 1 });
     await withPending((pending, now) => {
@@ -231,8 +242,11 @@ async function fillValues(_message, tab) {
   const { pending = {} } = await chrome.storage.session.get("pending");
   const entry = pending[tab.id];
   if (!entry?.fillHere || entry.expiresAt < Date.now()) return null;
+  const values = formValues(await profile(), entry.cvType);
+  if (entry.tailored?.summary) values.summary = entry.tailored.summary;
+  if (entry.tailored?.coverLetter) values.coverLetter = entry.tailored.coverLetter;
   return {
-    values: formValues(await profile(), entry.cvType),
+    values,
     company: entry.company,
     role: entry.role,
     sourceUrl: entry.sourceUrl ?? null,

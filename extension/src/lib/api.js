@@ -33,6 +33,8 @@ export const getStats = () => request("/api/ext/stats");
 
 export const getProfile = () => request("/api/ext/profile");
 
+export const getTailored = (id) => request(`/api/ext/applications/${encodeURIComponent(id)}`);
+
 /**
  * Logs an application. The server returns the existing record instead of a
  * new one when the same posting was tracked recently.

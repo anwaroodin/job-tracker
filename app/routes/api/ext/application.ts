@@ -2,6 +2,7 @@ import type { Route } from "./+types/application";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { getApplication, updateApplication } from "~/server/db/queries/applications.server";
+import { latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
 import { setByHand } from "~/server/services/status/manual";
 import { clearBookmarkOnApply } from "~/server/services/status/rules";
 import type { NewApplication } from "~/types/application";
@@ -42,7 +43,15 @@ async function update({ request, params, context }: Route.ActionArgs) {
   return json(request, { success: true, application });
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export const loader = (args: Route.LoaderArgs) => guarded(args.request, () => tailored(args));
+
+async function tailored({ request, params, context }: Route.LoaderArgs) {
   if (request.method === "OPTIONS") return preflight(request);
-  return json(request, { error: "method_not_allowed" }, { status: 405 });
+  const env = context.get(envContext);
+  const user = await extUser(request, env);
+  if (!user) return json(request, { error: "not_authenticated" }, { status: 401 });
+  const latest = await latestTailoredCv(getDb(env.DB), user.id, params.id);
+  if (!latest) return json(request, { summary: null, coverLetter: null });
+  const { summary, coverLetter } = latest.cv;
+  return json(request, { summary, coverLetter: [coverLetter.greeting, ...coverLetter.paragraphs, coverLetter.signOff].filter(Boolean).join("\n\n") });
 }

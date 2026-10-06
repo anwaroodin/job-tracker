@@ -79,6 +79,8 @@ Fields are matched on their `autocomplete` attribute first, then their label, `a
 | Eligibility | right to work, visa sponsorship (radios, checkboxes and yes/no selects), notice period or start date |
 | CV variant | salary expectation, cover letter or "why this company", summary |
 
+When the application has a tailored CV on the dashboard, Apply & fill uses its summary and cover letter instead of the CV variant's.
+
 Text inputs, textareas, selects, radios, checkboxes and rich-text editors are supported. Values are set through the element's native setter and the `input`, `change` and `blur` events fire, so React and Vue forms register them. A field that already has a value, a radio group that's already answered and a select with an option already chosen are left alone.
 
 Iframes are only filled when they contain at least three recognised fields, so ads and newsletter boxes on the page are left alone. Site search bars (inside `header`, `nav` or `role="search"`) are skipped, and when a dialog with form fields is open only the dialog is filled. A field is never filled twice, so clearing one sticks.
