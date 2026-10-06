@@ -6,6 +6,7 @@ const TIMEOUT_MS = 10 * 60 * 1000;
 const MODEL = process.env.RUNNER_MODEL || "opus";
 const WEB_TOOLS = ["WebSearch", "WebFetch"];
 const MODEL_NAME = /^[a-z0-9.\-[\]]{2,60}$/i;
+const EFFORTS = new Set(["low", "medium", "high", "xhigh", "max"]);
 const ORIGINS = new Set(["http://localhost:5173", process.env.JOB_TRACKER_URL?.replace(/\/$/, "")].filter(Boolean));
 
 let busy = false;
@@ -23,7 +24,7 @@ function usageOf(reply, windows) {
   };
 }
 
-function runClaude({ system, schema, input, model, web }) {
+function runClaude({ system, schema, input, model, effort, web }) {
   const tools = web ? ["--tools", WEB_TOOLS.join(","), "--allowedTools", ...WEB_TOOLS] : ["--tools", ""];
   const args = [
     "-p",
@@ -32,6 +33,7 @@ function runClaude({ system, schema, input, model, web }) {
     "--strict-mcp-config",
     "--setting-sources", "",
     "--no-session-persistence",
+    ...(EFFORTS.has(effort) ? ["--effort", effort] : []),
     "--output-format", "stream-json",
     "--verbose",
     "--system-prompt", system,
@@ -106,7 +108,7 @@ const server = createServer(async (req, res) => {
   const started = Date.now();
   try {
     const request = await readJson(req);
-    console.log(`Running ${request.web ? "research" : "tailoring"} with ${MODEL_NAME.test(request.model ?? "") ? request.model : MODEL}…`);
+    console.log(`Running ${request.web ? "research" : "tailoring"} with ${MODEL_NAME.test(request.model ?? "") ? request.model : MODEL} (${request.effort ?? "default"} effort)…`);
     const { result, usage } = await runClaude(request);
     console.log(`Done in ${Math.round((Date.now() - started) / 1000)}s, $${usage.costUsd.toFixed(3)} at API prices, 5-hour ${usage.fiveHour}%, week ${usage.sevenDay}%`);
     send(200, { result, usage });

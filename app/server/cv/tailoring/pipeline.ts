@@ -48,8 +48,17 @@ const INJECTION = /ignore\s+(all\s+)?previous\s+instructions|disregard\s+(all\s+
 const sanitise = (text: string) => text.slice(0, MAX_JOB_CHARS).replace(INJECTION, "[REDACTED]");
 const json = (value: unknown) => JSON.stringify(value);
 
+const EFFORT: Record<Stage, TailorRequest["effort"]> = {
+  keywords: "low",
+  plan: "medium",
+  diffs: "high",
+  inject: "medium",
+  emphasis: "medium",
+  letter: "medium",
+};
+
 function request(stage: Stage, prompt: string, schema: object): TailorRequest {
-  return { system: SYSTEM_PROMPTS[stage], schema, input: prompt };
+  return { system: SYSTEM_PROMPTS[stage], schema, input: prompt, effort: EFFORT[stage] };
 }
 
 function keywordsRequest(ctx: TailorContext) {

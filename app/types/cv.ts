@@ -83,6 +83,7 @@ export interface TailorRequest {
   schema: object;
   input: string;
   model?: string;
+  effort?: "low" | "medium" | "high";
   web?: boolean;
 }
 

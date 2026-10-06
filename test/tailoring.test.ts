@@ -186,7 +186,7 @@ describe("pipeline", () => {
 
 describe("company research", () => {
   it("asks for web tools and keeps only safe links from the reply", () => {
-    expect(researchRequest({ company: "Acme", role: "PM", description: "Build things", url: "" })).toMatchObject({ web: true });
+    expect(researchRequest({ company: "Acme", role: "PM", description: "Build things", url: "" })).toMatchObject({ web: true, effort: "medium" });
     const research = cleanResearch({
       values: ["Ship fast", "Ship fast", 3],
       sources: [
