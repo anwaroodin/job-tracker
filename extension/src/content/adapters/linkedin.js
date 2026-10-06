@@ -29,6 +29,7 @@
     moreOptions: 'button[aria-label="More options"]',
     applyControl: '#jobs-apply-button-id, a[aria-label*="on company website" i], button[aria-label*="Easy Apply" i], a[aria-label*="Easy Apply" i]',
     companyAnchor: 'a[href*="/company/"]',
+    companyLogo: 'a[href*="/company/"] img',
     // List cards. Page-wide queries for the open job must skip these.
     resultsCard: '[componentkey^="job-card-component-ref-"]',
     searchCard: "li[data-occludable-job-id]",
@@ -104,7 +105,8 @@
       identity.company ||
       clean(Array.from(document.querySelectorAll(SEL.companyAnchor)).find((a) => outsideCards(a) && a.textContent.trim())?.textContent);
     if (!identity.role) return null;
-    return { role: identity.role, company, description: description(kind, id), url: `https://www.linkedin.com/jobs/view/${id}/` };
+    const logo = Array.from(document.querySelectorAll(SEL.companyLogo)).find((img) => outsideCards(img) && img.currentSrc.startsWith("https://"))?.currentSrc;
+    return { role: identity.role, company, logo, description: description(kind, id), url: `https://www.linkedin.com/jobs/view/${id}/` };
   }
 
   /** The open job's Apply / Easy Apply control, never a list card's or the "Easy Apply" search filter. */

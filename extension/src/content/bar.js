@@ -81,6 +81,7 @@
       employment_type: facts.employment,
       posted_at: JT.postedDate(facts.posted),
       applicants: facts.applicants,
+      logo_url: state.job.logo || undefined,
       contacts: contacts.length ? contacts : undefined,
     };
   }

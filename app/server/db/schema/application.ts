@@ -25,6 +25,7 @@ export const application = sqliteTable(
     employmentType: text("employment_type").notNull().default(""),
     postedAt: text("posted_at"),
     applicants: text("applicants").notNull().default(""),
+    logoUrl: text("logo_url").notNull().default(""),
     // People the listing suggests reaching out to (LinkedIn's "People you can
     // reach out to"), as a JSON array of Contact (app/lib/contacts.ts).
     contactsJson: text("contacts_json")
