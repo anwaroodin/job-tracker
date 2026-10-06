@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Form, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/cv";
 import { CV_SECTIONS, CvEditor } from "~/components/cv";
+import { TailoredCvGrid } from "~/components/cv/tailored-grid";
 import { TemplateEditor } from "~/components/cv/template-editor";
 import { PdfButton, TypstPreview } from "~/components/cv/typst-preview";
 import { Button } from "~/components/ui/button";
@@ -16,6 +17,7 @@ import { cleanCv } from "~/server/cv/clean";
 import { importCv, MAX_PDF_BYTES, pdfText } from "~/server/cv/import.server";
 import { getDb } from "~/server/db/client.server";
 import { getCv, getCvTemplate, getProfile, saveCv, saveCvTemplate } from "~/server/db/queries/profile.server";
+import { tailoredCvCards } from "~/server/db/queries/tailored-cv.server";
 import type { Cv } from "~/types/cv";
 
 const MAX_TEMPLATE_CHARS = 50_000;
@@ -24,8 +26,13 @@ export async function loader({ context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [cv, profile, template] = await Promise.all([getCv(db, user.id), getProfile(db, user.id), getCvTemplate(db, user.id)]);
-  return { cv, person: personFor(profile.personal, user), template };
+  const [cv, profile, tailored, template] = await Promise.all([
+    getCv(db, user.id),
+    getProfile(db, user.id),
+    tailoredCvCards(db, user.id),
+    getCvTemplate(db, user.id),
+  ]);
+  return { cv, person: personFor(profile.personal, user), tailored, template };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -111,12 +118,17 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
       </header>
 
       {!editing && !styling && (
-        <Section n="01" title="CV" hint="What every tailored CV is rewritten from." i={1}>
-          <div className="flex flex-wrap items-start gap-6">
-            <TypstPreview template={template} cv={data} width={380} />
-            <PdfButton template={template} cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
-          </div>
-        </Section>
+        <>
+          <Section n="01" title="CV" hint="What every tailored CV is rewritten from." i={1}>
+            <div className="flex flex-wrap items-start gap-6">
+              <TypstPreview template={template} cv={data} width={380} />
+              <PdfButton template={template} cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
+            </div>
+          </Section>
+          <Section n="02" title="Tailored CVs" hint="The latest for each job, by job title." i={2}>
+            <TailoredCvGrid person={loaderData.person} template={template} cards={loaderData.tailored} />
+          </Section>
+        </>
       )}
 
       {styling && (
