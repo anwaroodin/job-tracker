@@ -31,6 +31,9 @@ export const profile = sqliteTable("profile", {
   retailKeywordsJson: text("retail_keywords_json")
     .notNull()
     .default(sql`'[]'`),
+  cvJson: text("cv_json"),
+  cvUpdatedAt: text("cv_updated_at"),
+  cvTemplate: text("cv_template"),
   updatedAt: text("updated_at").notNull(),
 });
 
