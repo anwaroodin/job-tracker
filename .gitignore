@@ -15,6 +15,7 @@ worker-configuration.d.ts
 
 !.dev.vars.example
 !.env.example
-scripts/
+scripts/*
+!scripts/claude-runner.mjs
 migrations/
 wrangler.jsonc

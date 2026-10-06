@@ -14,7 +14,8 @@
     "db:migrate:local": "wrangler d1 migrations apply job-tracker-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply job-tracker-db --remote",
     "db:studio": "drizzle-kit studio",
-    "test": "vitest run"
+    "test": "vitest run",
+    "runner": "node --env-file-if-exists=.env scripts/claude-runner.mjs"
   },
   "dependencies": {
     "@legendapp/state": "^2.1.15",

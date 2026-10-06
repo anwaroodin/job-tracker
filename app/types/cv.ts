@@ -86,6 +86,14 @@ export interface TailorRequest {
   web?: boolean;
 }
 
+export interface RunnerUsage {
+  costUsd: number;
+  inputTokens: number;
+  outputTokens: number;
+  fiveHour: number | null;
+  sevenDay: number | null;
+}
+
 export interface CompanyResearch {
   summary: string;
   values: string[];
