@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { calibrate, estimatePct, usedPct } from "~/lib/run-cost";
 import { wordDiff } from "~/lib/word-diff";
 import { cleanResearch, researchRequest } from "~/server/cv/research";
+import { applyEdits } from "~/server/cv/tailored";
 import { atsScore, cleanJobKeywords, contentText, keywordGaps } from "~/server/cv/tailoring/keywords";
 import { cleanState, continueTailoring, startTailoring, type TailorContext } from "~/server/cv/tailoring/pipeline";
 import { verifyEmphasis } from "~/server/cv/tailoring/emphasis";
@@ -181,6 +182,25 @@ describe("pipeline", () => {
     expect(done.done).not.toHaveProperty("summaries");
     expect(done.done.experience[0].bullets[1].bold).toEqual(["Cut deploy time by 40%"]);
     expect(done.done.experience[0]).toMatchObject({ company: "Acme", title: "Platform Engineer", start: "Mar 2023" });
+  });
+});
+
+describe("applyEdits", () => {
+  it("keeps the entries left in the editor and bold that is still in its line", () => {
+    const second = { ...CV.experience[0], id: "beta", company: "Beta" };
+    const previous = { ...CV, experience: [CV.experience[0], second], coverLetter: { greeting: "", paragraphs: [], signOff: "" }, changes: [], flags: [] };
+    const edited = {
+      ...previous,
+      summaryBold: ["reliable APIs", "not in the summary"],
+      experience: [{ ...second, bullets: [{ id: "x1", text: "Cut deploy time by 40%", bold: ["40%", "Cut", "deploy", "time", "by"] }] }],
+      projects: [{ id: "unknown", bullets: [] }],
+    };
+    const saved = applyEdits(previous, edited);
+    expect(saved.summaryBold).toEqual(["reliable APIs"]);
+    expect(saved.experience.map((e) => e.company)).toEqual(["Beta"]);
+    expect(saved.experience[0].bullets[0].bold).toEqual(["40%", "Cut", "deploy", "time"]);
+    expect(saved.projects).toEqual([]);
+    expect(applyEdits(previous, { summary: "Hi" }).experience).toHaveLength(2);
   });
 });
 

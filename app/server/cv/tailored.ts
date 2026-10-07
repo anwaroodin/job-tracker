@@ -1,8 +1,9 @@
 import { newId } from "~/lib/cv";
-import type { CoverLetter, TailoredCv } from "~/types/cv";
-import { list, obj, skillGroups, str } from "./clean";
+import type { CoverLetter, CvBullet, TailoredCv } from "~/types/cv";
+import { list, obj, skillGroups, str, strings } from "./clean";
 
 const MAX_TEXT = 1500;
+const MAX_BOLD = 4;
 
 export function coverLetterFrom(raw: unknown): CoverLetter {
   const letter = obj(raw);
@@ -13,25 +14,40 @@ export function coverLetterFrom(raw: unknown): CoverLetter {
   };
 }
 
+const boldIn = (raw: unknown, text: string) => strings(raw, 80).filter((phrase) => text.includes(phrase)).slice(0, MAX_BOLD);
+
+function bullets(raw: unknown): CvBullet[] {
+  return list(raw)
+    .map((b) => obj(b))
+    .map((b) => {
+      const text = str(b.text, MAX_TEXT);
+      const bold = boldIn(b.bold, text);
+      return { id: str(b.id, 40) || newId(), text, ...(bold.length && { bold }) };
+    })
+    .filter((b) => b.text);
+}
+
+function kept<T extends { id: string }>(previous: T[], raw: unknown, edit: (entry: T, edited: Record<string, unknown>) => T): T[] {
+  if (!Array.isArray(raw)) return previous;
+  const byId = new Map(previous.map((entry) => [entry.id, entry]));
+  return list(raw).flatMap((item) => {
+    const edited = obj(item);
+    const entry = byId.get(str(edited.id, 40));
+    return entry ? [edit(entry, edited)] : [];
+  });
+}
+
 export function applyEdits(previous: TailoredCv, raw: unknown): TailoredCv {
   const edited = obj(raw);
-  const bolds = new Map([...previous.experience, ...previous.projects].flatMap((e) => e.bullets).map((b) => [b.id, b.bold]));
-  const bullets = (v: unknown) =>
-    list(v)
-      .map((b) => {
-        const id = str(obj(b).id, 40) || newId();
-        const bold = bolds.get(id);
-        return { id, text: str(obj(b).text, MAX_TEXT), ...(bold && { bold }) };
-      })
-      .filter((b) => b.text);
-  const editedBullets = (key: string) => new Map(list(edited[key]).map((e) => [str(obj(e).id), bullets(obj(e).bullets)]));
-  const roles = editedBullets("experience");
-  const projects = editedBullets("projects");
+  const summary = str(edited.summary, MAX_TEXT);
+  const summaryBold = boldIn(edited.summaryBold, summary);
   return {
     ...previous,
-    summary: str(edited.summary, MAX_TEXT),
-    experience: previous.experience.map((role) => ({ ...role, bullets: roles.get(role.id) ?? role.bullets })),
-    projects: previous.projects.map((project) => ({ ...project, bullets: projects.get(project.id) ?? project.bullets })),
+    summary,
+    summaryBold: summaryBold.length ? summaryBold : undefined,
+    experience: kept(previous.experience, edited.experience, (role, e) => ({ ...role, bullets: bullets(e.bullets) })),
+    projects: kept(previous.projects, edited.projects, (project, e) => ({ ...project, bullets: bullets(e.bullets) })),
+    education: kept(previous.education, edited.education, (school, e) => ({ ...school, details: strings(e.details, MAX_TEXT) })),
     skills: skillGroups(edited.skills),
     coverLetter: coverLetterFrom(edited.coverLetter),
     flags: [],

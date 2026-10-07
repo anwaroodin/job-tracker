@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { useFetcher } from "react-router";
-import { AddButton, Bullets, ListField, RemoveButton, removeAt } from "~/components/cv/entries";
-import { Field } from "~/components/profile/field";
+import { AddButton, ListField, RemoveButton, removeAt, updateAt } from "~/components/cv/entries";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import type { CoverLetter, TailoredCv } from "~/types/cv";
+import { BoldBullets, BoldText } from "./bold-text";
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, onRemove, children }: { title: string; onRemove?: () => void; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-3 border border-stroke-secondary bg-bg-grouped-primary p-4">
-      <span className="text-[11px] tracking-[0.12em] text-text-secondary">{title}</span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="truncate text-[11px] tracking-[0.12em] text-text-secondary">{title}</span>
+        {onRemove && <RemoveButton label={`Remove ${title}`} onClick={onRemove} />}
+      </div>
       {children}
     </div>
   );
@@ -30,37 +33,57 @@ export function TailoredCvEditor({ value, onDone }: { value: TailoredCv; onDone:
 
   return (
     <div className="flex flex-col gap-4">
-      <Field label="Summary">
-        <Textarea rows={4} value={cv.summary} onChange={(e) => set({ summary: e.target.value })} />
-      </Field>
+      <Group title="Summary">
+        <BoldText
+          text={cv.summary}
+          bold={cv.summaryBold ?? []}
+          rows={4}
+          onChange={({ text, bold }) => set({ ...(text !== undefined && { summary: text }), ...(bold && { summaryBold: bold }) })}
+        />
+      </Group>
 
       {cv.experience.map((role, i) => (
-        <Group key={role.id} title={[role.title, role.company].filter(Boolean).join(" · ")}>
-          <Bullets
-            value={role.bullets}
-            onChange={(bullets) => set({ experience: cv.experience.map((r, j) => (j === i ? { ...r, bullets } : r)) })}
-          />
+        <Group
+          key={role.id}
+          title={[role.title, role.company].filter(Boolean).join(" · ")}
+          onRemove={() => set({ experience: removeAt(cv.experience, i) })}
+        >
+          <BoldBullets value={role.bullets} onChange={(bullets) => set({ experience: updateAt(cv.experience, i, { bullets }) })} />
         </Group>
       ))}
 
       {cv.projects.map((project, i) => (
-        <Group key={project.id} title={project.name}>
-          <Bullets
-            value={project.bullets}
-            onChange={(bullets) => set({ projects: cv.projects.map((p, j) => (j === i ? { ...p, bullets } : p)) })}
+        <Group key={project.id} title={project.name} onRemove={() => set({ projects: removeAt(cv.projects, i) })}>
+          <BoldBullets value={project.bullets} onChange={(bullets) => set({ projects: updateAt(cv.projects, i, { bullets }) })} />
+        </Group>
+      ))}
+
+      {cv.education.map((school, i) => (
+        <Group
+          key={school.id}
+          title={[school.qualification, school.institution].filter(Boolean).join(" · ")}
+          onRemove={() => set({ education: removeAt(cv.education, i) })}
+        >
+          <ListField
+            label="Details (one per line)"
+            value={school.details}
+            separator={"\n"}
+            placeholder=""
+            onChange={(details) => set({ education: updateAt(cv.education, i, { details }) })}
           />
         </Group>
       ))}
 
       {cv.skills.map((group, i) => (
-        <ListField
-          key={group.id}
-          label={`${group.label || "Skills"} (comma-separated)`}
-          value={group.items}
-          separator=","
-          placeholder=""
-          onChange={(items) => set({ skills: cv.skills.map((g, j) => (j === i ? { ...g, items } : g)) })}
-        />
+        <Group key={group.id} title={group.label || "Skills"} onRemove={() => set({ skills: removeAt(cv.skills, i) })}>
+          <ListField
+            label="Comma-separated"
+            value={group.items}
+            separator=","
+            placeholder=""
+            onChange={(items) => set({ skills: updateAt(cv.skills, i, { items }) })}
+          />
+        </Group>
       ))}
 
       <Group title="Cover letter">
