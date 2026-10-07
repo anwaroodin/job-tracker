@@ -146,10 +146,15 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
               </Leader>
             )}
           </Section>
+          {contacts.length > 0 && (
+            <Section n="03" title="People to reach out to" hint={String(contacts.length)} i={2}>
+              <ContactList contacts={contacts} />
+            </Section>
+          )}
         </aside>
 
         <div className="lg:col-start-1 lg:row-start-1">
-          <Section n="03" title="Job description" hint={source || undefined} i={2}>
+          <Section n="04" title="Job description" hint={source || undefined} i={3}>
             {job.description ? (
               <RichText text={job.description} />
             ) : (
@@ -160,14 +165,6 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
             )}
           </Section>
         </div>
-
-        {contacts.length > 0 && (
-          <div className="lg:col-start-2 lg:row-start-2">
-            <Section n="04" title="People to reach out to" hint={String(contacts.length)} i={3}>
-              <ContactList contacts={contacts} />
-            </Section>
-          </div>
-        )}
       </div>
     </div>
   );

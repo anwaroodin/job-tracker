@@ -248,20 +248,17 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
               </p>
             )}
           </Section>
+          {contacts.length > 0 && (
+            <Section n="05" title="People to reach out to" hint={String(contacts.length)} i={4}>
+              <ContactList contacts={contacts} />
+            </Section>
+          )}
         </aside>
 
         {row.description && (
           <div className="lg:col-start-1 lg:row-start-2">
-            <Section n="05" title="Job description" hint={source || undefined} i={4}>
+            <Section n="06" title="Job description" hint={source || undefined} i={5}>
               <RichText text={row.description} />
-            </Section>
-          </div>
-        )}
-
-        {contacts.length > 0 && (
-          <div className="lg:col-start-2 lg:row-start-2">
-            <Section n="06" title="People to reach out to" hint={String(contacts.length)} i={5}>
-              <ContactList contacts={contacts} />
             </Section>
           </div>
         )}
