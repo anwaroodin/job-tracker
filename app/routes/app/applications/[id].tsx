@@ -8,8 +8,8 @@ import { FlagToggle } from "~/components/applications/flag-toggle";
 import { GmailSync } from "~/components/gmail/gmail-sync";
 import { RichText } from "~/components/ui/rich-text";
 import { SavedListing } from "~/components/application-detail/saved-listing";
+import { StatusPicker } from "~/components/application-detail/status-picker";
 import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
-import { StatusBadge } from "~/components/ui/status-badge";
 import { cn } from "~/lib/cn";
 import { parseContacts } from "~/lib/contacts";
 import { isEmailCategory } from "~/lib/email";
@@ -21,6 +21,7 @@ import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { createApplication, updateApplication } from "~/server/db/queries/applications.server";
 import { applicationsFor } from "~/server/db/queries/status.server";
+import { setStatusByHand } from "~/server/services/status/manual.server";
 import { settleSavedJob } from "~/server/services/status/saved.server";
 import { markReplyDone, markViewed, moveEmail, setEmailCategory, setEmailDismissed } from "~/server/db/queries/emails.server";
 import { applicationTimeline } from "~/server/services/timeline/index.server";
@@ -68,6 +69,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     const outcome = intent === "saved-remove" ? "removed" : "applied";
     if (!(await settleSavedJob(db, user.id, params.id, outcome))) throw data("Not a saved posting", { status: 400 });
     return outcome === "removed" ? redirect("/applications") : { ok: true };
+  }
+  if (intent === "status") {
+    if (!(await setStatusByHand(db, user.id, params.id, String(form.get("status") ?? "")))) throw data("Unknown status", { status: 400 });
+    return { ok: true };
   }
   if (intent === "replied") {
     await markReplyDone(db, user.id, emailId);
@@ -156,7 +161,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
 
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="flex items-center gap-4 text-[11px] tracking-[0.1em]">
-            <StatusBadge status={row.status} />
+            <StatusPicker status={row.status} />
             <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
           </p>
           <GmailSync status={gmail} />
