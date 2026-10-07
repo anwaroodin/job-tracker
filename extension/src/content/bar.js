@@ -5,8 +5,9 @@
  *
  * Mounted where the site adapter says (LinkedIn: the right end of the
  * Easy Apply / Save row), or floating bottom-right on sites without an
- * anchor. ▾ opens a quick view to correct the role and company, pick the CV
- * and category, and see the facts read from the page.
+ * anchor. Tailor saves the job and opens its tailoring page on the dashboard.
+ * ▾ opens a quick view to correct the role and company and see the facts read
+ * from the page.
  *
  * The bar also keeps the dashboard's copy of the job complete: details that
  * render after the job is saved (the description, the people to reach out
@@ -31,8 +32,6 @@
     ghosted: { label: "Ghosted", color: "#6e6f76" },
     withdrawn: { label: "Withdrawn", color: "#4a4c53" },
   };
-  const CV_OPTIONS = [["software", "Software"], ["retail", "Retail"]];
-  const CATEGORY_OPTIONS = [["", "—"], ["grad", "Grad"], ["intern", "Intern"], ["junior", "Junior"]];
   const COPIED_MS = 1500;
 
   const state = {
@@ -206,6 +205,14 @@
         : save({ status: "saved", starred: true }, "Saved and bookmarked."),
     );
 
+  /** Bookmarks the job (saving it first if it isn't tracked yet), then opens its tailoring page. */
+  const tailor = () =>
+    busy(async () => {
+      if (!state.app) await save({ status: "saved", starred: true });
+      else if (state.app.status === "saved" && !state.app.starred) await save({ starred: true });
+      if (state.app) send({ type: "open", page: "tailor", applicationId: state.app.id });
+    });
+
   function openDashboard() {
     send({ type: "open", page: state.app ? "application" : "dashboard", applicationId: state.app?.id });
   }
@@ -274,21 +281,6 @@
   // Every focusable control carries a stable `data-focus` key, so focus can
   // survive the bar re-rendering from scratch (see captureFocus()).
 
-  function segmented(key, options) {
-    return h("div", { class: "segmented", role: "group" },
-      ...options.map(([value, label]) =>
-        h("button", {
-          type: "button",
-          "data-focus": `${key}:${value}`,
-          "aria-pressed": String(state[key] === value),
-          onclick: () => {
-            state[key] = value;
-            render();
-          },
-        }, label)),
-    );
-  }
-
   function textField(key, label) {
     return h("label", { class: "field" },
       h("span", { class: "label" }, label),
@@ -309,15 +301,12 @@
       h("div", { class: "section-head" }, h("b", {}, `[${n}]`), h("span", {}, title)),
       ...children);
 
-  /** Quick view, laid out like the popup: [01] Target, [02] Config, [03] Details. */
+  /** Quick view, laid out like the popup: [01] Target, [02] Details. */
   function quickView() {
     const facts = JT.quickFacts(state.job);
     return h("div", { class: "pop panel" },
       section("01", "Target", textField("role", "Role"), textField("company", "Company")),
-      section("02", "Config",
-        h("div", { class: "row" }, h("span", { class: "label" }, "CV"), segmented("cvType", CV_OPTIONS)),
-        h("div", { class: "row" }, h("span", { class: "label" }, "Category"), segmented("category", CATEGORY_OPTIONS))),
-      facts.length > 0 && section("03", "Details",
+      facts.length > 0 && section("02", "Details",
         h("div", { class: "chips" }, ...facts.map((fact) => h("span", { class: `chip ${fact.key}` }, fact.text)))),
     );
   }
@@ -406,6 +395,7 @@
           state.open = !state.open;
           render();
         }, { active: state.open, pressed: state.open }),
+        h("button", { class: "text-btn", type: "button", "data-focus": "tailor", disabled: state.busy, onclick: tailor }, "Tailor"),
         h("button", { class: "primary", type: "button", "data-focus": "apply", disabled: state.busy, onclick: applyAndFill },
           state.applying ? "Working…" : refill ? "Fill again" : "Apply & fill")),
       message && messageView(message),

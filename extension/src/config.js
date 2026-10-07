@@ -64,3 +64,6 @@ export async function setDashboardOrigin(input) {
 export function dashboardUrl(origin, applicationId) {
   return applicationId ? `${origin}/applications/${encodeURIComponent(applicationId)}` : `${origin}/overview`;
 }
+
+/** The page that tailors a CV and cover letter to an application. */
+export const tailorUrl = (origin, applicationId) => `${dashboardUrl(origin, applicationId)}/cv`;

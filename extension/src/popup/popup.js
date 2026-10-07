@@ -1,6 +1,6 @@
-import { NotConfiguredError, dashboardUrl, getDashboardOrigin } from "../config.js";
-import { AuthError, getProfile, getStats, logApplication } from "../lib/api.js";
-import { detectCategory, detectCvType } from "../lib/cv.js";
+import { NotConfiguredError, dashboardUrl, getDashboardOrigin, tailorUrl } from "../config.js";
+import { AuthError, getProfile, getStats, getTailored, logApplication, lookupApplication, updateApplication } from "../lib/api.js";
+import { detectCategory } from "../lib/cv.js";
 import { bindDashboardForm } from "../lib/dashboard-form.js";
 import { extractJob, fillForm, getActiveTab, isScriptable } from "../lib/page.js";
 import { formValues } from "../lib/profile.js";
@@ -8,20 +8,30 @@ import { findTracked, forgetTracked, normaliseUrl, rememberTracked } from "../li
 
 const $ = (id) => document.getElementById(id);
 
+const STATUSES = {
+  saved: "Saved",
+  applied: "Applied",
+  screening: "Screening",
+  interview: "Interview",
+  assessment: "Assessment",
+  offer: "Offer",
+  accepted: "Accepted",
+  rejected: "Rejected",
+  ghosted: "Ghosted",
+  withdrawn: "Withdrawn",
+};
+
 const state = {
   /** The dashboard's origin (config.js); null until the user sets it. */
   origin: null,
   /** @type {chrome.tabs.Tab | undefined} */
   tab: undefined,
   job: { company: "", role: "", url: "", description: "" },
-  cvType: "software",
-  category: "",
+  /** The job's application on the dashboard: { id, status, starred }, or null while untracked. */
+  application: null,
   /** @type {import("../lib/tracked.js").TrackedEntry | null} */
   tracked: null,
 };
-
-const CV_LABELS = { software: "Software CV", retail: "Retail / general CV" };
-const CATEGORY_LABELS = { grad: "Grad", intern: "Intern", junior: "Junior" };
 
 // ── View helpers ───────────────────────────────────────────────────────────
 
@@ -43,29 +53,16 @@ function showMessage(label, title, body) {
   show("message");
 }
 
-/** Shows a result banner in the visible view, with an optional link to the tracked application. */
-function showResult(tone, text, applicationId) {
+function showResult(tone, text) {
   const el = document.querySelector("[data-view]:not([hidden]) [data-result]");
   if (!el) return;
-  el.replaceChildren(text);
-  if (applicationId) {
-    const link = document.createElement("button");
-    link.type = "button";
-    link.className = "link";
-    link.textContent = "View";
-    link.addEventListener("click", () => openTab(dashboardUrl(state.origin, applicationId)));
-    el.append(link);
-  }
+  el.textContent = text;
   el.dataset.tone = tone;
   el.hidden = false;
 }
 
-function setSegment(control, value) {
-  for (const btn of document.querySelectorAll(`[data-control="${control}"] .seg-btn`)) {
-    btn.setAttribute("aria-pressed", String(btn.dataset.value === value));
-  }
-  state[control] = value;
-}
+/** The parts of an application row the popup keeps. */
+const brief = (application) => ({ id: application.id, status: application.status, starred: Boolean(application.starred) });
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -102,91 +99,96 @@ async function withButton(button, busyLabel, action) {
   }
 }
 
-async function fillPage(cvType) {
-  const profile = await getProfile();
-  const { filled } = await fillForm(state.tab.id, formValues(profile, cvType));
-  return filled;
+function render() {
+  const { application } = state;
+  $("statusField").hidden = !application;
+  if (application) $("status").value = application.status;
+  $("applyBtn").textContent = application && application.status !== "saved" ? "Fill fields" : "Apply & fill";
+  $("saveBtn").hidden = Boolean(application);
+  $("dashboardLink").textContent = application ? "Open application" : "Open dashboard";
+  show("job");
 }
 
 // ── Actions ────────────────────────────────────────────────────────────────
 
-async function fillAndTrack() {
+/** The job's application, created with the given status (saved jobs bookmarked) when it isn't tracked yet. */
+async function ensureTracked(status) {
+  if (state.application) return state.application;
   const company = $("company").value.trim();
   const role = $("role").value.trim();
   $("company").setAttribute("aria-invalid", String(!company));
   $("role").setAttribute("aria-invalid", String(!role));
-  if (!company || !role) {
-    showResult("error", "Add the company and role before tracking.");
-    ($("company").value.trim() ? $("role") : $("company")).focus();
-    return;
-  }
+  if (!company || !role) throw new Error("Add the company and role first.");
 
-  const filled = await fillPage(state.cvType);
   const url = normaliseUrl(state.job.url);
-  const { duplicate, application } = await logApplication({
+  const { application } = await logApplication({
     company,
     role,
     url,
     description: state.job.description,
-    cv_type: state.cvType,
-    category: state.category || undefined,
-    status: "applied",
-    auto_filled: true,
+    category: detectCategory({ role }) || undefined,
+    status,
+    starred: status === "saved",
   });
-
-  await rememberTracked({
-    url,
-    company,
-    role,
-    cvType: state.cvType,
-    category: state.category,
-    applicationId: application.id,
-  });
-
-  const summary = `${plural(filled, "field")} filled.`;
-  showResult(
-    "success",
-    duplicate ? `${summary} Already on your dashboard.` : `${summary} Tracked.`,
-    application.id,
-  );
+  state.application = brief(application);
+  await rememberTracked({ url, company, role, cvType: "software", category: "", applicationId: application.id });
+  render();
   refreshStats().catch(() => {});
+  return state.application;
 }
 
-async function fillOnly() {
-  const filled = await fillPage(state.tracked.cvType);
-  if (filled === 0) showResult("info", "No empty fields to fill on this page.");
-  else showResult("success", `${plural(filled, "field")} filled.`, state.tracked.applicationId);
+async function updateTracked(patch) {
+  const { application } = await updateApplication(state.application.id, patch);
+  state.application = brief(application);
+  render();
+}
+
+async function saveJob() {
+  await ensureTracked("saved");
+  showResult("success", "Saved to your dashboard.");
+}
+
+async function tailor() {
+  const application = await ensureTracked("saved");
+  if (application.status === "saved" && !application.starred) await updateTracked({ starred: true });
+  await openTab(tailorUrl(state.origin, application.id));
+}
+
+/** Tracks the job as applied (moving a saved one on) and fills the form, using its tailored summary and cover letter when it has them. */
+async function applyAndFill() {
+  const application = await ensureTracked("applied");
+  if (application.status === "saved") await updateTracked({ status: "applied" });
+  const [profile, tailored] = await Promise.all([getProfile(), getTailored(application.id).catch(() => null)]);
+  const values = formValues(profile, "software");
+  if (tailored?.summary) values.summary = tailored.summary;
+  if (tailored?.coverLetter) values.coverLetter = tailored.coverLetter;
+  const { filled } = await fillForm(state.tab.id, values);
+  showResult(filled ? "success" : "info", filled ? `${plural(filled, "field")} filled.` : "No empty fields to fill on this page.");
 }
 
 async function trackAsNew() {
-  await forgetTracked(state.tracked);
+  if (state.tracked) await forgetTracked(state.tracked);
   state.tracked = null;
-  showTrackForm();
+  state.application = null;
+  $("company").value = state.job.company;
+  $("role").value = state.job.role;
+  render();
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────
-
-function showTrackForm() {
-  const { job } = state;
-  $("company").value = job.company;
-  $("role").value = job.role;
-  setSegment("cvType", detectCvType(job));
-  setSegment("category", detectCategory(job));
-  show("track");
-}
-
-function showTracked(entry) {
-  $("trackedCompany").textContent = entry.company;
-  $("trackedRole").textContent = entry.role;
-  const category = CATEGORY_LABELS[entry.category];
-  $("trackedCv").textContent = [CV_LABELS[entry.cvType] ?? entry.cvType, category].filter(Boolean).join(" · ");
-  show("continue");
-}
 
 async function refreshStats() {
   const stats = await getStats();
   setStatus("online", `${stats.total} tracked`);
   $("footerCount").textContent = `${stats.byStatus?.applied ?? 0} applied`;
+}
+
+/** The job's application row on the dashboard, looked up by URL or company and role, or null. */
+async function findApplication() {
+  state.tracked = await findTracked(state.job);
+  const match = state.tracked ?? state.job;
+  const { application } = await lookupApplication({ url: match.url, company: match.company, role: match.role });
+  return application;
 }
 
 async function init() {
@@ -214,30 +216,36 @@ async function init() {
     return showMessage("Page", "Can't read this page", error?.message || "Chrome doesn't allow extensions on this page.");
   }
 
-  state.tracked = await findTracked(state.job);
-  if (state.tracked) showTracked(state.tracked);
-  else showTrackForm();
+  const found = await findApplication().catch(() => null);
+  state.application = found && brief(found);
+  $("company").value = found?.company || state.job.company;
+  $("role").value = found?.role || state.job.role;
+  render();
 }
 
-for (const control of document.querySelectorAll("[data-control]")) {
-  control.addEventListener("click", (event) => {
-    const button = event.target.closest(".seg-btn");
-    if (button) setSegment(control.dataset.control, button.dataset.value);
-  });
-}
+$("status").replaceChildren(...Object.entries(STATUSES).map(([value, label]) => new Option(label, value)));
 for (const button of document.querySelectorAll('[data-action="dashboard"]')) {
-  button.addEventListener("click", () => (state.origin ? openTab(dashboardUrl(state.origin)) : needsSetup()));
+  button.addEventListener("click", () => (state.origin ? openTab(dashboardUrl(state.origin, state.application?.id)) : needsSetup()));
 }
 for (const button of document.querySelectorAll('[data-action="options"]')) {
   button.addEventListener("click", () => chrome.runtime.openOptionsPage());
 }
 // Saving the address carries on into the popup's normal start.
 bindDashboardForm($("setupForm"), { onSaved: () => init() });
-$("trackForm").addEventListener("submit", (event) => {
+$("jobForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  withButton($("trackBtn"), "Filling…", fillAndTrack);
+  withButton($("applyBtn"), "Filling…", applyAndFill);
 });
-$("fillBtn").addEventListener("click", () => withButton($("fillBtn"), "Filling…", fillOnly));
+$("saveBtn").addEventListener("click", () => withButton($("saveBtn"), "Saving…", saveJob));
+$("tailorBtn").addEventListener("click", () => withButton($("tailorBtn"), "Opening…", tailor));
+$("status").addEventListener("change", (event) => {
+  const select = event.target;
+  select.disabled = true;
+  updateTracked({ status: select.value })
+    .then(() => showResult("success", `Marked as ${STATUSES[select.value].toLowerCase()}.`))
+    .catch((error) => (error instanceof AuthError ? signedOut() : showResult("error", error?.message || "Couldn't update the status.")))
+    .finally(() => (select.disabled = false));
+});
 $("newApplicationBtn").addEventListener("click", trackAsNew);
 
 init();

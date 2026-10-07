@@ -59,10 +59,10 @@
       </div>
     </section>
 
-    <!-- New application -->
-    <form data-view="track" hidden id="trackForm" novalidate>
+    <!-- The job on this page -->
+    <form data-view="job" hidden id="jobForm" novalidate>
       <div class="section">
-        <div class="section-head"><b>[01]</b><span>Target</span></div>
+        <div class="section-head"><b>[01]</b><span>Job</span></div>
         <label class="field">
           <span class="label">Company</span>
           <input class="input" id="company" name="company" maxlength="100" placeholder="Company name" autocomplete="off" required />
@@ -71,59 +71,30 @@
           <span class="label">Role</span>
           <input class="input" id="role" name="role" maxlength="150" placeholder="Role title" autocomplete="off" required />
         </label>
-      </div>
-
-      <div class="section">
-        <div class="section-head"><b>[02]</b><span>Config</span></div>
-        <div class="row">
-          <span class="label" id="cvLabel">CV</span>
-          <div class="segmented" role="group" aria-labelledby="cvLabel" data-control="cvType">
-            <button class="seg-btn" type="button" data-value="software">Software</button>
-            <button class="seg-btn" type="button" data-value="retail">Retail</button>
+        <div class="field" id="statusField" hidden>
+          <div class="field-head">
+            <label class="label" for="status">Status</label>
+            <button class="link" type="button" id="newApplicationBtn" title="Track this page as a new application">Not this job?</button>
           </div>
-        </div>
-        <div class="row">
-          <span class="label" id="categoryLabel">Category</span>
-          <div class="segmented" role="group" aria-labelledby="categoryLabel" data-control="category">
-            <button class="seg-btn" type="button" data-value="" aria-label="No category">—</button>
-            <button class="seg-btn" type="button" data-value="grad">Grad</button>
-            <button class="seg-btn" type="button" data-value="intern">Intern</button>
-            <button class="seg-btn" type="button" data-value="junior">Junior</button>
-          </div>
+          <select class="input" id="status"></select>
         </div>
       </div>
 
       <div class="section">
-        <div class="section-head"><b>[03]</b><span>Action</span></div>
-        <button class="btn" type="submit" id="trackBtn">Fill &amp; track</button>
+        <div class="section-head"><b>[02]</b><span>Actions</span></div>
+        <button class="btn" type="submit" id="applyBtn">Apply &amp; fill</button>
+        <div class="actions">
+          <button class="btn secondary" type="button" id="saveBtn">Save job</button>
+          <button class="btn secondary" type="button" id="tailorBtn">Tailor CV</button>
+        </div>
         <div class="result" data-result hidden></div>
       </div>
     </form>
-
-    <!-- Returning to an application that is already tracked -->
-    <section data-view="continue" hidden>
-      <div class="section">
-        <div class="section-head"><b>[01]</b><span>Session</span></div>
-        <div class="compact">
-          <div class="compact-eyebrow">Already tracked</div>
-          <div class="compact-company" id="trackedCompany"></div>
-          <div class="compact-role" id="trackedRole"></div>
-          <div class="compact-cv" id="trackedCv"></div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-head"><b>[02]</b><span>Action</span></div>
-        <button class="btn" type="button" id="fillBtn">Fill fields</button>
-        <div class="result" data-result hidden></div>
-        <button class="link center" type="button" id="newApplicationBtn">This is a different job</button>
-      </div>
-    </section>
   </main>
 
   <footer class="footer">
     <div class="footer-links">
-      <button class="link accent" type="button" data-action="dashboard">Open dashboard</button>
+      <button class="link accent" type="button" data-action="dashboard" id="dashboardLink">Open dashboard</button>
       <button class="link" type="button" data-action="options">Settings</button>
     </div>
     <span class="footer-count" id="footerCount"></span>

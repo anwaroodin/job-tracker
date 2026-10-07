@@ -18,11 +18,11 @@
  *                (values use the application's tailored summary and cover letter when it has them)
  *   fill:stop    {}
  *   fill:progress { filled }                    (relayed to the tab's top frame)
- *   open         { page: "dashboard" | "application" | "options", applicationId? }
+ *   open         { page: "dashboard" | "application" | "tailor" | "options", applicationId? }
  * Failures resolve to { error }: "signed_out" when the session is gone,
  * "not_configured" while no dashboard address is set (see config.js).
  */
-import { NotConfiguredError, dashboardUrl, getDashboardOrigin } from "./config.js";
+import { NotConfiguredError, dashboardUrl, getDashboardOrigin, tailorUrl } from "./config.js";
 import { AuthError, getProfile, getTailored, logApplication, lookupApplication, updateApplication } from "./lib/api.js";
 import { detectCategory, detectCvType } from "./lib/cv.js";
 import { formValues } from "./lib/profile.js";
@@ -274,8 +274,9 @@ async function openPage({ page, applicationId }, tab) {
     await chrome.runtime.openOptionsPage();
     return {};
   }
-  const id = page === "application" && /^[\w-]+$/.test(applicationId ?? "") ? applicationId : undefined;
-  await chrome.tabs.create({ url: dashboardUrl(origin, id), openerTabId: tab.id, index: tab.index + 1 });
+  const id = (page === "application" || page === "tailor") && /^[\w-]+$/.test(applicationId ?? "") ? applicationId : undefined;
+  const url = page === "tailor" && id ? tailorUrl(origin, id) : dashboardUrl(origin, id);
+  await chrome.tabs.create({ url, openerTabId: tab.id, index: tab.index + 1 });
   return {};
 }
 
