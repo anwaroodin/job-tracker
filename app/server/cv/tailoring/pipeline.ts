@@ -1,4 +1,5 @@
 import type { CompanyResearch, CvContent, JobKeywords, ResumeChange, SkillTarget, TailoredCv, TailorRequest } from "~/types/cv";
+import { shownProjects } from "~/lib/cv";
 import { cleanCv, list, obj, str, strings } from "../clean";
 import { coverLetterFrom } from "../tailored";
 import { applyEmphasis, cleanEmphasis, type Emphasis, emphasisSlots, verifyEmphasis } from "./emphasis";
@@ -17,7 +18,7 @@ import {
   type Strategy,
 } from "./prompts";
 import { alignWithMaster, MAX_NOTE_CHARS, mergeInjected, removeAiPhrases, verifySkillPlan, withInjectedEdits } from "./refine";
-import { applyDiffs, resumeView, verifyDiffResult } from "./resume";
+import { applyDiffs, chooseProjects, resumeView, verifyDiffResult, withProjects } from "./resume";
 import { DIFFS_SCHEMA, EMPHASIS_SCHEMA, INJECT_SCHEMA, KEYWORDS_SCHEMA, LETTER_SCHEMA, PLAN_SCHEMA } from "./schemas";
 
 export type Stage = "keywords" | "plan" | "diffs" | "inject" | "emphasis" | "letter";
@@ -31,6 +32,7 @@ export interface TailorState {
   warnings: string[];
   notes: string[];
   emphasis: Emphasis;
+  projects: number[];
 }
 
 export interface TailorContext {
@@ -84,6 +86,8 @@ function planRequest(ctx: TailorContext, jk: JobKeywords) {
   );
 }
 
+const base = (ctx: TailorContext, state: TailorState) => withProjects(ctx.master, state.projects);
+
 function diffsRequest(ctx: TailorContext, jk: JobKeywords, state: TailorState) {
   const targets = state.targets.map((t) => `- ${t.skill} (${t.source}): ${t.reason}`).join("\n") || "No verified skill targets.";
   return request(
@@ -94,7 +98,7 @@ function diffsRequest(ctx: TailorContext, jk: JobKeywords, state: TailorState) {
       skill_targets: targets,
       job_description: sanitise(ctx.jobDescription),
       company_research: researchFor(ctx),
-      original_resume: json(resumeView(ctx.master)),
+      original_resume: json(resumeView(base(ctx, state))),
     }),
     DIFFS_SCHEMA,
   );
@@ -127,7 +131,8 @@ function polished(ctx: TailorContext, jk: JobKeywords, state: TailorState, cv: C
 }
 
 export function startTailoring(ctx: TailorContext, strategy: Strategy): Step {
-  const state: TailorState = { strategy, targets: [], tailored: null, edits: [], rejected: 0, warnings: [], notes: [], emphasis: {} };
+  const projects = chooseProjects({}, ctx.master);
+  const state: TailorState = { strategy, targets: [], tailored: null, edits: [], rejected: 0, warnings: [], notes: [], emphasis: {}, projects };
   if (!ctx.keywords) return { stage: "keywords", request: keywordsRequest(ctx), state };
   return { stage: "plan", request: planRequest(ctx, ctx.keywords), state };
 }
@@ -140,14 +145,15 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
   if (stage === "plan") {
     const plan = verifySkillPlan(result, ctx.master, jk, ctx.jobDescription);
     const warnings = plan.rejected.length ? [...state.warnings, `${plan.rejected.length} unsupported skill target(s) rejected: ${plan.rejected.join(", ")}.`] : state.warnings;
-    const next = { ...state, targets: plan.accepted, warnings, notes: plan.notes ? [plan.notes] : [] };
+    const next = { ...state, targets: plan.accepted, warnings, notes: plan.notes ? [plan.notes] : [], projects: chooseProjects(result, ctx.master) };
     return { stage: "diffs", request: diffsRequest(ctx, jk, next), state: next };
   }
 
   if (stage === "diffs") {
     const changes = cleanChanges(obj(result).changes);
-    const { result: tailored, applied, rejected } = applyDiffs(ctx.master, changes, state.targets, state.strategy === "full");
-    const warnings = [...state.warnings, ...verifyDiffResult(ctx.master, tailored, applied)];
+    const start = base(ctx, state);
+    const { result: tailored, applied, rejected } = applyDiffs(start, changes, state.targets, state.strategy === "full");
+    const warnings = [...state.warnings, ...verifyDiffResult(start, tailored, applied)];
     if (rejected.length) warnings.push(`${rejected.length} change(s) rejected during verification.`);
     const notes = [...state.notes, str(obj(result).strategy_notes, MAX_NOTE_CHARS)].filter(Boolean);
     const next: TailorState = { ...state, tailored, edits: applied, rejected: rejected.length, warnings, notes };
@@ -164,10 +170,10 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
     return { stage: "inject", request: request("inject", prompt, INJECT_SCHEMA), state: next };
   }
 
-  const tailored = state.tailored ?? ctx.master;
+  const tailored = state.tailored ?? base(ctx, state);
   if (stage === "inject") {
     const merged = mergeInjected(tailored, result);
-    return emphasisStep(jk, polished(ctx, jk, { ...state, edits: withInjectedEdits(state.edits, ctx.master, tailored, merged) }, merged));
+    return emphasisStep(jk, polished(ctx, jk, { ...state, edits: withInjectedEdits(state.edits, base(ctx, state), tailored, merged) }, merged));
   }
 
   if (stage === "emphasis") {
@@ -183,7 +189,7 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
       flags: state.warnings,
       edits: state.edits,
       rejectedEdits: state.rejected,
-      score: { before: atsScore(ctx.master, jk, masterText), after: atsScore(tailored, jk, masterText) },
+      score: { before: atsScore({ ...ctx.master, projects: shownProjects(ctx.master) }, jk, masterText), after: atsScore(tailored, jk, masterText) },
       strategy: state.strategy,
     },
   };
@@ -220,6 +226,7 @@ export function cleanState(raw: unknown): TailorState {
     warnings: strings(r.warnings, 500),
     notes: strings(r.notes, MAX_NOTE_CHARS),
     emphasis: cleanEmphasis(r.emphasis),
+    projects: list(r.projects).filter((i): i is number => Number.isInteger(i) && i >= 0),
   };
 }
 

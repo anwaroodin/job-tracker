@@ -7,7 +7,8 @@ import { atsScore, cleanJobKeywords, contentText, keywordGaps } from "~/server/c
 import { cleanState, continueTailoring, startTailoring, type TailorContext } from "~/server/cv/tailoring/pipeline";
 import { verifyEmphasis } from "~/server/cv/tailoring/emphasis";
 import { alignWithMaster, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
-import { applyDiffs, resumeView, verifyDiffResult } from "~/server/cv/tailoring/resume";
+import { applyDiffs, chooseProjects, resumeView, verifyDiffResult } from "~/server/cv/tailoring/resume";
+import { typstCv } from "~/lib/cv";
 import type { CvContent, ResumeChange, SkillTarget } from "~/types/cv";
 
 const CV: CvContent = {
@@ -42,6 +43,7 @@ const KEYWORDS = cleanJobKeywords({
   keywords: ["REST APIs", "billing"],
 });
 
+const PERSON = { name: "Sam Example", phone: "", location: "", email: "", linkedin: "", github: "", website: "" };
 const change = (over: Partial<ResumeChange>): ResumeChange => ({ path: "summary", action: "replace", original: CV.summary, value: "New", reason: "", ...over });
 const TARGETS: SkillTarget[] = [{ skill: "Kubernetes", source: "jd_added", reason: "" }];
 
@@ -82,6 +84,36 @@ describe("verifyDiffResult", () => {
     const edit = change({ path: "workExperience[0].description[0]", original: CV.experience[0].bullets[0].text, value: "Built APIs serving 90% of traffic at 99.9% uptime" });
     const { result, applied } = applyDiffs(CV, [edit], [], false);
     expect(verifyDiffResult(CV, result, applied)[0]).toBe("Possible invented number in Acme, bullet 1: 90%, 99.9% (not in the original).");
+  });
+});
+
+describe("reserve projects", () => {
+  const reserve = { id: "p2", name: "Edge Tracker", url: "", subtitle: "", details: "Cloudflare Workers, D1", bullets: [{ id: "b9", text: "Open-source app on Cloudflare Workers" }], optional: true };
+  const withReserve: CvContent = { ...CV, projects: [...CV.projects, reserve] };
+
+  it("are left off the master CV render", () => {
+    expect(typstCv(PERSON, withReserve).projects.map((p) => p.name)).toEqual(["Plant Diary"]);
+  });
+
+  it("can be chosen by the skill plan, ignoring indices that don't exist", () => {
+    expect(chooseProjects({}, withReserve)).toEqual([0]);
+    expect(chooseProjects({ projects: [1, 7, 1, -1] }, withReserve)).toEqual([1]);
+  });
+
+  it("join the tailored CV when chosen and count as evidence", () => {
+    const ctx: TailorContext = { master: withReserve, jobDescription: JOB, keywords: KEYWORDS, research: null };
+    const plan = startTailoring(ctx, "keywords");
+    if (!("request" in plan)) throw new Error("expected a request");
+    expect(plan.request.input).toContain('"optional":true');
+    const diffs = continueTailoring(ctx, "plan", { target_skills: [], projects: [1, 0] }, plan.state);
+    if (!("request" in diffs)) throw new Error("expected a request");
+    const view = JSON.parse(diffs.request.input.split("Original Resume:\n")[1].split("\n\nOutput")[0]);
+    expect(view.personalProjects.map((p: { name: string }) => p.name)).toEqual(["Edge Tracker", "Plant Diary"]);
+    const summary = change({ path: "personalProjects[0].description[0]", original: reserve.bullets[0].text, value: "Open-source Go service on Cloudflare Workers" });
+    const next = continueTailoring(ctx, "diffs", { changes: [summary] }, cleanState(JSON.parse(JSON.stringify(diffs.state))));
+    if (!("request" in next)) throw new Error("expected a request");
+    expect(next.state.tailored!.projects.map((p) => [p.name, p.optional])).toEqual([["Edge Tracker", undefined], ["Plant Diary", undefined]]);
+    expect(next.state.edits).toHaveLength(1);
   });
 });
 

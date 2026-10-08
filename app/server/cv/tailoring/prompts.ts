@@ -42,6 +42,7 @@ Rules:
 5. Do not include certifications.
 6. Generate reasons in British English.
 7. Use the company research only to judge which of the candidate's skills this company values most.
+8. Choose which personal projects to show, as indices into "personalProjects", most relevant to the job first. Projects marked "optional" are not on the resume yet: include one whenever it shows a skill or experience the job asks for better than a shown project does. Keep the number of projects about the same as now.
 
 Existing resume skills:
 {existing_skills}

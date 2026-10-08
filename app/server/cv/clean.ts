@@ -73,6 +73,7 @@ export function cleanCv(input: unknown): Cv {
         subtitle: str(p.subtitle),
         details: str(p.details, 500),
         bullets: bullets(p.bullets),
+        ...(p.optional === true && { optional: true }),
       }))
       .filter((p) => p.name || p.bullets.length),
     skills: skillGroups(raw.skills),

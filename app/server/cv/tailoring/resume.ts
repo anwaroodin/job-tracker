@@ -1,6 +1,9 @@
 import { newId } from "~/lib/cv";
 import type { CvContent, ResumeChange, SkillTarget } from "~/types/cv";
+import { list, obj } from "../clean";
 import { normalizeSkillKey } from "./keywords";
+
+const MIN_PROJECTS = 3;
 
 const dates = (start: string, end: string | null) => [start, end ?? "Present"].filter(Boolean).join(" - ");
 
@@ -14,7 +17,12 @@ export function resumeView(cv: CvContent) {
       years: dates(e.start, e.end),
       description: e.bullets.map((b) => b.text),
     })),
-    personalProjects: cv.projects.map((p) => ({ name: p.name, technologies: p.details, description: p.bullets.map((b) => b.text) })),
+    personalProjects: cv.projects.map((p) => ({
+      name: p.name,
+      technologies: p.details,
+      description: p.bullets.map((b) => b.text),
+      ...(p.optional && { optional: true }),
+    })),
     education: cv.education.map((e) => ({
       institution: e.institution,
       degree: e.qualification,
@@ -24,6 +32,17 @@ export function resumeView(cv: CvContent) {
     skills: cv.skills.map((g) => ({ label: g.label, items: g.items })),
     certifications: cv.certifications,
   };
+}
+
+export function chooseProjects(raw: unknown, cv: CvContent): number[] {
+  const shown = cv.projects.flatMap((p, i) => (p.optional ? [] : [i]));
+  const picked = [...new Set(list(obj(raw).projects).filter((i): i is number => Number.isInteger(i) && i >= 0 && i < cv.projects.length))];
+  return picked.length ? picked.slice(0, Math.max(shown.length, MIN_PROJECTS)) : shown;
+}
+
+export function withProjects(cv: CvContent, indices: number[]): CvContent {
+  const projects = indices.filter((i) => i < cv.projects.length).map((i) => ({ ...cv.projects[i], optional: undefined }));
+  return { ...cv, projects };
 }
 
 type Slot =

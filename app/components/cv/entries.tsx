@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Field, FieldGrid } from "~/components/profile/field";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { newId } from "~/lib/cv";
 import type { CvBullet, CvEducation, CvExperience, CvProject } from "~/types/cv";
@@ -175,7 +176,11 @@ export function ProjectList({ value, onChange }: { value: CvProject[]; onChange:
   return (
     <div className="flex flex-col gap-3">
       {value.map((project, i) => (
-        <Entry key={project.id} heading={project.name || "New project"} onRemove={() => onChange(removeAt(value, i))}>
+        <Entry
+          key={project.id}
+          heading={`${project.name || "New project"}${project.optional ? " · reserve" : ""}`}
+          onRemove={() => onChange(removeAt(value, i))}
+        >
           <FieldGrid cols={2}>
             <Field label="Name">
               <Input value={project.name} onChange={(e) => set(i, { name: e.target.value })} />
@@ -191,6 +196,12 @@ export function ProjectList({ value, onChange }: { value: CvProject[]; onChange:
             </Field>
           </FieldGrid>
           <Bullets value={project.bullets} onChange={(bullets) => set(i, { bullets })} />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Switch checked={!project.optional} onCheckedChange={(shown) => set(i, { optional: shown ? undefined : true })} label="Show on CV" />
+            <span className="font-sans text-[12.5px] normal-case tracking-normal text-text-tertiary">
+              Off keeps it in reserve: tailoring adds it when it suits the job.
+            </span>
+          </div>
         </Entry>
       ))}
       <AddButton label="Project" onClick={() => onChange([...value, { id: newId(), name: "", url: "", subtitle: "", details: "", bullets: [] }])} />

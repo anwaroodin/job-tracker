@@ -38,6 +38,8 @@ export function personFor(personal: ProfileForm["personal"], account: { name?: s
 export const contactLine = (person: Person) =>
   [person.phone, person.location, person.email, person.linkedin, person.github, person.website].filter(Boolean).join(" · ");
 
+export const shownProjects = (cv: Pick<CvContent, "projects">) => cv.projects.filter((p) => !p.optional);
+
 export function typstCv(person: Person, cv: CvContent): TypstCv {
   const texts = (bullets: CvBullet[]) => bullets.map((b) => b.text);
   const bold = (bullets: CvBullet[]) => bullets.map((b) => b.bold ?? []);
@@ -55,7 +57,7 @@ export function typstCv(person: Person, cv: CvContent): TypstCv {
       bullets: texts(bullets),
       bold: bold(bullets),
     })),
-    projects: cv.projects.map(({ name, url, subtitle, details, bullets }) => ({ name, url: bareUrl(url), subtitle, details, bullets: texts(bullets), bold: bold(bullets) })),
+    projects: shownProjects(cv).map(({ name, url, subtitle, details, bullets }) => ({ name, url: bareUrl(url), subtitle, details, bullets: texts(bullets), bold: bold(bullets) })),
     education: cv.education.map(({ institution, qualification, location, start, end, details }) => ({
       institution,
       qualification,

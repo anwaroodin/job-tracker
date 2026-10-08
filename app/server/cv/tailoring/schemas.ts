@@ -22,6 +22,7 @@ export const KEYWORDS_SCHEMA = object({
 
 export const PLAN_SCHEMA = object({
   target_skills: { type: "array", items: object({ skill: { type: "string" }, reason: { type: "string" } }) },
+  projects: { type: "array", items: { type: "integer" } },
   strategy_notes: { type: "string" },
 });
 

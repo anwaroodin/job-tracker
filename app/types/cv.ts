@@ -32,6 +32,7 @@ export interface CvProject {
   subtitle: string;
   details: string;
   bullets: CvBullet[];
+  optional?: boolean;
 }
 
 export interface SkillGroup {
