@@ -85,6 +85,7 @@ export interface TailorRequest {
   input: string;
   model?: string;
   effort?: "low" | "medium" | "high";
+  provider?: "claude" | "antigravity";
   web?: boolean;
 }
 

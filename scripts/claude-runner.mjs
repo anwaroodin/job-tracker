@@ -1,7 +1,7 @@
 import { execFile, spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -12,6 +12,10 @@ const WEB_TOOLS = ["WebSearch", "WebFetch"];
 const MODEL_NAME = /^[a-z0-9.\-[\]]{2,60}$/i;
 const EFFORTS = new Set(["low", "medium", "high", "xhigh", "max"]);
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
+const AGY_MODEL = process.env.ANTIGRAVITY_MODEL || "gemini-3.8-flash";
+const AGY_LEVEL = { low: "low", medium: "medium", high: "high", xhigh: "high", max: "high" };
+const run = promisify(execFile);
+const ANTIGRAVITY = process.env.RUNNER_ANTIGRAVITY !== "0" && (await run("which", ["agy"]).then(() => true, () => false));
 const ORIGINS = new Set(["http://localhost:5173", process.env.JOB_TRACKER_URL?.replace(/\/$/, "")].filter(Boolean));
 
 let busy = false;
@@ -29,7 +33,7 @@ function usageOf(reply) {
 async function claudeToken() {
   const stored =
     process.platform === "darwin"
-      ? (await promisify(execFile)("security", ["find-generic-password", "-s", "Claude Code-credentials", "-w"])).stdout
+      ? (await run("security", ["find-generic-password", "-s", "Claude Code-credentials", "-w"])).stdout
       : await readFile(join(homedir(), ".claude", ".credentials.json"), "utf8");
   return JSON.parse(stored).claudeAiOauth.accessToken;
 }
@@ -78,6 +82,33 @@ function runClaude({ system, schema, input, model, effort, web }) {
   });
 }
 
+async function runAntigravity({ system, schema, input, effort }) {
+  const dir = await mkdtemp(join(tmpdir(), "job-tracker-agy-"));
+  const args = [
+    "--output-format", "json",
+    "--json-schema", JSON.stringify(schema),
+    "--model", `${AGY_MODEL}-${AGY_LEVEL[effort] ?? "medium"}`,
+    "--sandbox",
+    "--dangerously-skip-permissions",
+    "--disable-slash-commands",
+    "--print-timeout", `${TIMEOUT_MS / 1000}s`,
+    "-p", `${system}\n\n${input}`,
+  ];
+  try {
+    const { stdout, stderr } = await run("agy", args, { cwd: dir, timeout: TIMEOUT_MS, maxBuffer: 20 * 1024 * 1024 });
+    const reply = JSON.parse(stdout);
+    if (reply.status !== "SUCCESS" || !reply.structured_output) {
+      const denied = (reply.denied_actions ?? []).map((a) => a.action).join(", ");
+      throw new Error(`Antigravity returned no result${denied ? ` (denied: ${denied})` : ""}. ${stderr.trim() || reply.response || ""}`.trim());
+    }
+    const u = reply.usage ?? {};
+    const usage = { costUsd: 0, inputTokens: u.input_tokens ?? 0, cachedTokens: u.cache_read_tokens ?? 0, outputTokens: (u.output_tokens ?? 0) + (u.thinking_tokens ?? 0) };
+    return { result: reply.structured_output, usage };
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
 function readJson(req) {
   return new Promise((resolve, reject) => {
     let body = "";
@@ -111,7 +142,7 @@ const server = createServer(async (req, res) => {
       .end(body === undefined ? undefined : JSON.stringify(body));
 
   if (req.method === "OPTIONS") return send(204);
-  if (req.method === "GET" && req.url === "/health") return send(200, { ok: true, busy, model: MODEL });
+  if (req.method === "GET" && req.url === "/health") return send(200, { ok: true, busy, model: MODEL, antigravity: ANTIGRAVITY });
   if (req.method === "GET" && req.url === "/usage") {
     return planUsage().then(
       (usage) => send(200, usage),
@@ -125,8 +156,10 @@ const server = createServer(async (req, res) => {
   const started = Date.now();
   try {
     const request = await readJson(req);
-    console.log(`Running ${request.web ? "research" : "tailoring"} with ${MODEL_NAME.test(request.model ?? "") ? request.model : MODEL} (${request.effort ?? "default"} effort)…`);
-    const { result, usage } = await runClaude(request);
+    const onAntigravity = request.provider === "antigravity" && ANTIGRAVITY;
+    const model = onAntigravity ? `Antigravity ${AGY_MODEL}` : MODEL_NAME.test(request.model ?? "") ? request.model : MODEL;
+    console.log(`Running ${request.web ? "research" : "tailoring"} with ${model} (${request.effort ?? "default"} effort)…`);
+    const { result, usage } = await (onAntigravity ? runAntigravity(request) : runClaude(request));
     console.log(`Done in ${Math.round((Date.now() - started) / 1000)}s: $${usage.costUsd.toFixed(3)} at API prices, ${usage.inputTokens} tokens in, ${usage.cachedTokens} cached, ${usage.outputTokens} out`);
     send(200, { result, usage });
   } catch (e) {
@@ -139,4 +172,5 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`Claude runner on http://127.0.0.1:${PORT}, accepting ${[...ORIGINS].join(", ")}. Set JOB_TRACKER_URL in .env to add the deployed app.`);
+  console.log(ANTIGRAVITY ? `Reading steps and research run on Antigravity (${AGY_MODEL}).` : "Every step runs on Claude (Antigravity's agy CLI not found or turned off).");
 });

@@ -60,7 +60,8 @@ const EFFORT: Record<Stage, TailorRequest["effort"]> = {
 };
 
 function request(stage: Stage, prompt: string, schema: object): TailorRequest {
-  return { system: SYSTEM_PROMPTS[stage], schema, input: prompt, effort: EFFORT[stage] };
+  const provider = stage === "keywords" ? "antigravity" : "claude";
+  return { system: SYSTEM_PROMPTS[stage], schema, input: prompt, effort: EFFORT[stage], provider };
 }
 
 function researchFor(ctx: TailorContext) {

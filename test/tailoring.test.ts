@@ -170,7 +170,7 @@ describe("pipeline", () => {
   it("runs keywords, plan, diffs, keyword injection and cover letter into a scored tailored CV", () => {
     const ctx: TailorContext = { master: CV, jobDescription: JOB, keywords: null, research: null };
     const first = startTailoring(ctx, "keywords");
-    expect(first).toMatchObject({ stage: "keywords" });
+    expect(first).toMatchObject({ stage: "keywords", request: { provider: "antigravity" } });
 
     const extracted = continueTailoring(ctx, "keywords", { required_skills: ["Go", "Kubernetes"], keywords: ["billing", "SQL"] }, cleanState({}));
     if (!("keywords" in extracted)) throw new Error("expected keywords");
@@ -179,6 +179,7 @@ describe("pipeline", () => {
     const plan = startTailoring(withKeywords, "keywords");
     if (!("request" in plan)) throw new Error("expected a request");
     expect(plan.stage).toBe("plan");
+    expect(plan.request.provider).toBe("claude");
 
     const diffs = continueTailoring(withKeywords, "plan", { target_skills: [{ skill: "Kubernetes", reason: "required" }] }, plan.state);
     if (!("request" in diffs)) throw new Error("expected a request");
@@ -250,7 +251,7 @@ describe("company research", () => {
   });
 
   it("asks for web tools and keeps only safe links from the reply", () => {
-    expect(researchRequest({ company: "Acme", role: "PM", description: "Build things", url: "" })).toMatchObject({ web: true, effort: "medium" });
+    expect(researchRequest({ company: "Acme", role: "PM", description: "Build things", url: "" })).toMatchObject({ web: true, effort: "medium", provider: "antigravity" });
     const research = cleanResearch({
       values: ["Ship fast", "Ship fast", 3],
       sources: [

@@ -55,7 +55,7 @@ export function researchRequest(job: Pick<Application, "company" | "role" | "des
   ]
     .filter(Boolean)
     .join("\n");
-  return { system: SYSTEM, schema: SCHEMA, input, model: RESEARCH_MODEL, effort: "medium", web: true };
+  return { system: SYSTEM, schema: SCHEMA, input, model: RESEARCH_MODEL, effort: "medium", provider: "antigravity", web: true };
 }
 
 export function cleanResearch(raw: unknown): CompanyResearch {

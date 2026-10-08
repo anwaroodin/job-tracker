@@ -183,6 +183,10 @@ It only accepts requests from `http://localhost:5173` and from `JOB_TRACKER_URL`
 | `JOB_TRACKER_URL` | none | Your deployed dashboard's address, so it can use the runner too |
 | `RUNNER_MODEL` | `opus` | Model used when the page doesn't pick one |
 | `RUNNER_PORT` | `4317` | Port to listen on |
+| `RUNNER_ANTIGRAVITY` | on when `agy` is installed | Set to `0` to run every step on Claude |
+| `ANTIGRAVITY_MODEL` | `gemini-3.8-flash` | Gemini model for the reading steps; the effort level is added to its name |
+
+If Google's [Antigravity](https://antigravity.google) CLI (`agy`) is installed, the runner uses it for the steps that only read: understanding the job description, checking which skills your CV implies, and company research. That saves your Claude limits for the tailoring itself, which always runs on Claude. `agy` can't prompt for permissions when run headless, so it runs with every tool allowed (`--dangerously-skip-permissions`), but sandboxed, with slash commands off, in an empty temporary folder that is deleted afterwards.
 
 ## Roadmap
 
