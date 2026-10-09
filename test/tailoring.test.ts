@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { groupByRole } from "~/lib/job-titles";
 import { calibrate, estimatePct, usedPct } from "~/lib/run-cost";
 import { wordDiff } from "~/lib/word-diff";
 import { cleanResearch, researchRequest } from "~/server/cv/research";
@@ -369,6 +370,26 @@ describe("wordDiff", () => {
       { kind: "removed", text: "the" },
       { kind: "same", text: "billing" },
       { kind: "removed", text: "service" },
+    ]);
+  });
+});
+
+describe("groupByRole", () => {
+  const roles = (titles: string[]) => groupByRole(titles.map((role) => ({ role }))).map((g) => [g.role, g.items.map((i) => i.role)]);
+
+  it("groups spelling, qualifier and location variants of the same title", () => {
+    expect(roles(["Full Stack Engineer", "Full-Stack Engineer", "Full-Stack Software Engineer (Norwich, UK)", "Graduate Back-end Software Developer"])).toEqual([
+      ["Full Stack Engineer", ["Full Stack Engineer", "Full-Stack Engineer", "Full-Stack Software Engineer (Norwich, UK)"]],
+      ["Graduate Back-end Software Developer", ["Graduate Back-end Software Developer"]],
+    ]);
+  });
+
+  it("works for any field and keeps one-word titles apart", () => {
+    expect(roles(["Staff Nurse", "Senior Staff Nurse - Night Shifts", "Accountant", "Management Accountant", "Nurse"])).toEqual([
+      ["Staff Nurse", ["Staff Nurse", "Senior Staff Nurse - Night Shifts"]],
+      ["Accountant", ["Accountant"]],
+      ["Management Accountant", ["Management Accountant"]],
+      ["Nurse", ["Nurse"]],
     ]);
   });
 });
