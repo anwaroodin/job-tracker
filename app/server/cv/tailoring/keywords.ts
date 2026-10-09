@@ -4,7 +4,12 @@ import { obj, str, strings } from "../clean";
 
 const WEIGHTS = { keywordMatch: 0.55, skillsCoverage: 0.25, sectionCompleteness: 0.2 };
 
-export const normalizeSkillKey = (skill: string) => skill.trim().toLowerCase().replace(/\s+/g, " ");
+export const normalizeSkillKey = (skill: string) =>
+  skill
+    .toLowerCase()
+    .replace(/[\u2010-\u2015-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 export function cleanJobKeywords(raw: unknown): JobKeywords {
   const r = obj(raw);
@@ -18,12 +23,13 @@ export function cleanJobKeywords(raw: unknown): JobKeywords {
     educationRequirements: strings(r.education_requirements),
     keyResponsibilities: strings(r.key_responsibilities, 300),
     keywords: strings(r.keywords, 80),
+    softSkills: strings(r.soft_skills, 80),
     experienceYears: Number.isFinite(years) && years > 0 ? years : null,
     seniorityLevel: str(r.seniority_level, 40),
   };
 }
 
-function allKeywords(jk: JobKeywords) {
+export function allKeywords(jk: JobKeywords) {
   const seen = new Set<string>();
   const out: { term: string; kind: "required" | "preferred" | "keyword" }[] = [];
   const add = (terms: string[], kind: "required" | "preferred" | "keyword") => {
@@ -44,8 +50,10 @@ function allKeywords(jk: JobKeywords) {
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export function keywordInText(keyword: string, text: string) {
-  const term = escape(keyword.trim().toLowerCase());
-  return !!term && new RegExp(`(?<!\\w)${term}(?!\\w)`).test(text.toLowerCase());
+  const term = normalizeSkillKey(keyword);
+  if (!term) return false;
+  const haystack = normalizeSkillKey(text);
+  return [...new Set([term, term.replace(/ /g, "")])].some((variant) => new RegExp(`(?<!\\w)${escape(variant)}(?!\\w)`).test(haystack));
 }
 
 export function contentText(cv: CvContent) {
@@ -122,5 +130,6 @@ export function keywordsForPrompt(jk: JobKeywords) {
   if (jk.requiredSkills.length) sections.push(`Required skills to emphasize:\n- ${jk.requiredSkills.join("\n- ")}`);
   if (jk.preferredSkills.length) sections.push(`Preferred skills (include only if resume supports them):\n- ${jk.preferredSkills.join("\n- ")}`);
   if (jk.keywords.length) sections.push(`Additional keywords to weave in naturally:\n- ${jk.keywords.join("\n- ")}`);
+  if (jk.softSkills.length) sections.push(`Soft skills the job values (show them through what the candidate did; never name them):\n- ${jk.softSkills.join("\n- ")}`);
   return sections.join("\n\n") || "No specific keywords extracted.";
 }

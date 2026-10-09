@@ -1,5 +1,5 @@
 import { newId } from "~/lib/cv";
-import type { CvBullet, Cv, SkillGroup } from "~/types/cv";
+import type { Confirmation, Cv, CvBullet, SkillGroup } from "~/types/cv";
 
 const MAX_ITEMS = 60;
 const MAX_TEXT = 1500;
@@ -79,5 +79,15 @@ export function cleanCv(input: unknown): Cv {
     skills: skillGroups(raw.skills),
     certifications: strings(raw.certifications),
     targetRoles: strings(raw.targetRoles, 80),
+    confirmed: cleanConfirmations(raw.confirmed),
   };
+}
+
+export function cleanConfirmations(raw: unknown): Confirmation[] {
+  const byTerm = new Map<string, Confirmation>();
+  for (const item of list(raw).map((c) => obj(c))) {
+    const term = str(item.term, 80);
+    if (term) byTerm.set(term.toLowerCase(), { term, has: item.has === true, detail: str(item.detail, 500) });
+  }
+  return [...byTerm.values()];
 }

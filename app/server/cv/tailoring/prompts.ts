@@ -19,10 +19,14 @@ Example format:
   "education_requirements": ["Bachelor's in CS"],
   "key_responsibilities": ["Lead team"],
   "keywords": ["microservices", "agile"],
+  "soft_skills": ["communication", "mentoring"],
   "experience_years": 5,
   "seniority_level": "senior"
 }
 
+Put only hard skills in required_skills and preferred_skills: technologies, tools, methods, domains and qualifications.
+Put personal qualities and soft skills (communication, empathy, teamwork, ownership and the like) in soft_skills.
+keywords are other technical or domain terms worth matching. Never include locations, salary, benefits, working patterns, the company's name or generic words in any list.
 Extract numeric years (e.g., "5+ years" → 5) and infer seniority level.
 Set "company" to the hiring company name and "role" to the job title exactly as
 written in the posting; use an empty string for either if it is not stated.
@@ -56,6 +60,9 @@ Job Description:
 What the company says it values and looks for (may be empty):
 {company_research}
 
+Confirmed by the candidate (true even though the resume doesn't show it yet; use it to target skills):
+{confirmed}
+
 Resume JSON:
 {original_resume}
 
@@ -74,7 +81,7 @@ export const DIFF_IMPROVE_PROMPT = `Given this resume and job description, outpu
 
 RULES:
 1. Only modify content; never change names, companies, dates, institutions, or degrees
-2. Do not invent achievements not supported by the original resume text
+2. Do not invent achievements not supported by the original resume text or confirmed by the candidate below
 3. Do not add new work entries, education entries, or project entries
 4. {strategy_instruction}
 5. Each change MUST include the original text (copied exactly) so it can be verified
@@ -110,6 +117,9 @@ Job Description:
 
 What the company says it values and looks for (may be empty):
 {company_research}
+
+Confirmed by the candidate (true even though the resume doesn't show it yet; you may write it into the resume where it fits, and add it as a skill when it is a verified skill target):
+{confirmed}
 
 Original Resume:
 {original_resume}
@@ -218,7 +228,20 @@ Requirements:
 
 Output JSON with the greeting line, the paragraphs, and the sign-off line (for example "Kind regards,"), without the candidate's name.`;
 
+export const GAPS_PROMPT = `Sort the skills this job asks for that the candidate's CV doesn't name word for word.
+
+"implied": the CV shows the skill in other words, or it follows obviously from the candidate's work or field. A full-stack engineer has frontend and backend experience, anyone who built React apps knows JavaScript, and every software engineer codes. Generic parts of the candidate's own field always count as implied.
+"ask": only specific skills with nothing in the CV pointing to them, so the candidate has to say whether they have them. At most 6, the most important first.
+Put every skill in exactly one list.
+
+Skills:
+{skills}
+
+CV:
+{resume}`;
+
 export const SYSTEM_PROMPTS = {
+  gaps: "You judge which skills a CV already shows or clearly implies. Output only valid JSON.",
   keywords: "You extract structured job requirements. Output only valid JSON.",
   plan: "You are an expert resume editor. Output only valid JSON.",
   diffs: "You are an expert resume editor. Output only valid JSON with targeted changes.",

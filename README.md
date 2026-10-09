@@ -38,6 +38,7 @@ Connect Gmail (read-only) and job-tracker syncs application emails in the backgr
 Keep one master CV and get a version tailored to each job:
 
 - **CV:** import a PDF or paste your CV, edit it, and preview it rendered with [Typst](https://typst.app) from a template you can change. The PDF is compiled on the Worker.
+- **Questions, not guesses:** skills a job asks for that your CV shows in other words or clearly implies are assumed (and listed so you can undo them). Only specific skills with nothing in your CV pointing to them are asked about, at most six, before rewriting. A yes (with an optional detail) counts as evidence; a no keeps it out. Answers are saved on your CV, so each one is asked once.
 - **Reserve projects:** keep projects off your CV but on file. Tailoring brings one in when it shows what a job asks for better than the projects you show, and treats it as real evidence of your skills.
 - **Tailoring:** a pipeline ported from [Resume-Matcher](https://github.com/srbhr/Resume-Matcher) (Apache-2.0) extracts the job's keywords, plans which skills to target, and asks Claude for targeted edits. Each edit is checked in code against your CV before it's applied, so titles, companies, dates and skills you don't have can't be invented. It also writes a cover letter.
 - **Match score:** keyword match, skills coverage and section completeness, before and after tailoring, with every change shown word by word.

@@ -16,6 +16,7 @@ export const KEYWORDS_SCHEMA = object({
   education_requirements: STRINGS,
   key_responsibilities: STRINGS,
   keywords: STRINGS,
+  soft_skills: STRINGS,
   experience_years: { type: ["number", "null"] },
   seniority_level: { type: "string" },
 });
@@ -59,3 +60,5 @@ export const LETTER_SCHEMA = object({
 export const EMPHASIS_SCHEMA = object({
   emphasis: { type: "array", items: object({ path: { type: "string" }, phrases: STRINGS }) },
 });
+
+export const GAPS_SCHEMA = object({ implied: STRINGS, ask: STRINGS });

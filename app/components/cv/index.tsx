@@ -4,6 +4,7 @@ import { newId } from "~/lib/cv";
 import type { Cv } from "~/types/cv";
 import { AddButton, EducationList, ExperienceList, ListField, ProjectList, RemoveButton, removeAt, updateAt } from "./entries";
 import { CvImport } from "./import";
+import { AnswerList } from "./answers";
 import { SkillGroupList } from "./skills";
 
 const MAX_SUMMARIES = 3;
@@ -15,6 +16,7 @@ export const CV_SECTIONS = [
   { n: "05", id: "education", title: "Education" },
   { n: "06", id: "projects", title: "Projects" },
   { n: "07", id: "skills", title: "Skills", hint: "Grouped as on your CV, plus certifications." },
+  { n: "08", id: "answers", title: "Answers", hint: "What you told tailoring you have, or don't, beyond this CV." },
 ] as const;
 
 function CvPart({ id, i, children }: { id: (typeof CV_SECTIONS)[number]["id"]; i: number; children: React.ReactNode }) {
@@ -30,7 +32,7 @@ export function CvEditor({ value, onChange }: { value: Cv; onChange: (patch: Par
   return (
     <>
       <CvPart id="import" i={1}>
-        <CvImport onImported={(cv) => onChange({ ...cv, targetRoles: value.targetRoles })} />
+        <CvImport onImported={(cv) => onChange({ ...cv, targetRoles: value.targetRoles, confirmed: value.confirmed })} />
       </CvPart>
 
       <CvPart id="summaries" i={2}>
@@ -77,6 +79,10 @@ export function CvEditor({ value, onChange }: { value: Cv; onChange: (patch: Par
           placeholder="AWS Certified Cloud Practitioner"
           onChange={(certifications) => onChange({ certifications })}
         />
+      </CvPart>
+
+      <CvPart id="answers" i={7}>
+        <AnswerList value={value.confirmed} onChange={(confirmed) => onChange({ confirmed })} />
       </CvPart>
     </>
   );

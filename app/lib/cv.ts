@@ -9,6 +9,7 @@ export const EMPTY_CV: Cv = {
   skills: [],
   certifications: [],
   targetRoles: [],
+  confirmed: [],
 };
 
 export const newId = () => crypto.randomUUID().slice(0, 8);

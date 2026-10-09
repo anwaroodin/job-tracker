@@ -4,10 +4,10 @@ import { contentText, jdSkillIndex, keywordInText, normalizeSkillKey } from "./k
 
 export const MAX_NOTE_CHARS = 4000;
 
-export function verifySkillPlan(raw: unknown, cv: CvContent, jk: JobKeywords, jobDescription: string) {
+export function verifySkillPlan(raw: unknown, cv: CvContent, jk: JobKeywords, jobDescription: string, evidence = contentText(cv)) {
   const existing = new Map(cv.skills.flatMap((g) => g.items).map((s) => [normalizeSkillKey(s), s]));
   const jdSkills = jdSkillIndex(jk, jobDescription);
-  const text = contentText(cv);
+  const text = evidence;
   const accepted: SkillTarget[] = [];
   const rejected: string[] = [];
   const seen = new Set<string>();
@@ -19,9 +19,9 @@ export function verifySkillPlan(raw: unknown, cv: CvContent, jk: JobKeywords, jo
     if (!skill || seen.has(key)) continue;
     seen.add(key);
     if (existing.has(key)) accepted.push({ skill: existing.get(key)!, source: "existing", reason: reason || "Already in your skills" });
-    else if (jdSkills.has(key)) accepted.push({ skill: jdSkills.get(key)!, source: "jd_added", reason: reason || "Required or preferred by the job" });
-    else if (keywordInText(skill, text)) accepted.push({ skill, source: "supported_by_resume", reason: reason || "Appears in your CV" });
-    else rejected.push(skill);
+    else if (!keywordInText(skill, text)) rejected.push(skill);
+    else if (jdSkills.has(key)) accepted.push({ skill: jdSkills.get(key)!, source: "jd_added", reason: reason || "Asked for by the job and backed by your CV or answers" });
+    else accepted.push({ skill, source: "supported_by_resume", reason: reason || "Appears in your CV or answers" });
   }
   return { accepted, rejected, notes: str(obj(raw).strategy_notes, MAX_NOTE_CHARS) };
 }
@@ -157,17 +157,15 @@ export function removeAiPhrases(cv: CvContent, jobDescription: string) {
   return { cv: out, removed: [...removed] };
 }
 
-export function alignWithMaster(cv: CvContent, master: CvContent, jk: JobKeywords, jobDescription: string) {
+export function alignWithMaster(cv: CvContent, master: CvContent, evidence = contentText(master)) {
   const masterSkills = new Set(master.skills.flatMap((g) => g.items).map(normalizeSkillKey));
-  const masterText = contentText(master);
-  const allowed = jdSkillIndex(jk, jobDescription);
   const removed: string[] = [];
   const out = structuredClone(cv);
   out.skills = out.skills.map((group) => ({
     ...group,
     items: group.items.filter((item) => {
       const key = normalizeSkillKey(item);
-      const keep = masterSkills.has(key) || allowed.has(key) || keywordInText(item, masterText);
+      const keep = masterSkills.has(key) || keywordInText(item, evidence);
       if (!keep) removed.push(item);
       return keep;
     }),

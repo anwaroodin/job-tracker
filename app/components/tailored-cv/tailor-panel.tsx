@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFetcher, useRevalidator } from "react-router";
 import { Button } from "~/components/ui/button";
 import { planUsage, runnerAvailable, runOnRunner } from "~/lib/runner";
-import type { PlanUsage, RunnerUsage, TailorRequest } from "~/types/cv";
+import type { Confirmation, JobQuestion, PlanUsage, RunnerUsage, TailorRequest } from "~/types/cv";
+import { JobQuestions } from "./questions";
 import { RunCost, useRunCosts } from "./run-cost";
 
 const MODELS = [
@@ -18,6 +19,7 @@ const STRATEGIES = [
 ];
 const STAGE_LABELS: Record<string, string> = {
   keywords: "Reading the job description…",
+  gaps: "Checking what your CV already covers…",
   plan: "Planning which skills to target…",
   diffs: "Rewriting your CV for the job…",
   inject: "Working in missing keywords…",
@@ -26,7 +28,7 @@ const STAGE_LABELS: Record<string, string> = {
 };
 const MODEL_KEY = "job-tracker/claude-model";
 
-type Step = { stage: string; request: TailorRequest; state: unknown } | { done: true };
+type Step = { stage: string; request: TailorRequest; state: unknown } | { questions: JobQuestion[] } | { done: true };
 
 function useModel() {
   const [model, setModel] = useState(MODELS[0].id);
@@ -71,6 +73,8 @@ export function TailorPanel({
   const [strategy, setStrategy] = useState("keywords");
   const costs = useRunCosts();
   const [now, setNow] = useState<PlanUsage | null>(null);
+  const [questions, setQuestions] = useState<JobQuestion[] | null>(null);
+  const paused = useRef<{ stages: RunnerUsage[]; before: PlanUsage | null } | null>(null);
 
   useEffect(() => {
     runnerAvailable().then((ok) => {
@@ -90,22 +94,32 @@ export function TailorPanel({
     }
   };
 
-  const tailor = () =>
+  const tailor = (answers?: Confirmation[]) =>
     guard(async () => {
-      const stages: RunnerUsage[] = [];
-      const before = await planUsage();
-      let step = await postStep({ applicationId, strategy });
+      const run = paused.current ?? { stages: [] as RunnerUsage[], before: await planUsage() };
+      paused.current = null;
+      let step = await postStep({ applicationId, strategy, ...(answers && { answered: true, answers }) });
       while (!("done" in step)) {
+        if ("questions" in step) {
+          paused.current = run;
+          setQuestions(step.questions);
+          return;
+        }
         setProgress(STAGE_LABELS[step.stage] ?? "Working…");
         const { result, usage } = await runOnRunner({ ...step.request, model });
-        stages.push(usage);
+        run.stages.push(usage);
         step = await postStep({ applicationId, stage: step.stage, result, state: step.state });
       }
       const after = await planUsage();
       setNow(after);
-      costs.record(model, "tailor", { stages, before, after });
+      costs.record(model, "tailor", { stages: run.stages, before: run.before, after });
       revalidator.revalidate();
     });
+
+  const answer = (answers: Confirmation[]) => {
+    setQuestions(null);
+    tailor(answers);
+  };
 
   const runResearch = () =>
     guard(async () => {
@@ -120,7 +134,7 @@ export function TailorPanel({
     });
 
   const busy = progress !== null || fetcher.state !== "idle";
-  const blocked = busy || runner !== "ready";
+  const blocked = busy || runner !== "ready" || questions !== null;
   const select = "h-8 border border-stroke-primary bg-bg-primary px-2 font-mono text-[11px] uppercase tracking-[0.06em] text-text-secondary";
 
   return (
@@ -147,10 +161,11 @@ export function TailorPanel({
             {hasResearch ? "Research company again" : "Research company"}
           </Button>
         )}
-        <Button type="button" size="small" className="uppercase" disabled={blocked} onClick={tailor}>
+        <Button type="button" size="small" className="uppercase" disabled={blocked} onClick={() => tailor()}>
           {retailor ? "Tailor again" : "Tailor with Claude"}
         </Button>
       </div>
+      {questions && <JobQuestions questions={questions} onSubmit={answer} />}
       <RunCost calibrations={costs.calibrations} model={model} researchModel={research?.model ?? model} now={now} last={costs.last} />
       <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
         {runner === "offline" && (

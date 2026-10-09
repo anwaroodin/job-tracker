@@ -3,9 +3,10 @@ import { calibrate, estimatePct, usedPct } from "~/lib/run-cost";
 import { wordDiff } from "~/lib/word-diff";
 import { cleanResearch, researchRequest } from "~/server/cv/research";
 import { applyEdits } from "~/server/cv/tailored";
-import { atsScore, cleanJobKeywords, contentText, keywordGaps } from "~/server/cv/tailoring/keywords";
+import { atsScore, cleanJobKeywords, contentText, keywordGaps, keywordInText } from "~/server/cv/tailoring/keywords";
 import { cleanState, continueTailoring, startTailoring, type TailorContext } from "~/server/cv/tailoring/pipeline";
 import { verifyEmphasis } from "~/server/cv/tailoring/emphasis";
+import { confirmedForPrompt, gapsRequest, skillGaps, sortGaps, withAnswers } from "~/server/cv/tailoring/questions";
 import { alignWithMaster, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
 import { applyDiffs, chooseProjects, resumeView, verifyDiffResult } from "~/server/cv/tailoring/resume";
 import { typstCv } from "~/lib/cv";
@@ -101,7 +102,7 @@ describe("reserve projects", () => {
   });
 
   it("join the tailored CV when chosen and count as evidence", () => {
-    const ctx: TailorContext = { master: withReserve, jobDescription: JOB, keywords: KEYWORDS, research: null };
+    const ctx: TailorContext = { master: withReserve, jobDescription: JOB, keywords: KEYWORDS, research: null, confirmed: [] };
     const plan = startTailoring(ctx, "keywords");
     if (!("request" in plan)) throw new Error("expected a request");
     expect(plan.request.input).toContain('"optional":true');
@@ -117,15 +118,71 @@ describe("reserve projects", () => {
   });
 });
 
+describe("keywordInText", () => {
+  it("treats hyphens, spaces and joined words as the same", () => {
+    expect(keywordInText("full-stack", "Full Stack Software Engineer")).toBe(true);
+    expect(keywordInText("Full Stack", "a full-stack role")).toBe(true);
+    expect(keywordInText("full stack", "Fullstack developer")).toBe(true);
+    expect(keywordInText("C++", "Wrote C++ services")).toBe(true);
+    expect(keywordInText("Go", "Google")).toBe(false);
+  });
+});
+
+describe("questions", () => {
+  it("asks only about job terms the CV doesn't show and that weren't answered", () => {
+    const answered = [{ term: "postgresql", has: false, detail: "" }];
+    expect(skillGaps(KEYWORDS, CV, answered)).toEqual([{ term: "Kubernetes", kind: "required" }]);
+  });
+
+  it("lists only skill gaps, never twice for the same term", () => {
+    const many = cleanJobKeywords({
+      required_skills: ["Rust", "Elixir", "full-stack", "Haskell"],
+      preferred_skills: ["OCaml", "rust", "Zig", "Lua", "Perl"],
+      keywords: ["Norwich", "startup"],
+      soft_skills: ["empathy"],
+    });
+    const cv = { ...CV, experience: [{ ...CV.experience[0], title: "Full Stack Software Engineer" }] };
+    expect(skillGaps(many, cv, []).map((q) => q.term)).toEqual(["Rust", "Elixir", "Haskell", "OCaml", "Zig", "Lua", "Perl"]);
+  });
+
+  it("assumes what Claude judges implied and asks about at most six of the rest", () => {
+    const gaps = ["Frontend", "Coding", "Rust", "Elixir", "Haskell", "OCaml", "Zig", "Lua", "Perl"].map((term) => ({ term, kind: "required" as const }));
+    const sorted = sortGaps({ implied: ["frontend", "coding", "Cobol"], ask: ["Rust", "frontend", "Elixir", "Haskell", "OCaml", "Zig", "Lua", "Perl"] }, gaps);
+    expect(sorted.implied).toEqual([
+      { term: "Frontend", has: true, detail: "Assumed from your CV" },
+      { term: "Coding", has: true, detail: "Assumed from your CV" },
+    ]);
+    expect(sorted.ask.map((q) => q.term)).toEqual(["Rust", "Elixir", "Haskell", "OCaml", "Zig", "Lua"]);
+    expect(gapsRequest(gaps.slice(0, 2), CV)).toMatchObject({ effort: "low" });
+  });
+
+  it("keeps the latest answer for a term", () => {
+    const saved = [{ term: "Kubernetes", has: false, detail: "" }];
+    expect(withAnswers(saved, [{ term: "kubernetes", has: true, detail: "Ran clusters at Acme" }])).toEqual([{ term: "kubernetes", has: true, detail: "Ran clusters at Acme" }]);
+  });
+
+  it("treats a yes as evidence for skills and gives it to the prompts", () => {
+    const confirmed = [{ term: "Kubernetes", has: true, detail: "Ran clusters at Acme" }, { term: "PostgreSQL", has: false, detail: "" }];
+    const ctx: TailorContext = { master: CV, jobDescription: "Kubernetes and Terraform", keywords: KEYWORDS, research: null, confirmed };
+    const plan = startTailoring(ctx, "keywords");
+    if (!("request" in plan)) throw new Error("expected a request");
+    expect(plan.request.input).toContain("- Kubernetes: Ran clusters at Acme");
+    expect(plan.request.input.split("Confirmed by the candidate")[1].split("Resume JSON")[0]).not.toContain("PostgreSQL");
+    expect(confirmedForPrompt([{ term: "C++", has: false, detail: "I write Rust daily" }])).toContain("never claim them. The note may point to related experience they do have:\n- C++: I write Rust daily");
+    const diffs = continueTailoring(ctx, "plan", { target_skills: [{ skill: "Kubernetes" }, { skill: "PostgreSQL" }] }, plan.state);
+    if (!("request" in diffs)) throw new Error("expected a request");
+    expect(diffs.state.targets.map((t) => t.skill)).toEqual(["Kubernetes"]);
+  });
+});
+
 describe("refining", () => {
-  it("classifies skill targets and rejects unsupported ones", () => {
+  it("accepts skill targets only when the CV backs them, even ones the job asks for", () => {
     const plan = verifySkillPlan({ target_skills: [{ skill: "go" }, { skill: "Kubernetes" }, { skill: "billing" }, { skill: "Cobol" }] }, CV, KEYWORDS, JOB);
     expect(plan.accepted.map((t) => [t.skill, t.source])).toEqual([
       ["Go", "existing"],
-      ["Kubernetes", "jd_added"],
       ["billing", "supported_by_resume"],
     ]);
-    expect(plan.rejected).toEqual(["Cobol"]);
+    expect(plan.rejected).toEqual(["Kubernetes", "Cobol"]);
   });
 
   it("replaces AI-sounding phrases unless the job uses them", () => {
@@ -134,9 +191,10 @@ describe("refining", () => {
     expect(removeAiPhrases(cv, "We want robust systems").cv.summary).toBe("Led robust APIs to scale unscalable systems");
   });
 
-  it("removes skills backed by neither the CV nor the job", () => {
+  it("removes skills the CV and answers don't back, even ones the job asks for", () => {
     const cv = { ...CV, skills: [{ id: "g1", label: "Technical Skills", items: ["Go", "Kubernetes", "Cobol"] }] };
-    expect(alignWithMaster(cv, CV, KEYWORDS, JOB)).toMatchObject({ removed: ["Cobol"], cv: { skills: [{ items: ["Go", "Kubernetes"] }] } });
+    expect(alignWithMaster(cv, CV)).toMatchObject({ removed: ["Kubernetes", "Cobol"], cv: { skills: [{ items: ["Go"] }] } });
+    expect(alignWithMaster(cv, CV, `${contentText(CV)}\nKubernetes`).removed).toEqual(["Cobol"]);
   });
 });
 
@@ -168,7 +226,7 @@ describe("atsScore", () => {
 
 describe("pipeline", () => {
   it("runs keywords, plan, diffs, keyword injection and cover letter into a scored tailored CV", () => {
-    const ctx: TailorContext = { master: CV, jobDescription: JOB, keywords: null, research: null };
+    const ctx: TailorContext = { master: CV, jobDescription: JOB, keywords: null, research: null, confirmed: [] };
     const first = startTailoring(ctx, "keywords");
     expect(first).toMatchObject({ stage: "keywords", request: { provider: "antigravity" } });
 
@@ -181,9 +239,10 @@ describe("pipeline", () => {
     expect(plan.stage).toBe("plan");
     expect(plan.request.provider).toBe("claude");
 
-    const diffs = continueTailoring(withKeywords, "plan", { target_skills: [{ skill: "Kubernetes", reason: "required" }] }, plan.state);
+    const diffs = continueTailoring(withKeywords, "plan", { target_skills: [{ skill: "Kubernetes", reason: "required" }, { skill: "Go", reason: "required" }] }, plan.state);
     if (!("request" in diffs)) throw new Error("expected a request");
-    expect(diffs.request.input).toContain("- Kubernetes (jd_added)");
+    expect(diffs.request.input).toContain("- Go (existing): required");
+    expect(diffs.request.input).not.toContain("- Kubernetes (");
 
     const bullet = CV.experience[0].bullets[0].text;
     const reply = { changes: [change({ path: "workExperience[0].description[0]", original: bullet, value: "Built REST APIs in Go" })], strategy_notes: "Led with Go" };
@@ -240,7 +299,7 @@ describe("applyEdits", () => {
 describe("company research", () => {
   it("is given to the skill plan and the edits, with a rule against copying it", () => {
     const research = { summary: "", values: ["Ship small, ship often"], lookingFor: ["Owners"], culture: [], news: [], sources: [], researchedAt: "" };
-    const ctx: TailorContext = { master: CV, jobDescription: JOB, keywords: KEYWORDS, research };
+    const ctx: TailorContext = { master: CV, jobDescription: JOB, keywords: KEYWORDS, research, confirmed: [] };
     const plan = startTailoring(ctx, "keywords");
     if (!("request" in plan)) throw new Error("expected a request");
     expect(plan.request.input).toContain("Ship small, ship often");

@@ -41,6 +41,17 @@ export interface SkillGroup {
   items: string[];
 }
 
+export interface Confirmation {
+  term: string;
+  has: boolean;
+  detail: string;
+}
+
+export interface JobQuestion {
+  term: string;
+  kind: "required" | "preferred" | "keyword";
+}
+
 export interface Cv {
   summaries: { id: string; text: string }[];
   experience: CvExperience[];
@@ -49,6 +60,7 @@ export interface Cv {
   skills: SkillGroup[];
   certifications: string[];
   targetRoles: string[];
+  confirmed: Confirmation[];
 }
 
 export type CvImportResult = { cv: Cv; lines: number } | { error: string };
@@ -150,6 +162,7 @@ export interface JobKeywords {
   educationRequirements: string[];
   keyResponsibilities: string[];
   keywords: string[];
+  softSkills: string[];
   experienceYears: number | null;
   seniorityLevel: string;
 }

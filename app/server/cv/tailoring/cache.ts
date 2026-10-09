@@ -1,7 +1,7 @@
 import type { Application } from "~/types/application";
 import type { JobKeywords } from "~/types/cv";
 
-const KEYWORDS_VERSION = "resume-matcher-1";
+const KEYWORDS_VERSION = "resume-matcher-2";
 
 async function hashOf(text: string) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
