@@ -1,7 +1,7 @@
 import { newId } from "~/lib/cv";
 import type { CvContent, ResumeChange, SkillTarget } from "~/types/cv";
 import { list, obj } from "../clean";
-import { normalizeSkillKey } from "./keywords";
+import { keywordInText, normalizeSkillKey } from "./keywords";
 
 const MIN_PROJECTS = 3;
 
@@ -163,7 +163,7 @@ function where(cv: CvContent, path: string) {
   return `${name || "an entry"}, bullet ${Number(bullet[3]) + 1}`;
 }
 
-export function verifyDiffResult(original: CvContent, result: CvContent, applied: ResumeChange[]) {
+export function verifyDiffResult(original: CvContent, result: CvContent, applied: ResumeChange[], knownText: string, jobTerms: string[] = []) {
   if (!applied.length) return ["No changes were applied, so the CV is unchanged."];
   const warnings: string[] = [];
   const before = descriptionWords(original);
@@ -173,9 +173,11 @@ export function verifyDiffResult(original: CvContent, result: CvContent, applied
   }
   for (const change of applied) {
     if (typeof change.value !== "string" || (change.action !== "replace" && change.action !== "append")) continue;
-    const old = new Set((change.original ?? "").match(METRIC) ?? []);
+    const old = new Set(`${knownText}\n${change.original ?? ""}`.match(METRIC) ?? []);
     const invented = [...new Set(change.value.match(METRIC) ?? [])].filter((m) => !old.has(m));
     if (invented.length) warnings.push(`Possible invented number in ${where(result, change.path)}: ${invented.join(", ")} (not in the original).`);
+    const unbacked = jobTerms.filter((term) => keywordInText(term, change.value as string) && !keywordInText(term, knownText));
+    if (unbacked.length) warnings.push(`Not backed by your CV or answers, in ${where(result, change.path)}: ${unbacked.join(", ")}.`);
   }
   return warnings;
 }

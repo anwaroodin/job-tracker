@@ -77,6 +77,18 @@ Output this exact JSON format:
   "strategy_notes": "brief notes for the next editing pass"
 }`;
 
+const WRITING_RULES = `CV WRITING RULES (every line you write must follow these):
+- Start each bullet with a strong past-tense action verb (present tense only for a current role whose bullets already use it).
+- One idea per bullet, about 12 to 25 words. Cut filler.
+- Structure every bullet as action verb + task or project + outcome, for example "Added Redis caching to the payments service, cutting average API latency by ~34%". Make the outcome measurable when the candidate gave a number, and use only numbers they gave.
+- Write plain, grammatical British English, the way a strong candidate would write it themselves. Read each line back; if it sounds stuffed or awkward, rewrite it or keep the original.
+- Never name personal qualities or soft skills (empathy, transparency, passion, ownership, hardworking and the like). Show them through what the candidate did and what came of it.
+- Use the job's terms only where they name a real skill, tool or practice the candidate used, at most once per line, and never bolt them on with phrases like "with empathy" or "leveraging".
+- Treat the candidate's confirmed answers as facts to draw on, not text to copy.
+- Bullets have no pronouns: start with the verb ("Built", never "Builds" or "He built").
+- Write the summary in the implied first person: no "I", "me" or "my", and never the third person. Open with a noun phrase ("Full-stack software engineer building…") and use verbs as the candidate would say them ("Cut API latency by ~34%", "Maintain open-source projects", never "Maintains" or "He maintains"). Two to four sentences.
+- No buzzwords or clichés.`;
+
 export const DIFF_IMPROVE_PROMPT = `Given this resume and job description, output a JSON object with targeted changes to better align the resume with the job.
 
 RULES:
@@ -88,11 +100,15 @@ RULES:
 6. For each change, explain WHY it helps match the job description
 7. Generate all new text in British English
 8. Do not use em dash characters
-9. Keep changes minimal and targeted; do not rewrite content that already aligns well
+9. Rewrite every bullet that breaks the CV WRITING RULES below, whatever the strategy and even when it already matches the job. Beyond that, keep changes targeted: leave a line that already follows the rules and aligns with the job
 10. Exception to rule 2: you may add a skill only if it appears in the verified skill targets below
-11. By DEFAULT, scan the summary and every work, project, and education description for content that already demonstrates a job-description keyword or skill, and reframe that text using the job description's terminology where it is not already phrased that way (per rule 9, leave content that already aligns well), while preserving the candidate's actual accomplishment. Do NOT add new work, metrics, or responsibilities; only restate existing content in the JD's language, and verify every reframe stays factually accurate.
+11. Scan the summary and every work, project, and education description for content that already demonstrates a job-description keyword or skill, and reframe that text using the job description's terminology where it is not already phrased that way and reads naturally (per rule 9, leave content that already aligns well), while preserving the candidate's actual accomplishment. Do NOT add new work, metrics, or responsibilities; only restate existing content in the JD's language, and verify every reframe stays factually accurate.
 12. Preserve original capitalization, especially for proper nouns, technical terms (e.g., REST, API, AWS), and acronyms. Do not change the casing of words that were capitalized in the original.
 13. Use the company research only to decide which of the candidate's real experience to emphasise. Never copy its wording, slogans or values into the resume, and never claim the candidate shares a value the resume doesn't show.
+14. Before answering, go through every bullet in workExperience and personalProjects one at a time and check it against the CV WRITING RULES, above all the action verb + task or project + outcome structure. Return a change for each bullet that fails.
+15. Take each outcome from the resume, the candidate's confirmed answers, or what the work plainly delivered in the candidate's own words. Never invent a number, metric or claim. When a bullet has no outcome you can honestly state, still fix the rest of it and copy its original text into missing_outcomes.
+
+${WRITING_RULES}
 
 PATHS you can target:
 - "summary" — the resume summary text
@@ -156,10 +172,11 @@ Output this exact JSON format, nothing else:
       "reason": "added verified JD skill for review"
     }
   ],
+  "missing_outcomes": ["original text of a bullet whose outcome the resume doesn't give"],
   "strategy_notes": "brief summary of the tailoring approach"
 }`;
 
-export const KEYWORD_INJECTION_PROMPT = `Inject the following keywords into this resume by reframing the candidate's existing experience in the job description's language. Target EVERY section (summary, work experience, projects, skills) by default.
+export const KEYWORD_INJECTION_PROMPT = `Work the following skills back into this resume by reframing the candidate's existing experience in the job description's language, wherever they fit naturally.
 
 CRITICAL RULES:
 1. Only reframe with keywords the master resume substantively supports (e.g., if the master shows "used Python for data analysis", surface "Python" and "data analysis" language)
@@ -167,7 +184,10 @@ CRITICAL RULES:
 3. Rephrase existing bullet points and content to include keywords
 4. Maintain the exact same JSON structure: the same entries in the same order, with the same number of bullets in each
 5. Do not use em-dashes (—) or their variants (---, --)
-6. Make keyword incorporation the DEFAULT across all content sections, not an optional enhancement
+6. Add a skill only where it reads naturally; leave a skill out rather than force it into a line
+7. Leave lines that don't need a skill exactly as they are
+
+${WRITING_RULES}
 
 Keywords to inject (only if supported by master resume):
 {keywords_to_inject}

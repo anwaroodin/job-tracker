@@ -53,7 +53,8 @@ export function keywordInText(keyword: string, text: string) {
   const term = normalizeSkillKey(keyword);
   if (!term) return false;
   const haystack = normalizeSkillKey(text);
-  return [...new Set([term, term.replace(/ /g, "")])].some((variant) => new RegExp(`(?<!\\w)${escape(variant)}(?!\\w)`).test(haystack));
+  const plural = term.endsWith("s") ? (term.length > 4 ? term.slice(0, -1) : term) : `${term}s`;
+  return [...new Set([term, term.replace(/ /g, ""), plural])].some((variant) => new RegExp(`(?<!\\w)${escape(variant)}(?!\\w)`).test(haystack));
 }
 
 export function contentText(cv: CvContent) {

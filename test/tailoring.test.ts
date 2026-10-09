@@ -84,7 +84,19 @@ describe("verifyDiffResult", () => {
   it("warns about metrics the original didn't have", () => {
     const edit = change({ path: "workExperience[0].description[0]", original: CV.experience[0].bullets[0].text, value: "Built APIs serving 90% of traffic at 99.9% uptime" });
     const { result, applied } = applyDiffs(CV, [edit], [], false);
-    expect(verifyDiffResult(CV, result, applied)[0]).toBe("Possible invented number in Acme, bullet 1: 90%, 99.9% (not in the original).");
+    expect(verifyDiffResult(CV, result, applied, contentText(CV))[0]).toBe("Possible invented number in Acme, bullet 1: 90%, 99.9% (not in the original).");
+  });
+
+  it("flags job terms an edit adds that the CV doesn't back", () => {
+    const edit = change({ path: "workExperience[0].description[0]", original: CV.experience[0].bullets[0].text, value: "Built REST APIs in Go as microservices for the billing service" });
+    const { result, applied } = applyDiffs(CV, [edit], [], false);
+    expect(verifyDiffResult(CV, result, applied, contentText(CV), ["microservices", "Go"])).toEqual(["Not backed by your CV or answers, in Acme, bullet 1: microservices."]);
+  });
+
+  it("accepts a number that appears elsewhere in the CV", () => {
+    const edit = change({ path: "summary", value: "Backend developer who cut deploy time by 40%." });
+    const { result, applied } = applyDiffs(CV, [edit], [], false);
+    expect(verifyDiffResult(CV, result, applied, contentText(CV))).toEqual([]);
   });
 });
 
@@ -125,6 +137,9 @@ describe("keywordInText", () => {
     expect(keywordInText("full stack", "Fullstack developer")).toBe(true);
     expect(keywordInText("C++", "Wrote C++ services")).toBe(true);
     expect(keywordInText("Go", "Google")).toBe(false);
+    expect(keywordInText("microservices", "unified microservice-based pipelines")).toBe(true);
+    expect(keywordInText("REST API", "Built REST APIs")).toBe(true);
+    expect(keywordInText("AWS", "Used AW tooling")).toBe(false);
   });
 });
 
@@ -230,7 +245,7 @@ describe("pipeline", () => {
     const first = startTailoring(ctx, "keywords");
     expect(first).toMatchObject({ stage: "keywords", request: { provider: "antigravity" } });
 
-    const extracted = continueTailoring(ctx, "keywords", { required_skills: ["Go", "Kubernetes"], keywords: ["billing", "SQL"] }, cleanState({}));
+    const extracted = continueTailoring(ctx, "keywords", { required_skills: ["Go", "Kubernetes", "billing"], keywords: ["SQL", "reliable"] }, cleanState({}));
     if (!("keywords" in extracted)) throw new Error("expected keywords");
     const withKeywords = { ...ctx, keywords: extracted.keywords };
 
@@ -245,13 +260,13 @@ describe("pipeline", () => {
     expect(diffs.request.input).not.toContain("- Kubernetes (");
 
     const bullet = CV.experience[0].bullets[0].text;
-    const reply = { changes: [change({ path: "workExperience[0].description[0]", original: bullet, value: "Built REST APIs in Go" })], strategy_notes: "Led with Go" };
+    const reply = { changes: [change({ path: "workExperience[0].description[0]", original: bullet, value: "Built REST APIs in Go" })], missing_outcomes: ["Built a watering tracker"], strategy_notes: "Led with Go" };
     const inject = continueTailoring(withKeywords, "diffs", reply, cleanState(JSON.parse(JSON.stringify(diffs.state))));
     if (!("request" in inject)) throw new Error("expected a request");
     expect(inject.stage).toBe("inject");
     expect(JSON.parse(inject.request.input.split("Keywords to inject (only if supported by master resume):\n")[1].split("\n")[0])).toEqual(["billing"]);
 
-    const injected = { ...resumeView(inject.state.tailored!), summary: "Backend engineer who builds Go APIs on Kubernetes for billing." };
+    const injected = { ...resumeView(inject.state.tailored!), summary: "Backend engineer who builds reliable Go APIs on Kubernetes for billing." };
     const emphasis = continueTailoring(withKeywords, "inject", injected, cleanState(JSON.parse(JSON.stringify(inject.state))));
     if (!("request" in emphasis)) throw new Error("expected a request");
     expect(emphasis.stage).toBe("emphasis");
@@ -267,11 +282,12 @@ describe("pipeline", () => {
     expect(done.done.summary).toContain("billing");
     expect(done.done.edits).toEqual([
       expect.objectContaining({ path: "workExperience[0].description[0]", original: bullet, value: "Built REST APIs in Go" }),
-      expect.objectContaining({ path: "summary", original: CV.summary, value: "Backend engineer who builds Go APIs on Kubernetes for billing." }),
+      expect.objectContaining({ path: "summary", original: CV.summary, value: "Backend engineer who builds reliable Go APIs on Kubernetes for billing." }),
     ]);
     expect(done.done.coverLetter.paragraphs).toEqual(["I build Go APIs."]);
     expect(done.done.score!.after.keywordMatch).toBeGreaterThan(done.done.score!.before.keywordMatch);
     expect(done.done).not.toHaveProperty("summaries");
+    expect(done.done.flags).toContain('Add the result to this line on your CV: "Built a watering tracker"');
     expect(done.done.experience[0].bullets[1].bold).toEqual(["Cut deploy time by 40%"]);
     expect(done.done.experience[0]).toMatchObject({ company: "Acme", title: "Platform Engineer", start: "Mar 2023" });
   });

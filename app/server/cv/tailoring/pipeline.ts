@@ -2,7 +2,7 @@ import type { CompanyResearch, Confirmation, CvContent, JobKeywords, ResumeChang
 import { cleanCv, list, obj, str, strings } from "../clean";
 import { coverLetterFrom } from "../tailored";
 import { applyEmphasis, cleanEmphasis, type Emphasis, emphasisSlots, verifyEmphasis } from "./emphasis";
-import { atsScore, cleanJobKeywords, contentText, keywordGaps, keywordsForPrompt } from "./keywords";
+import { allKeywords, atsScore, cleanJobKeywords, contentText, keywordGaps, keywordsForPrompt } from "./keywords";
 import {
   COVER_LETTER_PROMPT,
   DIFF_IMPROVE_PROMPT,
@@ -159,11 +159,13 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
     const changes = cleanChanges(obj(result).changes);
     const start = base(ctx, state);
     const { result: tailored, applied, rejected } = applyDiffs(start, changes, state.targets, state.strategy === "full");
-    const warnings = [...state.warnings, ...verifyDiffResult(start, tailored, applied)];
+    const warnings = [...state.warnings, ...verifyDiffResult(start, tailored, applied, evidence(ctx), allKeywords(jk).map((k) => k.term))];
     if (rejected.length) warnings.push(`${rejected.length} change(s) rejected during verification.`);
+    for (const line of strings(obj(result).missing_outcomes, 500)) warnings.push(`Add the result to this line on your CV: "${line}"`);
     const notes = [...state.notes, str(obj(result).strategy_notes, MAX_NOTE_CHARS)].filter(Boolean);
     const next: TailorState = { ...state, tailored, edits: applied, rejected: rejected.length, warnings, notes };
-    const { injectable } = keywordGaps(jk, contentText(tailored), evidence(ctx));
+    const skills = new Set([...jk.requiredSkills, ...jk.preferredSkills]);
+    const injectable = keywordGaps(jk, contentText(tailored), evidence(ctx)).injectable.filter((term) => skills.has(term));
     if (!injectable.length) {
       return emphasisStep(jk, polished(ctx, next, tailored));
     }
