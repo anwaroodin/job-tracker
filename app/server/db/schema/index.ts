@@ -13,3 +13,5 @@ export * from "./gmail-sync";
 export * from "./user-settings";
 export * from "./jev-usage";
 export * from "./activity";
+export * from "./tailored-cv";
+export * from "./role-cv";

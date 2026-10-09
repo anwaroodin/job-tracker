@@ -131,3 +131,17 @@ export function latestApplicationUpdate(db: Db, userId: string) {
     .orderBy(desc(application.updatedAt))
     .limit(1);
 }
+
+export function saveJdKeywords(db: Db, userId: string, id: string, json: string) {
+  return db
+    .update(application)
+    .set({ jdKeywordsJson: json })
+    .where(and(eq(application.id, id), eq(application.userId, userId)));
+}
+
+export function saveResearch(db: Db, userId: string, id: string, json: string) {
+  return db
+    .update(application)
+    .set({ researchJson: json })
+    .where(and(eq(application.id, id), eq(application.userId, userId)));
+}

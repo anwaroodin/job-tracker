@@ -2,13 +2,14 @@ import { data, Link, redirect, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/[id]";
 import type { loader as layoutLoader } from "../layout";
 import { ContactList } from "~/components/application-detail/contact-list";
+import { CompanyLogo } from "~/components/applications/company-logo";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { FlagToggle } from "~/components/applications/flag-toggle";
 import { GmailSync } from "~/components/gmail/gmail-sync";
-import { JobDescription } from "~/components/application-detail/job-description";
+import { RichText } from "~/components/ui/rich-text";
 import { SavedListing } from "~/components/application-detail/saved-listing";
+import { StatusPicker } from "~/components/application-detail/status-picker";
 import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
-import { StatusBadge } from "~/components/ui/status-badge";
 import { cn } from "~/lib/cn";
 import { parseContacts } from "~/lib/contacts";
 import { isEmailCategory } from "~/lib/email";
@@ -20,6 +21,7 @@ import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { createApplication, updateApplication } from "~/server/db/queries/applications.server";
 import { applicationsFor } from "~/server/db/queries/status.server";
+import { setStatusByHand } from "~/server/services/status/manual.server";
 import { settleSavedJob } from "~/server/services/status/saved.server";
 import { markReplyDone, markViewed, moveEmail, setEmailCategory, setEmailDismissed } from "~/server/db/queries/emails.server";
 import { applicationTimeline } from "~/server/services/timeline/index.server";
@@ -67,6 +69,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     const outcome = intent === "saved-remove" ? "removed" : "applied";
     if (!(await settleSavedJob(db, user.id, params.id, outcome))) throw data("Not a saved posting", { status: 400 });
     return outcome === "removed" ? redirect("/applications") : { ok: true };
+  }
+  if (intent === "status") {
+    if (!(await setStatusByHand(db, user.id, params.id, String(form.get("status") ?? "")))) throw data("Unknown status", { status: 400 });
+    return { ok: true };
   }
   if (intent === "replied") {
     await markReplyDone(db, user.id, emailId);
@@ -143,16 +149,19 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
         </p>
 
         <div className="min-w-0">
-          <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-            {row.company}
-            <span className="block text-text-tertiary">{row.role}</span>
-          </h1>
+          <div className="flex items-start gap-4">
+            <CompanyLogo company={row.company} logoUrl={row.logoUrl} className="mt-1 size-11 text-[16px]" />
+            <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
+              {row.company}
+              <span className="block text-text-tertiary">{row.role}</span>
+            </h1>
+          </div>
           <FactChips facts={listingFacts(row)} className="mt-5" />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="flex items-center gap-4 text-[11px] tracking-[0.1em]">
-            <StatusBadge status={row.status} />
+            <StatusPicker status={row.status} />
             <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
           </p>
           <GmailSync status={gmail} />
@@ -214,7 +223,11 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
             {row.postedAt && <Leader label="Posted">{fmtDate(row.postedAt)}</Leader>}
             {row.applicants && <Leader label="Applicants">{row.applicants}</Leader>}
             {row.category && <Leader label="Level">{row.category}</Leader>}
-            <Leader label="CV">{row.cvType}</Leader>
+            <Leader label="CV">
+              <Link to={`/applications/${row.id}/cv`} className="text-accent-primary transition-colors hover:text-accent-secondary">
+                Tailor ↗
+              </Link>
+            </Leader>
             <Leader label="Applied">{fmtDate(row.appliedAt)}</Leader>
             <Leader label="Updated">{fmtDate(row.updatedAt)}</Leader>
             {source && (
@@ -235,20 +248,17 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
               </p>
             )}
           </Section>
+          {contacts.length > 0 && (
+            <Section n="05" title="People to reach out to" hint={String(contacts.length)} i={4}>
+              <ContactList contacts={contacts} />
+            </Section>
+          )}
         </aside>
 
         {row.description && (
           <div className="lg:col-start-1 lg:row-start-2">
-            <Section n="05" title="Job description" hint={source || undefined} i={4}>
-              <JobDescription text={row.description} />
-            </Section>
-          </div>
-        )}
-
-        {contacts.length > 0 && (
-          <div className="lg:col-start-2 lg:row-start-2">
-            <Section n="06" title="People to reach out to" hint={String(contacts.length)} i={5}>
-              <ContactList contacts={contacts} />
+            <Section n="06" title="Job description" hint={source || undefined} i={5}>
+              <RichText text={row.description} />
             </Section>
           </div>
         )}

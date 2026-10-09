@@ -3,6 +3,7 @@ import { Form, useNavigation, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/profile";
 import type { loader as layoutLoader } from "./layout";
 import { Button } from "~/components/ui/button";
+import { UnsavedBar } from "~/components/ui/unsaved-bar";
 import { stagger } from "~/components/ui/terminal";
 import { SettingsNav } from "~/components/ui/settings-nav";
 import { userContext } from "~/server/auth/session.server";
@@ -13,12 +14,12 @@ import {
   saveProfile,
 } from "~/server/db/queries/profile.server";
 import type { ProfileForm } from "~/types/profile";
-import { CvCard } from "~/components/profile/cv-card";
 import { PersonalSection } from "~/components/profile/personal-section";
 import { AddressSection } from "~/components/profile/address-section";
 import { LinksSection } from "~/components/profile/links-section";
 import { EligibilitySection } from "~/components/profile/eligibility-section";
 import { IntegrationsSection } from "~/components/profile/integrations-section";
+import { SECTIONS, secN } from "~/components/profile/sections";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
@@ -39,52 +40,6 @@ export async function action({ request, context }: Route.ActionArgs) {
   return { ok: true };
 }
 
-const SECTIONS = [
-  {
-    n: "02",
-    id: "personal",
-    title: "Personal information",
-    description: "Your name and how employers reach you.",
-  },
-  {
-    n: "03",
-    id: "address",
-    title: "Address",
-    description: "Used for postal fields on applications.",
-  },
-  {
-    n: "04",
-    id: "links",
-    title: "Links",
-    description: "Attached to auto-filled applications.",
-  },
-  {
-    n: "05",
-    id: "eligibility",
-    title: "Work eligibility",
-    description: "Right to work, sponsorship, and availability.",
-  },
-  {
-    n: "06",
-    id: "software-cv",
-    title: "Software CV",
-    description: "Used when applying to technical roles.",
-  },
-  {
-    n: "07",
-    id: "retail-cv",
-    title: "Retail CV",
-    description: "Used for retail, hospitality, and customer-facing roles.",
-  },
-  {
-    n: "08",
-    id: "integrations",
-    title: "Integrations",
-    description: "Third-party services connected to your account.",
-  },
-] as const;
-const secN = (id: string) => SECTIONS.find((s) => s.id === id)!.n;
-
 export default function ProfilePage({
   loaderData,
   actionData,
@@ -98,8 +53,6 @@ export default function ProfilePage({
 
   const p = form.personal;
   const elig = form.eligibility;
-  const sw = form.softwareCV;
-  const rt = form.retailCV;
 
   const setP = <K extends keyof ProfileForm>(
     section: K,
@@ -136,7 +89,7 @@ export default function ProfilePage({
       >
         <div>
           <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <b className="mr-2 font-semibold text-text-primary">[03]</b>Profile
+            <b className="mr-2 font-semibold text-text-primary">[04]</b>Profile
           </p>
           <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
             {displayName}
@@ -185,45 +138,18 @@ export default function ProfilePage({
 
           <EligibilitySection n={secN("eligibility")} value={elig} onChange={(patch) => setP("eligibility", patch)} />
 
-          <CvCard
-            n={secN("software-cv")}
-            id="software-cv"
-            i={5}
-            title="Software CV"
-            hint="Used when applying to technical roles."
-            value={sw}
-            onChange={(patch) => setP("softwareCV", patch)}
-            skillsPlaceholder="TypeScript, React, Node.js, Python…"
-          />
-
-          <CvCard
-            n={secN("retail-cv")}
-            id="retail-cv"
-            i={6}
-            title="Retail CV"
-            hint="Used for retail, hospitality, and customer-facing roles."
-            value={rt}
-            onChange={(patch) => setP("retailCV", patch)}
-            skillsPlaceholder="Customer Service, Cash Handling, Stock…"
-          />
-
           <IntegrationsSection n={secN("integrations")} gmail={gmail} />
         </main>
       </div>
 
       {dirty && (
-        <aside
-          aria-label="Unsaved changes"
-          className="fixed bottom-[calc(var(--bottom-nav)+1.5rem)] right-6 z-30 flex items-center gap-4 border border-stroke-primary bg-bg-secondary/95 px-5 py-3 shadow-xl backdrop-blur-sm sm:right-10"
-        >
-          <span className="text-[11px] text-text-tertiary">Unsaved changes</span>
+        <UnsavedBar>
           <Button type="submit" size="medium" disabled={saving}>
             {saving ? "Saving…" : "Save changes"}
           </Button>
-        </aside>
+        </UnsavedBar>
       )}
     </Form>
   );
 }
 
-// ── Local primitives ────────────────────────────────────────────────────

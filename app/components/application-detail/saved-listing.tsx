@@ -1,11 +1,12 @@
-import { ArrowUpRight, Check, Trash2 } from "lucide-react";
+import { ArrowUpRight, Check, FileText, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
 import { ContactList } from "~/components/application-detail/contact-list";
+import { CompanyLogo } from "~/components/applications/company-logo";
 import { FlagToggle } from "~/components/applications/flag-toggle";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
-import { JobDescription } from "~/components/application-detail/job-description";
+import { RichText } from "~/components/ui/rich-text";
 import { StatusBadge } from "~/components/ui/status-badge";
 import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
@@ -50,10 +51,13 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
             <StatusBadge status={job.status} />
             <FlagToggle id={job.id} status={job.status} flagged={job.starred} />
           </p>
-          <h1 className="mt-4 max-w-3xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary normal-case sm:text-[30px]">
-            {job.role}
-            <span className="block uppercase text-text-tertiary">{job.company}</span>
-          </h1>
+          <div className="mt-4 flex items-start gap-4">
+            <CompanyLogo company={job.company} logoUrl={job.logoUrl} className="mt-1 size-11 text-[16px]" />
+            <h1 className="max-w-3xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary normal-case sm:text-[30px]">
+              {job.role}
+              <span className="block uppercase text-text-tertiary">{job.company}</span>
+            </h1>
+          </div>
           <FactChips facts={listingFacts(job)} className="mt-5" />
         </div>
 
@@ -66,6 +70,12 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
               </a>
             </Button>
           )}
+          <Button asChild variant="secondary">
+            <Link to={`/applications/${job.id}/cv`}>
+              <FileText />
+              Tailor CV
+            </Link>
+          </Button>
           <Button type="button" variant="secondary" disabled={busy} onClick={() => act({ intent: "saved-applied" })}>
             <Check />
             Mark applied
@@ -136,12 +146,17 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
               </Leader>
             )}
           </Section>
+          {contacts.length > 0 && (
+            <Section n="03" title="People to reach out to" hint={String(contacts.length)} i={2}>
+              <ContactList contacts={contacts} />
+            </Section>
+          )}
         </aside>
 
         <div className="lg:col-start-1 lg:row-start-1">
-          <Section n="03" title="Job description" hint={source || undefined} i={2}>
+          <Section n="04" title="Job description" hint={source || undefined} i={3}>
             {job.description ? (
-              <JobDescription text={job.description} />
+              <RichText text={job.description} />
             ) : (
               <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
                 No description was captured with this posting.{" "}
@@ -150,14 +165,6 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
             )}
           </Section>
         </div>
-
-        {contacts.length > 0 && (
-          <div className="lg:col-start-2 lg:row-start-2">
-            <Section n="04" title="People to reach out to" hint={String(contacts.length)} i={3}>
-              <ContactList contacts={contacts} />
-            </Section>
-          </div>
-        )}
       </div>
     </div>
   );

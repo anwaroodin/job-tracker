@@ -102,6 +102,7 @@
         meta("og:description") ||
         meta("description"),
       url: location.href,
+      logo: structured.logo,
     };
   }
 
@@ -110,6 +111,7 @@
     role: clean(job.role, LIMITS.role),
     url: job.url || location.href,
     description: cleanBlock(job.description, LIMITS.description),
+    logo: httpUrl(job.logo),
   });
 
   /** Whether the generic reader should treat this page as a single job posting. */
@@ -124,7 +126,7 @@
   /**
    * The job open on this page, or null when the page isn't showing one
    * (search pages count only while a job is open in their detail pane).
-   * @returns {{ company: string, role: string, url: string, description: string } | null}
+   * @returns {{ company: string, role: string, url: string, description: string, logo: string } | null}
    */
   function readJob() {
     const site = siteFor();

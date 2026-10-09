@@ -92,6 +92,7 @@
     /* Fixed widths, so saving (the "Not tracked" option goes away) or relabelling doesn't shift the bar. */
     .status select { width: 12.5ch; }
     .strip .icon-btn { width: 32px; }
+    .strip .text-btn { padding: 0 12px; }
     .strip .icon-btn.active { color: var(--accent); }
     .icon-btn svg { width: 15px; height: 15px; }
     .strip .primary { min-width: 18ch; padding: 0 14px; background: var(--text); color: var(--inverse); font-weight: 600; letter-spacing: .08em; }
@@ -152,23 +153,13 @@
     .section-head span, .label { color: var(--text-3); }
     .label { font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
     .field { display: flex; flex-direction: column; gap: 6px; }
-    .field + .field, .row + .row { margin-top: 12px; }
-    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .field + .field { margin-top: 12px; }
     input {
       all: unset; box-sizing: border-box; width: 100%; height: 32px; padding: 0 10px;
       background: var(--bg); color: var(--text); border: 1px solid var(--stroke-2); font: 12.5px var(--sans);
     }
     input:hover { border-color: var(--stroke); }
     input:focus { border-color: rgba(255,255,255,.3); }
-    .segmented { display: inline-flex; border: 1px solid var(--stroke-2); }
-    .segmented button {
-      all: unset; cursor: pointer; padding: 5px 8px; border-left: 1px solid var(--stroke-2);
-      color: var(--text-2); font: 500 10px var(--mono); letter-spacing: .05em; text-transform: uppercase;
-    }
-    .segmented button:first-child { border-left: none; }
-    .segmented button:hover { color: var(--text); background: var(--fill); }
-    .segmented button[aria-pressed="true"] { background: var(--text); color: var(--inverse); }
-    .segmented button:focus-visible { outline: 1px solid rgba(255,255,255,.5); outline-offset: 2px; }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip { padding: 4px 8px; border: 1px solid var(--stroke); color: var(--text-2); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; }
     .chip.salary { color: var(--green); border-color: rgba(88,182,138,.22); }
@@ -211,10 +202,13 @@
   }
 
   /** Messages the service worker; resolves to { error } instead of rejecting. */
-  const send = (message) =>
-    chrome.runtime
-      .sendMessage(message)
-      .catch(() => ({ error: "job-tracker was updated. Refresh this page." }));
+  const send = async (message) => {
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch {
+      return { error: "job-tracker was updated. Refresh this page." };
+    }
+  };
 
   JT.ui = { h, icon, shadowHost, send };
 })();

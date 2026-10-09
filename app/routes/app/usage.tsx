@@ -37,7 +37,7 @@ export default function Usage({ loaderData }: Route.ComponentProps) {
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
       <header className="rise" style={stagger(0)}>
         <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-          <b className="mr-2 font-semibold text-text-primary">[04]</b>Usage
+          <b className="mr-2 font-semibold text-text-primary">[05]</b>Usage
         </p>
         <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight sm:text-[30px]">
           <span className="text-text-primary">{formatDollars(m.cost)} spent on Jev this month.</span>

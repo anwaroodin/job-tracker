@@ -20,6 +20,7 @@ import { refreshApplicationStatus } from "~/server/services/status/refresh.serve
 import { useArrivals } from "~/hooks/use-arrivals";
 import { OffersBanner } from "~/components/applications/offers-banner";
 import { SuggestionsBanner } from "~/components/applications/suggestions-banner";
+import { LogoCredit } from "~/components/applications/company-logo";
 import { SavedSection } from "~/components/applications/saved-section";
 import { TableToolbar } from "~/components/applications/table-toolbar";
 import { ApplicationsTable } from "~/components/applications/applications-table";
@@ -151,6 +152,7 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
         <div className="flex flex-col gap-4">
           <TableToolbar view={view} />
           <ApplicationsTable view={view} gmail={gmail} isArrival={isArrival} />
+          <LogoCredit />
         </div>
       </Section>
     </div>

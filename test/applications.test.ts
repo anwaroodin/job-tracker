@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { getApplication } from "~/server/db/queries/applications.server";
 import { applicationSuggestions } from "~/server/services/applications/suggestions.server";
 import { trackPosting } from "~/server/services/applications/track.server";
+import { setStatusByHand } from "~/server/services/status/manual.server";
 import { settleSavedJob } from "~/server/services/status/saved.server";
 import { USER_ID, testDb } from "./db";
 import { addApplication, addEmail } from "./fixtures";
@@ -51,6 +52,18 @@ describe("trackPosting", () => {
     const applied = await trackPosting(db, USER_ID, posting({ status: "applied" }));
     expect(applied.application).toMatchObject({ id: saved.application.id, status: "applied", starred: false });
     expect(applied.application?.appliedAt).toBe(applied.application?.manualStatusAt);
+  });
+});
+
+describe("setStatusByHand", () => {
+  it("sets the status by hand so sync won't override it, and refuses saved or unknown statuses", async () => {
+    const { db } = testDb();
+    await addApplication(db, { id: "a1", status: "applied" });
+    expect(await setStatusByHand(db, USER_ID, "a1", "interview")).toMatchObject({ status: "interview" });
+    expect((await getApplication(db, USER_ID, "a1"))?.manualStatusAt).toBeTruthy();
+    expect(await setStatusByHand(db, USER_ID, "a1", "saved")).toBeNull();
+    expect(await setStatusByHand(db, USER_ID, "a1", "hired")).toBeNull();
+    expect(await setStatusByHand(db, USER_ID, "missing", "offer")).toBeNull();
   });
 });
 

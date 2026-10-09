@@ -150,6 +150,7 @@
     slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   const httpUrl = (href) => {
+    if (typeof href !== "string" || !href.trim()) return "";
     try {
       const url = new URL(href, location.href);
       return /^https?:$/.test(url.protocol) ? url.toString() : "";
@@ -180,9 +181,11 @@
       const types = [].concat(node["@type"] ?? []);
       if (types.includes("JobPosting")) {
         const org = node.hiringOrganization;
+        const logo = org?.logo;
         return {
           role: clean(node.title),
           company: clean(typeof org === "string" ? org : org?.name),
+          logo: httpUrl(typeof logo === "string" ? logo : logo?.url),
           description: node.description ? htmlToText(node.description) : "",
           url: httpUrl(node.url),
         };
@@ -197,7 +200,9 @@
     if (!root) return null;
     const org = root.querySelector('[itemprop="hiringOrganization"]');
     const description = root.querySelector('[itemprop="description"]');
+    const logo = org?.querySelector('[itemprop="logo"]');
     return {
+      logo: httpUrl(logo?.getAttribute("content") || logo?.getAttribute("src") || logo?.getAttribute("href")),
       role: clean(root.querySelector('[itemprop="title"]')?.textContent),
       company: clean(
         org?.querySelector('[itemprop="name"]')?.textContent ||

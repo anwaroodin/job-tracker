@@ -7,6 +7,7 @@
  *   GOOGLE_CLIENT_SECRET — OAuth client secret
  *   GOOGLE_REDIRECT_URI  — e.g. https://job-tracker.<subdomain>.workers.dev/auth/callback
  *   TYPESAFE_API_KEY     — optional, classifies emails with Jev (regex when unset)
+ *   LOGO_DEV_TOKEN       — optional, Logo.dev publishable key for company logos
  *
  * Vars:
  *   EMAIL_CLASSIFIER     — optional, set to "regex" to turn Jev off
@@ -83,6 +84,37 @@
 		"crons": [
 			"*/30 * * * *"
 		]
+	},
+	"previews": {
+		"vars": {
+			"APP_URL": "replace_with_url"
+		},
+		"kv_namespaces": [
+			{
+				"binding": "SESSIONS",
+				"id": "replace_with_id"
+			}
+		],
+		"d1_databases": [
+			{
+				"binding": "DB",
+				"database_id": "replace_with_id"
+			}
+		],
+		"r2_buckets": [
+			{
+				"binding": "CVS",
+				"bucket_name": "job-tracker-cvs"
+			}
+		],
+		"queues": {
+			"producers": [
+				{
+					"binding": "GMAIL_SYNC_QUEUE",
+					"queue": "gmail-sync"
+				}
+			]
+		}
 	},
 	"vars": {
 		"APP_URL": "replace_with_url"

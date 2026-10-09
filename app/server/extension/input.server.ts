@@ -29,6 +29,7 @@ export type JobDetails = Pick<
   | "employmentType"
   | "postedAt"
   | "applicants"
+  | "logoUrl"
   | "contactsJson"
   | "cvType"
   | "category"
@@ -54,6 +55,7 @@ export function jobDetails(body: Record<string, unknown>): Partial<JobDetails> {
   set("employmentType", text(body.employment_type, 50));
   set("postedAt", pastDate(body.posted_at));
   set("applicants", text(body.applicants, 60));
+  set("logoUrl", cleanUrl(body.logo_url).slice(0, 1000));
 
   const contacts = cleanContacts(body.contacts);
   if (contacts.length) details.contactsJson = JSON.stringify(contacts);

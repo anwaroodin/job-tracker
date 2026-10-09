@@ -9,6 +9,8 @@ A Chrome extension that captures a job's details, fills the application form fro
 3. Click the extension's icon and enter your dashboard's address (for example `https://job-tracker.<subdomain>.workers.dev`, or `localhost:5173` for `npm run dev`).
 4. Sign in on the dashboard in the same Chrome profile. The extension uses that session; there is no separate login.
 
+To share the extension, run `npm run extension:zip` from the repo root. It writes `dist/job-tracker-extension-<version>.zip`; the recipient unzips it and loads that folder with **Load unpacked** as above.
+
 There's no build step. The popup and service worker are ES modules; content scripts are classic scripts that share `globalThis.__jobTracker` and load in the order listed in `manifest.json`.
 
 After changing the extension, click reload on `chrome://extensions` and refresh open tabs.
@@ -29,7 +31,8 @@ On a job listing, a job-tracker bar sits beside the site's own apply controls (L
 - **Bookmark / ★ Star**: flags the application. On an untracked or saved job it shows as a bookmark (and saves an untracked job as saved); once applied it shows as a star. The two are separate: applying to a bookmarked job clears the flag, so it becomes a plain application unless you star it. Flags show on the dashboard, and can be changed from the application's page there.
 - **↗ Open**: the application on the dashboard (or the dashboard, when untracked).
 - **⧉ Copy**: copies role, company, URL and the full description.
-- **▾ Quick view**: posted date, applicant count, workplace, job type and salary when the page states them; the role and company (editable); CV and category.
+- **▾ Quick view**: posted date, applicant count, workplace, job type and salary when the page states them; the role and company (editable).
+- **Tailor**: saves the job if it isn't tracked yet and opens its tailoring page on the dashboard.
 - **Apply & fill**: described below.
 
 Confirmations and the quick view open in the browser's top layer, so the site's own panels can't clip or cover them. Confirmations close themselves after a few seconds; errors stay until dismissed.
@@ -59,13 +62,15 @@ Sites render some of this seconds after the job opens (LinkedIn's description, a
 
 ### Popup
 
-Click the extension icon on any page to capture and fill it by hand:
+Click the extension icon on any page to work with the job on it:
 
-- **Target:** the detected company and role. Edit them before saving if they're wrong.
-- **Config:** the CV variant (software or retail) and an optional category (grad, intern, junior). Both are detected from the job title and description and can be changed.
-- **Fill & track** fills the form's empty fields and records the application with its URL, description, CV type and category.
+- **Job:** the detected company and role, which you can edit before saving. Once the job is tracked, its **Status** from the dashboard, which you can change here.
+- **Apply & fill** tracks the job as applied (moving a saved job on) and fills the form's empty fields. On a job already applied to, it's **Fill fields**.
+- **Save job** saves it to the dashboard as a bookmark.
+- **Tailor CV** saves the job if it isn't tracked yet and opens its tailoring page.
+- **Open on dashboard** opens the application.
 
-When you come back in the popup to an application you've already tracked (the same URL, the same company and role, or another page on the same site within a few hours, for multi-step forms), the popup shows **Fill fields** instead, which fills without creating a second record. **This is a different job** clears that and tracks the page as a new application. The server also returns the existing record when the same URL or company and role was tracked in the last 30 days, so retries never duplicate.
+The popup finds a job you've already tracked by its URL, by company and role, or (for multi-step forms) by another page on the same site within a few hours. **This is a different job** forgets that match so the page can be tracked as a new application. The server also returns the existing record when the same URL or company and role was tracked recently, so retries never duplicate.
 
 ## What gets filled
 
@@ -77,7 +82,9 @@ Fields are matched on their `autocomplete` attribute first, then their label, `a
 | Address | lines 1 and 2, city, county/state, postcode, country |
 | Links | LinkedIn, GitHub, portfolio or website |
 | Eligibility | right to work, visa sponsorship (radios, checkboxes and yes/no selects), notice period or start date |
-| CV variant | salary expectation, cover letter or "why this company", summary |
+| CV | salary expectation, cover letter or "why this company", summary |
+
+When the application has a tailored CV on the dashboard, Apply & fill (in the bar or the popup) uses its summary and cover letter.
 
 Text inputs, textareas, selects, radios, checkboxes and rich-text editors are supported. Values are set through the element's native setter and the `input`, `change` and `blur` events fire, so React and Vue forms register them. A field that already has a value, a radio group that's already answered and a select with an option already chosen are left alone.
 

@@ -18,7 +18,7 @@ export function EligibilitySection({
       n={n}
       id="eligibility"
       title="Work eligibility"
-      hint="Right to work, sponsorship, and availability."
+      hint="Right to work, sponsorship, availability and pay."
       i={4}
     >
       <div className="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
@@ -45,15 +45,24 @@ export function EligibilitySection({
             label="Available to start immediately"
           />
         </div>
-        <Field label="Notice period">
-          <Input
-            value={value.noticePeriod}
-            onChange={(e) =>
-              onChange({ noticePeriod: e.target.value })
-            }
-            placeholder="e.g. 2 weeks"
-          />
-        </Field>
+        <div className="flex flex-col gap-4">
+          <Field label="Notice period">
+            <Input
+              value={value.noticePeriod}
+              onChange={(e) =>
+                onChange({ noticePeriod: e.target.value })
+              }
+              placeholder="e.g. 2 weeks"
+            />
+          </Field>
+          <Field label="Expected salary">
+            <Input
+              value={value.salary}
+              onChange={(e) => onChange({ salary: e.target.value })}
+              placeholder="45000"
+            />
+          </Field>
+        </div>
       </div>
     </Section>
   );

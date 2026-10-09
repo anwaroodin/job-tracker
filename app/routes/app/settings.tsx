@@ -3,6 +3,7 @@ import { data, useFetcher, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/settings";
 import type { loader as layoutLoader } from "./layout";
 import { Button } from "~/components/ui/button";
+import { UnsavedBar } from "~/components/ui/unsaved-bar";
 import { Switch } from "~/components/ui/switch";
 import { GmailConnectButton, gmailStatusText } from "~/components/gmail/gmail-connect";
 import { GmailSync } from "~/components/gmail/gmail-sync";
@@ -97,7 +98,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
         <div>
           <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <b className="mr-2 font-semibold text-text-primary">[05]</b>Settings
+            <b className="mr-2 font-semibold text-text-primary">[06]</b>Settings
           </p>
           <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
             Settings
@@ -169,11 +170,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       {dirty && (
-        <aside
-          aria-label="Unsaved changes"
-          className="fixed bottom-[calc(var(--bottom-nav)+1.5rem)] right-6 z-30 flex items-center gap-4 border border-stroke-primary bg-bg-secondary/95 px-5 py-3 shadow-xl backdrop-blur-sm sm:right-10"
-        >
-          <span className="text-[11px] text-text-tertiary">Unsaved changes</span>
+        <UnsavedBar>
           <Button
             type="button"
             size="medium"
@@ -182,7 +179,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
           >
             {saving ? "Saving…" : "Save changes"}
           </Button>
-        </aside>
+        </UnsavedBar>
       )}
     </div>
   );

@@ -36,6 +36,10 @@
   --stroke-primary: rgba(255, 255, 255, 0.11);
   --stroke-secondary: rgba(255, 255, 255, 0.06);
 
+  --paper: #ffffff;
+  --paper-text: #16171a;
+  --paper-muted: #5c5e66;
+
   --bottom-nav: calc(3.5rem + env(safe-area-inset-bottom));
 }
 
@@ -65,6 +69,9 @@
   --color-fill-secondary: var(--fill-secondary);
   --color-fill-tertiary: var(--fill-tertiary);
 
+  --color-paper: var(--paper);
+  --color-paper-text: var(--paper-text);
+  --color-paper-muted: var(--paper-muted);
   --color-stroke-primary: var(--stroke-primary);
   --color-stroke-secondary: var(--stroke-secondary);
 
@@ -203,4 +210,27 @@ html body[data-scroll-locked] {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+@media print {
+  html,
+  body {
+    background: var(--paper);
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  [data-printing],
+  [data-printing] * {
+    visibility: visible;
+  }
+
+  [data-printing] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
 }
