@@ -202,10 +202,13 @@
   }
 
   /** Messages the service worker; resolves to { error } instead of rejecting. */
-  const send = (message) =>
-    chrome.runtime
-      .sendMessage(message)
-      .catch(() => ({ error: "job-tracker was updated. Refresh this page." }));
+  const send = async (message) => {
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch {
+      return { error: "job-tracker was updated. Refresh this page." };
+    }
+  };
 
   JT.ui = { h, icon, shadowHost, send };
 })();
