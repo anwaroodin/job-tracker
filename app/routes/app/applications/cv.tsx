@@ -109,7 +109,7 @@ export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
 
       <Section n="01" title="Tailor" hint={tailored ? `Version ${tailored.version} · ${fmtDate(tailored.createdAt)}` : undefined} i={1}>
         {canTailor ? (
-          <TailorPanel applicationId={application.id} research={researchRequest} hasResearch={!!research} retailor={!!tailored} />
+          <TailorPanel target={{ applicationId: application.id }} research={researchRequest} hasResearch={!!research} retailor={!!tailored} />
         ) : (
           <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
             {!hasCv ? (

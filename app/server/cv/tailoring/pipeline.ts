@@ -18,6 +18,7 @@ import {
 import { confirmedForPrompt, evidenceText, scoreBefore } from "./questions";
 import { alignWithMaster, MAX_NOTE_CHARS, mergeInjected, removeAiPhrases, verifySkillPlan, withInjectedEdits } from "./refine";
 import { applyDiffs, chooseProjects, resumeView, verifyDiffResult, withProjects } from "./resume";
+import { rolePosting } from "./role";
 import { DIFFS_SCHEMA, EMPHASIS_SCHEMA, INJECT_SCHEMA, KEYWORDS_SCHEMA, LETTER_SCHEMA, PLAN_SCHEMA } from "./schemas";
 
 export type Stage = "keywords" | "plan" | "diffs" | "inject" | "emphasis" | "letter";
@@ -40,6 +41,7 @@ export interface TailorContext {
   keywords: JobKeywords | null;
   research: CompanyResearch | null;
   confirmed: Confirmation[];
+  title?: string;
 }
 
 export type Step = { stage: Stage; request: TailorRequest; state: TailorState } | { keywords: JobKeywords } | { done: TailoredCv };
@@ -72,7 +74,8 @@ function researchFor(ctx: TailorContext) {
 }
 
 function keywordsRequest(ctx: TailorContext) {
-  return request("keywords", fill(EXTRACT_KEYWORDS_PROMPT, { job_description: sanitise(ctx.jobDescription) }), KEYWORDS_SCHEMA);
+  const posting = ctx.title ? rolePosting(sanitise(ctx.title)) : sanitise(ctx.jobDescription);
+  return request("keywords", fill(EXTRACT_KEYWORDS_PROMPT, { job_description: posting }), KEYWORDS_SCHEMA);
 }
 
 function planRequest(ctx: TailorContext, jk: JobKeywords) {
@@ -183,13 +186,18 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
   }
 
   if (stage === "emphasis") {
-    return { stage: "letter", request: letterRequest(ctx, tailored), state: { ...state, emphasis: verifyEmphasis(tailored, result) } };
+    const next = { ...state, emphasis: verifyEmphasis(tailored, result) };
+    return ctx.title ? finished(ctx, next, tailored, null) : { stage: "letter", request: letterRequest(ctx, tailored), state: next };
   }
+  return finished(ctx, state, tailored, result);
+}
 
+function finished(ctx: TailorContext, state: TailorState, tailored: CvContent, letter: unknown): Step {
+  const jk = ctx.keywords!;
   return {
     done: {
       ...applyEmphasis(tailored, state.emphasis),
-      coverLetter: coverLetterFrom(result),
+      coverLetter: coverLetterFrom(letter),
       changes: state.notes,
       flags: state.warnings,
       edits: state.edits,

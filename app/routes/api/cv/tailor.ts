@@ -9,19 +9,53 @@ import { jobKeywordsJson, storedJobKeywords } from "~/server/cv/tailoring/cache"
 import { cleanState, continueTailoring, isStrategy, startTailoring, type Stage, type TailorContext } from "~/server/cv/tailoring/pipeline";
 import type { Strategy } from "~/server/cv/tailoring/prompts";
 import { gapsRequest, skillGaps, sortGaps, withAnswers } from "~/server/cv/tailoring/questions";
-import { getDb } from "~/server/db/client.server";
+import { roleDescription } from "~/server/cv/tailoring/role";
+import { type Db, getDb } from "~/server/db/client.server";
 import { getApplication, saveJdKeywords } from "~/server/db/queries/applications.server";
 import { getCv, saveCv } from "~/server/db/queries/profile.server";
+import { getRoleCv, saveRoleCv, saveRoleKeywords } from "~/server/db/queries/role-cv.server";
 import { insertTailoredCv, latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
+import type { JobKeywords, TailoredCv } from "~/types/cv";
 
 const STAGES = new Set<Stage>(["keywords", "plan", "diffs", "inject", "emphasis", "letter"]);
 const MAX_BODY_CHARS = 400_000;
+
+async function jobTarget(db: Db, userId: string, id: string) {
+  const row = await getApplication(db, userId, id);
+  if (!row?.description) return null;
+  const description = row.description;
+  return {
+    title: undefined,
+    description: () => description,
+    keywords: await storedJobKeywords(row),
+    research: storedResearch(row.researchJson),
+    saveKeywords: async (keywords: JobKeywords) => saveJdKeywords(db, userId, row.id, await jobKeywordsJson(description, keywords)),
+    saveDone: async (cv: TailoredCv) => {
+      const latest = await latestTailoredCv(db, userId, row.id);
+      await insertTailoredCv(db, userId, row.id, (latest?.version ?? 0) + 1, cv);
+    },
+  };
+}
+
+async function roleTarget(db: Db, userId: string, id: string) {
+  const row = await getRoleCv(db, userId, id);
+  if (!row) return null;
+  return {
+    title: row.title,
+    description: (keywords: JobKeywords | null) => (keywords ? roleDescription(row.title, keywords) : ""),
+    keywords: row.keywords,
+    research: null,
+    saveKeywords: (keywords: JobKeywords) => saveRoleKeywords(db, userId, row.id, keywords),
+    saveDone: (cv: TailoredCv) => saveRoleCv(db, userId, row.id, row.version + 1, cv),
+  };
+}
 
 function parsed(text: string) {
   try {
     const body = obj(JSON.parse(text));
     return {
       applicationId: body.applicationId,
+      roleId: body.roleId,
       stage: body.stage,
       result: body.result,
       state: body.state,
@@ -46,8 +80,11 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (!body) throw data({ error: "invalid_json" }, { status: 400 });
 
   const db = getDb(env.DB);
-  const [row, saved] = await Promise.all([getApplication(db, userId, String(body.applicationId ?? "")), getCv(db, userId)]);
-  if (!row?.description) throw data({ error: "no_job_description" }, { status: 400 });
+  const [target, saved] = await Promise.all([
+    body.roleId ? roleTarget(db, userId, String(body.roleId)) : jobTarget(db, userId, String(body.applicationId ?? "")),
+    getCv(db, userId),
+  ]);
+  if (!target) throw data({ error: "no_job_description" }, { status: 400 });
   const cv = body.answers.length ? { ...saved, confirmed: withAnswers(saved.confirmed, body.answers) } : saved;
   if (body.answers.length) await saveCv(db, userId, cv);
 
@@ -55,10 +92,11 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (!master.experience.length && !master.summary) throw data({ error: "no_cv" }, { status: 400 });
   const ctx: TailorContext = {
     master,
-    jobDescription: row.description,
-    keywords: await storedJobKeywords(row),
-    research: storedResearch(row.researchJson),
+    jobDescription: target.description(target.keywords),
+    keywords: target.keywords,
+    research: target.research,
     confirmed: cv.confirmed,
+    title: target.title,
   };
   const begin = (c: TailorContext, strategy: Strategy) => {
     const gaps = c.keywords && !body.answered ? skillGaps(c.keywords, master, c.confirmed) : [];
@@ -79,12 +117,11 @@ export async function action({ request, context }: Route.ActionArgs) {
   const step = continueTailoring(ctx, body.stage as Stage, body.result, state);
 
   if ("keywords" in step) {
-    await saveJdKeywords(db, userId, row.id, await jobKeywordsJson(row.description, step.keywords));
-    return begin({ ...ctx, keywords: step.keywords }, state.strategy);
+    await target.saveKeywords(step.keywords);
+    return begin({ ...ctx, keywords: step.keywords, jobDescription: target.description(step.keywords) }, state.strategy);
   }
   if ("done" in step) {
-    const latest = await latestTailoredCv(db, userId, row.id);
-    await insertTailoredCv(db, userId, row.id, (latest?.version ?? 0) + 1, step.done);
+    await target.saveDone(step.done);
     return { done: true };
   }
   return step;

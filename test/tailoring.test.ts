@@ -6,6 +6,7 @@ import { cleanResearch, researchRequest } from "~/server/cv/research";
 import { applyEdits } from "~/server/cv/tailored";
 import { atsScore, cleanJobKeywords, contentText, keywordGaps, keywordInText } from "~/server/cv/tailoring/keywords";
 import { cleanState, continueTailoring, startTailoring, type TailorContext } from "~/server/cv/tailoring/pipeline";
+import { roleDescription } from "~/server/cv/tailoring/role";
 import { verifyEmphasis } from "~/server/cv/tailoring/emphasis";
 import { confirmedForPrompt, gapsRequest, skillGaps, sortGaps, withAnswers } from "~/server/cv/tailoring/questions";
 import { alignWithMaster, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
@@ -390,5 +391,32 @@ describe("groupByRole", () => {
       ["Management Accountant", ["Management Accountant"]],
       ["Nurse", ["Nurse"]],
     ]);
+  });
+});
+
+describe("tailoring to a job title", () => {
+  it("infers the requirements from the title, tailors to them and skips the cover letter", () => {
+    const ctx: TailorContext = { master: CV, jobDescription: "", keywords: null, research: null, confirmed: [], title: "Retail Assistant" };
+    const first = startTailoring(ctx, "keywords");
+    if (!("request" in first)) throw new Error("expected a request");
+    expect(first.request.input).toContain('only the job title "Retail Assistant"');
+
+    const extracted = continueTailoring(ctx, "keywords", { required_skills: ["Go"], key_responsibilities: ["Serve customers"] }, cleanState({}));
+    if (!("keywords" in extracted)) throw new Error("expected keywords");
+    const withKeywords = { ...ctx, keywords: extracted.keywords, jobDescription: roleDescription("Retail Assistant", extracted.keywords) };
+    expect(withKeywords.jobDescription).toContain("Required skills: Go");
+
+    const plan = startTailoring(withKeywords, "keywords");
+    if (!("request" in plan)) throw new Error("expected a request");
+    expect(plan.request.input).toContain("Key responsibilities: Serve customers");
+    const diffs = continueTailoring(withKeywords, "plan", { target_skills: [] }, plan.state);
+    if (!("request" in diffs)) throw new Error("expected a request");
+    const emphasis = continueTailoring(withKeywords, "diffs", { changes: [] }, diffs.state);
+    const tail = "request" in emphasis && emphasis.stage === "inject" ? continueTailoring(withKeywords, "inject", {}, emphasis.state) : emphasis;
+    if (!("request" in tail)) throw new Error("expected a request");
+    expect(tail.stage).toBe("emphasis");
+    const done = continueTailoring(withKeywords, "emphasis", {}, tail.state);
+    if (!("done" in done)) throw new Error("expected the tailored CV");
+    expect(done.done.coverLetter.paragraphs).toEqual([]);
   });
 });

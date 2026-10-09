@@ -18,7 +18,7 @@ const STRATEGIES = [
   { id: "full", label: "Full: rephrase, add verified skills and bullets" },
 ];
 const STAGE_LABELS: Record<string, string> = {
-  keywords: "Reading the job description…",
+  keywords: "Reading what the job asks for…",
   gaps: "Checking what your CV already covers…",
   plan: "Planning which skills to target…",
   diffs: "Rewriting your CV for the job…",
@@ -54,12 +54,12 @@ async function postStep(body: object): Promise<Step> {
 }
 
 export function TailorPanel({
-  applicationId,
+  target,
   research,
   hasResearch,
   retailor,
 }: {
-  applicationId: string;
+  target: { applicationId: string } | { roleId: string };
   research: TailorRequest | null;
   hasResearch: boolean;
   retailor: boolean;
@@ -98,7 +98,7 @@ export function TailorPanel({
     guard(async () => {
       const run = paused.current ?? { stages: [] as RunnerUsage[], before: await planUsage() };
       paused.current = null;
-      let step = await postStep({ applicationId, strategy, ...(answers && { answered: true, answers }) });
+      let step = await postStep({ ...target, strategy, ...(answers && { answered: true, answers }) });
       while (!("done" in step)) {
         if ("questions" in step) {
           paused.current = run;
@@ -108,7 +108,7 @@ export function TailorPanel({
         setProgress(STAGE_LABELS[step.stage] ?? "Working…");
         const { result, usage } = await runOnRunner({ ...step.request, model });
         run.stages.push(usage);
-        step = await postStep({ applicationId, stage: step.stage, result, state: step.state });
+        step = await postStep({ ...target, stage: step.stage, result, state: step.state });
       }
       const after = await planUsage();
       setNow(after);

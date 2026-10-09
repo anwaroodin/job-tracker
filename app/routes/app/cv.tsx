@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Form, useNavigation, useSearchParams } from "react-router";
+import { Form, redirect, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/cv";
 import { CV_SECTIONS, CvEditor } from "~/components/cv";
+import { RoleCvs } from "~/components/cv/role-cvs";
 import { TailoredCvGrid } from "~/components/cv/tailored-grid";
 import { TemplateEditor } from "~/components/cv/template-editor";
 import { PdfButton, TypstPreview } from "~/components/cv/typst-preview";
@@ -15,8 +16,10 @@ import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { cleanCv } from "~/server/cv/clean";
 import { importCv, MAX_PDF_BYTES, pdfText } from "~/server/cv/import.server";
+import { MAX_TITLE_CHARS } from "~/server/cv/tailoring/role";
 import { getDb } from "~/server/db/client.server";
 import { getCv, getCvTemplate, getProfile, saveCv, saveCvTemplate } from "~/server/db/queries/profile.server";
+import { createRoleCv, listRoleCvs } from "~/server/db/queries/role-cv.server";
 import { tailoredCvCards } from "~/server/db/queries/tailored-cv.server";
 import type { Cv } from "~/types/cv";
 
@@ -26,13 +29,14 @@ export async function loader({ context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [cv, profile, tailored, template] = await Promise.all([
+  const [cv, profile, tailored, template, roles] = await Promise.all([
     getCv(db, user.id),
     getProfile(db, user.id),
     tailoredCvCards(db, user.id),
     getCvTemplate(db, user.id),
+    listRoleCvs(db, user.id),
   ]);
-  return { cv, person: personFor(profile.personal, user), tailored, template };
+  return { cv, person: personFor(profile.personal, user), tailored, template, roles };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -47,6 +51,11 @@ export async function action({ request, context }: Route.ActionArgs) {
     }
     const text = file instanceof File && file.size ? await pdfText(file).catch(() => "") : String(form.get("text") ?? "");
     return { imported: await importCv(env, db, user.id, text) };
+  }
+  if (form.get("intent") === "role") {
+    const title = String(form.get("title") ?? "").trim().slice(0, MAX_TITLE_CHARS);
+    if (title) throw redirect(`/cv/roles/${await createRoleCv(db, user.id, title)}`);
+    return { ok: true };
   }
   if (form.get("intent") === "template") {
     const template = String(form.get("template") ?? "").slice(0, MAX_TEMPLATE_CHARS);
@@ -127,6 +136,9 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
           </Section>
           <Section n="02" title="Tailored CVs" hint="The latest for each job, by job title." i={2}>
             <TailoredCvGrid person={loaderData.person} template={template} cards={loaderData.tailored} />
+          </Section>
+          <Section n="03" title="Tailor to a role" hint="No job description needed: just the job title." i={3}>
+            <RoleCvs roles={loaderData.roles} />
           </Section>
         </>
       )}
