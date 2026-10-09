@@ -203,24 +203,6 @@ Job description context:
 
 Output the complete resume JSON with keywords naturally integrated. Return ONLY valid JSON.`;
 
-export const EMPHASIS_PROMPT = `A recruiter skims a CV for a few seconds before deciding whether to read it. Choose what to bold so that the skim alone shows why this candidate fits this job.
-
-Job keywords:
-{job_keywords}
-
-CV lines, one per line as "path: text":
-{lines}
-
-Rules:
-1. Bold at most one phrase per line, two only when both are essential.
-2. Bold only what this job cares about: a quantified result (for example "cut deploy time by 40%") or a required skill or technology that is central to the line.
-3. Leave a line with nothing relevant to this job unbolded. Roughly half the lines or fewer should have any bold.
-4. Never bold a whole line, a full sentence, filler, job titles or generic words like "team" or "projects".
-5. Each phrase is 1-5 words, copied exactly (same spelling and capitalisation) from its line, and appears only once in that line.
-6. Read together, the bold phrases should sum up the candidate's fit for this job.
-
-Output JSON with the lines you chose, each with its path and the phrases to bold.`;
-
 export const COVER_LETTER_PROMPT = `Write a brief cover letter for this job application.
 
 IMPORTANT: Write in British English.
@@ -247,18 +229,6 @@ Requirements:
 - Do NOT use em dash ("—") anywhere in the writing/output, even if it exists, remove it
 
 Output JSON with the greeting line, the paragraphs, and the sign-off line (for example "Kind regards,"), without the candidate's name.`;
-
-export const GAPS_PROMPT = `Sort the skills this job asks for that the candidate's CV doesn't name word for word.
-
-"implied": the CV shows the skill in other words, or it follows obviously from the candidate's work or field. A full-stack engineer has frontend and backend experience, anyone who built React apps knows JavaScript, and every software engineer codes. Generic parts of the candidate's own field always count as implied.
-"ask": only specific skills with nothing in the CV pointing to them, so the candidate has to say whether they have them. At most 6, the most important first.
-Put every skill in exactly one list.
-
-Skills:
-{skills}
-
-CV:
-{resume}`;
 
 export const SYSTEM_PROMPTS = {
   gaps: "You judge which skills a CV already shows or clearly implies. Output only valid JSON.",

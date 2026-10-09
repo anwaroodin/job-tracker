@@ -2,9 +2,21 @@ import { shownProjects } from "~/lib/cv";
 import type { Confirmation, CvContent, JobKeywords, JobQuestion, TailorRequest } from "~/types/cv";
 import { obj, strings } from "../clean";
 import { allKeywords, atsScore, contentText, keywordInText, normalizeSkillKey } from "./keywords";
-import { fill, GAPS_PROMPT, SYSTEM_PROMPTS } from "./prompts";
+import { fill, SYSTEM_PROMPTS } from "./prompts";
 import { resumeView } from "./resume";
 import { GAPS_SCHEMA } from "./schemas";
+
+const GAPS_PROMPT = `Sort the skills this job asks for that the candidate's CV doesn't name word for word.
+
+"implied": the CV shows the skill in other words, or it follows obviously from the candidate's work or field. A full-stack engineer has frontend and backend experience, anyone who built React apps knows JavaScript, and every software engineer codes. Generic parts of the candidate's own field always count as implied.
+"ask": only specific skills with nothing in the CV pointing to them, so the candidate has to say whether they have them. At most 6, the most important first.
+Put every skill in exactly one list.
+
+Skills:
+{skills}
+
+CV:
+{resume}`;
 
 const MAX_QUESTIONS = 6;
 
@@ -14,7 +26,7 @@ export function evidenceText(cv: CvContent, confirmed: Confirmation[]) {
   return [contentText(cv), ...confirmedYes(confirmed).map((c) => `${c.term}\n${c.detail}`)].join("\n");
 }
 
-export const ASSUMED = "Assumed from your CV";
+const ASSUMED = "Assumed from your CV";
 
 export function skillGaps(jk: JobKeywords, cv: CvContent, confirmed: Confirmation[]): JobQuestion[] {
   const answered = new Set(confirmed.map((c) => normalizeSkillKey(c.term)));

@@ -1,13 +1,12 @@
 import type { CompanyResearch, Confirmation, CvContent, JobKeywords, ResumeChange, SkillTarget, TailoredCv, TailorRequest } from "~/types/cv";
 import { cleanCv, list, obj, str, strings } from "../clean";
 import { coverLetterFrom } from "../tailored";
-import { applyEmphasis, cleanEmphasis, type Emphasis, emphasisSlots, verifyEmphasis } from "./emphasis";
+import { applyEmphasis, cleanEmphasis, EMPHASIS_PROMPT, type Emphasis, emphasisSlots, verifyEmphasis } from "./emphasis";
 import { allKeywords, atsScore, cleanJobKeywords, contentText, keywordGaps, keywordsForPrompt } from "./keywords";
 import {
   COVER_LETTER_PROMPT,
   DIFF_IMPROVE_PROMPT,
   DIFF_STRATEGY_INSTRUCTIONS,
-  EMPHASIS_PROMPT,
   EXTRACT_KEYWORDS_PROMPT,
   fill,
   KEYWORD_INJECTION_PROMPT,
@@ -56,7 +55,7 @@ const EFFORT: Record<Stage, TailorRequest["effort"]> = {
   plan: "medium",
   diffs: "high",
   inject: "medium",
-  emphasis: "medium",
+  emphasis: "low",
   letter: "medium",
 };
 
