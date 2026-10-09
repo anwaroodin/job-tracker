@@ -106,7 +106,6 @@ RULES:
 12. Preserve original capitalization, especially for proper nouns, technical terms (e.g., REST, API, AWS), and acronyms. Do not change the casing of words that were capitalized in the original.
 13. Use the company research only to decide which of the candidate's real experience to emphasise. Never copy its wording, slogans or values into the resume, and never claim the candidate shares a value the resume doesn't show.
 14. Before answering, go through every bullet in workExperience and personalProjects one at a time and check it against the CV WRITING RULES, above all the action verb + task or project + outcome structure. Return a change for each bullet that fails.
-15. Take each outcome from the resume, the candidate's confirmed answers, or what the work plainly delivered in the candidate's own words. Never invent a number, metric or claim. When a bullet has no outcome you can honestly state, still fix the rest of it and copy its original text into missing_outcomes.
 
 ${WRITING_RULES}
 
@@ -172,7 +171,6 @@ Output this exact JSON format, nothing else:
       "reason": "added verified JD skill for review"
     }
   ],
-  "missing_outcomes": ["original text of a bullet whose outcome the resume doesn't give"],
   "strategy_notes": "brief summary of the tailoring approach"
 }`;
 

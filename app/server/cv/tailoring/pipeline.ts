@@ -160,7 +160,6 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
     const { result: tailored, applied, rejected } = applyDiffs(start, changes, state.targets, state.strategy === "full");
     const warnings = [...state.warnings, ...verifyDiffResult(start, tailored, applied, evidence(ctx), allKeywords(jk).map((k) => k.term))];
     if (rejected.length) warnings.push(`${rejected.length} change(s) rejected during verification.`);
-    for (const line of strings(obj(result).missing_outcomes, 500)) warnings.push(`Add the result to this line on your CV: "${line}"`);
     const notes = [...state.notes, str(obj(result).strategy_notes, MAX_NOTE_CHARS)].filter(Boolean);
     const next: TailorState = { ...state, tailored, edits: applied, rejected: rejected.length, warnings, notes };
     const skills = new Set([...jk.requiredSkills, ...jk.preferredSkills]);

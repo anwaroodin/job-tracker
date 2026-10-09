@@ -38,7 +38,6 @@ export const DIFFS_SCHEMA = object({
       reason: { type: "string" },
     }),
   },
-  missing_outcomes: STRINGS,
   strategy_notes: { type: "string" },
 });
 

@@ -261,7 +261,7 @@ describe("pipeline", () => {
     expect(diffs.request.input).not.toContain("- Kubernetes (");
 
     const bullet = CV.experience[0].bullets[0].text;
-    const reply = { changes: [change({ path: "workExperience[0].description[0]", original: bullet, value: "Built REST APIs in Go" })], missing_outcomes: ["Built a watering tracker"], strategy_notes: "Led with Go" };
+    const reply = { changes: [change({ path: "workExperience[0].description[0]", original: bullet, value: "Built REST APIs in Go" })], strategy_notes: "Led with Go" };
     const inject = continueTailoring(withKeywords, "diffs", reply, cleanState(JSON.parse(JSON.stringify(diffs.state))));
     if (!("request" in inject)) throw new Error("expected a request");
     expect(inject.stage).toBe("inject");
@@ -288,7 +288,6 @@ describe("pipeline", () => {
     expect(done.done.coverLetter.paragraphs).toEqual(["I build Go APIs."]);
     expect(done.done.score!.after.keywordMatch).toBeGreaterThan(done.done.score!.before.keywordMatch);
     expect(done.done).not.toHaveProperty("summaries");
-    expect(done.done.flags).toContain('Add the result to this line on your CV: "Built a watering tracker"');
     expect(done.done.experience[0].bullets[1].bold).toEqual(["Cut deploy time by 40%"]);
     expect(done.done.experience[0]).toMatchObject({ company: "Acme", title: "Platform Engineer", start: "Mar 2023" });
   });
