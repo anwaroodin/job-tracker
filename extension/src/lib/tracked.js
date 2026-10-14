@@ -45,6 +45,9 @@ const hostOf = (href) => {
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
+/** A page that names its own role is a different listing unless the role matches. */
+const otherListing = (entry, job) => Boolean(job.role) && !same(entry.role, job.role);
+
 /** @returns {Promise<TrackedEntry[]>} */
 async function load() {
   const { [STORAGE_KEY]: entries = [] } = await chrome.storage.local.get(STORAGE_KEY);
@@ -55,7 +58,8 @@ async function load() {
 /**
  * The tracked application this page most likely belongs to: the same URL,
  * the same company and role, or (unless `sameHost` is false) a recent
- * application on the same host, which covers later steps of a form.
+ * application on the same host with no other role on the page, which covers
+ * later steps of a form.
  * @returns {Promise<TrackedEntry | null>}
  */
 export async function findTracked(job, { sameHost = true } = {}) {
@@ -68,7 +72,7 @@ export async function findTracked(job, { sameHost = true } = {}) {
   return (
     entries.find((e) => e.url === key) ??
     entries.find((e) => company && role && same(e.company, company) && same(e.role, role)) ??
-    (sameHost ? entries.find((e) => e.host === host && now - e.trackedAt < SAME_HOST_MS) : null) ??
+    (sameHost ? entries.find((e) => e.host === host && now - e.trackedAt < SAME_HOST_MS && !otherListing(e, job)) : null) ??
     null
   );
 }
