@@ -38,7 +38,7 @@ function SavedRow({ job }: { job: SavedJob }) {
         to={`/applications/${job.id}`}
         className="group flex min-w-0 flex-1 items-baseline gap-2 px-1 py-3 transition-colors hover:bg-text-primary focus-visible:bg-text-primary focus-visible:outline-none"
       >
-        {job.starred && <FlagMark status="saved" />}
+        <FlagMark status="saved" />
         {/* The company keeps its width (up to a cap) and the role gives way first. */}
         <span title={job.company} className="max-w-[40%] shrink-0 truncate text-text-primary group-hover:!text-text-inverse">
           {job.company}

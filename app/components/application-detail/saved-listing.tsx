@@ -4,7 +4,6 @@ import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
 import { ContactList } from "~/components/application-detail/contact-list";
 import { CompanyLogo } from "~/components/applications/company-logo";
-import { FlagToggle } from "~/components/applications/flag-toggle";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { RichText } from "~/components/ui/rich-text";
 import { StatusBadge } from "~/components/ui/status-badge";
@@ -49,7 +48,6 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
         <div className="min-w-0">
           <p className="flex items-center gap-4 text-[11px] tracking-[0.1em]">
             <StatusBadge status={job.status} />
-            <FlagToggle id={job.id} status={job.status} flagged={job.starred} />
           </p>
           <div className="mt-4 flex items-start gap-4">
             <CompanyLogo company={job.company} logoUrl={job.logoUrl} className="mt-1 size-11 text-[16px]" />

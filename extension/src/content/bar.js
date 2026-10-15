@@ -197,19 +197,22 @@
   const setStatus = (status) =>
     busy(() => save({ status }, state.app ? null : `Saved as ${STATUSES[status].label.toLowerCase()}.`));
 
-  // The `starred` flag: a bookmark on a saved job, a star once applied.
+  /** The bookmark is the saved job itself: it saves an untracked job and removes a saved one. Once applied, it's a star. */
   const toggleFlag = () =>
-    busy(() =>
-      state.app
-        ? save({ starred: !state.app.starred })
-        : save({ status: "saved", starred: true }, "Saved and bookmarked."),
-    );
+    busy(async () => {
+      if (!state.app) return save({ status: "saved", starred: true }, "Saved.");
+      if (state.app.status !== "saved") return save({ starred: !state.app.starred });
+      const url = state.job.url;
+      const res = await send({ type: "job:remove", applicationId: state.app.id, url });
+      if (state.job?.url !== url || failed(res)) return;
+      setApp(null);
+      setMessage("success", "Removed from saved.");
+    });
 
-  /** Bookmarks the job (saving it first if it isn't tracked yet), then opens its tailoring page. */
+  /** Saves the job if it isn't tracked yet, then opens its tailoring page. */
   const tailor = () =>
     busy(async () => {
       if (!state.app) await save({ status: "saved", starred: true });
-      else if (state.app.status === "saved" && !state.app.starred) await save({ starred: true });
       if (state.app) send({ type: "open", page: "tailor", applicationId: state.app.id });
     });
 
@@ -374,13 +377,16 @@
     }, icon(name, { filled: (name === "star" || name === "bookmark") && active }));
   }
 
+  /** A saved job is bookmarked by being saved; once applied, the same button is a star. */
+  function flag() {
+    if (!state.app) return { flagged: false, flagIcon: "bookmark", flagLabel: "Save" };
+    if (state.app.status === "saved") return { flagged: true, flagIcon: "bookmark", flagLabel: "Remove from saved" };
+    const flagged = Boolean(state.app.starred);
+    return { flagged, flagIcon: "star", flagLabel: flagged ? "Unstar" : "Star" };
+  }
+
   function barContent() {
-    const flagged = Boolean(state.app?.starred);
-    // A job not yet applied to is bookmarked; once applied, the same flag is a star.
-    const bookmark = !state.app || state.app.status === "saved";
-    const [flagIcon, flagLabel] = bookmark
-      ? ["bookmark", flagged ? "Remove bookmark" : "Bookmark"]
-      : ["star", flagged ? "Unstar" : "Star"];
+    const { flagged, flagIcon, flagLabel } = flag();
     const refill = state.app && state.app.status !== "saved";
     const { message } = state;
     return h("div", { class: "anchor" },

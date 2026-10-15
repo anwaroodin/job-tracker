@@ -55,6 +55,9 @@ export function lookupApplication({ url, company, role }) {
   return request(`/api/ext/applications?${params}`);
 }
 
+/** Removes a saved job (saved means bookmarked). The server keeps anything past "saved". */
+export const removeSavedApplication = (id) => request(`/api/ext/applications/${encodeURIComponent(id)}`, { method: "DELETE" });
+
 /**
  * Updates an application from the action bar: its status, its bookmark/star
  * (`starred`), or job details the page rendered after it was saved.
