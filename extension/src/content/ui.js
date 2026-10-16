@@ -30,6 +30,8 @@
     copy: "M9 9h11v11H9zM5 15H4V4h11v1",
     check: "M5 12.5l4.5 4.5L19 7",
     chevron: "M6 9l6 6 6-6",
+    lines: "M4 6h16M4 12h10M4 18h7",
+    close: "M6 6l12 12M18 6L6 18",
   };
 
   const SVG = "http://www.w3.org/2000/svg";
@@ -169,8 +171,33 @@
     .corner { position: fixed; right: 16px; z-index: 2147483647; display: flex; align-items: flex-start; gap: 6px; }
     .corner.bottom { bottom: 16px; }
     .corner.top { top: 16px; }
-    .hide { all: unset; cursor: pointer; width: 20px; height: 32px; display: grid; place-items: center; color: var(--text-3); font-size: 14px; }
-    .hide:hover { color: var(--text); }
+    .strip .pill { gap: 8px; padding: 0 12px; color: var(--text); }
+    .pill .sep, .pill .chev { color: var(--text-3); }
+    .pill .state { color: var(--text-2); }
+    .pill svg { width: 12px; height: 12px; transition: transform .12s; }
+    .pill[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+    /* Floating menu: the job up top, then one action per row */
+    .menu { width: 260px; padding: 0; font: 500 10.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); }
+    .menu-head { display: flex; flex-direction: column; gap: 4px; padding: 12px 12px 10px; border-bottom: 1px dashed var(--stroke); }
+    .menu-head .role { font: 500 13.5px/1.3 var(--sans); letter-spacing: 0; text-transform: none; color: var(--text); }
+    .menu-head .company { font: 400 12px/1.3 var(--sans); letter-spacing: 0; text-transform: none; color: var(--text-2); }
+    .menu-head .field + .field { margin-top: 8px; }
+    .menu-items { display: flex; flex-direction: column; padding: 4px 0; }
+    .menu-items > button, .menu-items > .status {
+      all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px;
+      height: 30px; padding: 0 12px;
+    }
+    .menu-items > button:hover, .menu-items > .status:hover { background: var(--fill); color: var(--text); }
+    .menu-items > button:focus-visible, .menu-items > .status:focus-within { outline: 1px solid rgba(255,255,255,.5); outline-offset: -1px; }
+    .menu-items > button[disabled] { opacity: .4; pointer-events: none; }
+    .menu-items > .status select { all: unset; flex: 1; cursor: pointer; }
+    .menu-items > .status .dot { margin: 0 3.5px; }
+    .menu-items svg { width: 13px; height: 13px; flex: none; }
+    .menu-items .grow { flex: 1; }
+    .menu-items .trail { color: var(--text-3); }
+    .menu-items .active { color: var(--accent); }
+    .menu-items .muted { color: var(--text-3); }
     .fill-bar { max-width: min(520px, calc(100vw - 32px)); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
     .fill-bar > span { display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; white-space: nowrap; }
     .fill-bar .title { color: var(--text); }

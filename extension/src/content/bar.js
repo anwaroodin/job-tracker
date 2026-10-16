@@ -7,7 +7,8 @@
  * Easy Apply / Save row), or floating bottom-right on sites without an
  * anchor. Tailor saves the job and opens its tailoring page on the dashboard.
  * ▾ opens a quick view to correct the role and company and see the facts read
- * from the page.
+ * from the page. The floating version is a pill with Apply & fill; the pill
+ * opens a menu with the job, its status and the other actions.
  *
  * The bar also keeps the dashboard's copy of the job complete: details that
  * render after the job is saved (the description, the people to reach out
@@ -385,9 +386,14 @@
     return { flagged, flagIcon: "star", flagLabel: flagged ? "Unstar" : "Star" };
   }
 
+  function applyButton() {
+    const refill = state.app && state.app.status !== "saved";
+    return h("button", { class: "primary", type: "button", "data-focus": "apply", disabled: state.busy, onclick: applyAndFill },
+      state.applying ? "Working…" : refill ? "Fill again" : "Apply & fill");
+  }
+
   function barContent() {
     const { flagged, flagIcon, flagLabel } = flag();
-    const refill = state.app && state.app.status !== "saved";
     const { message } = state;
     return h("div", { class: "anchor" },
       h("div", { class: "strip" },
@@ -402,10 +408,63 @@
           render();
         }, { active: state.open, pressed: state.open }),
         h("button", { class: "text-btn", type: "button", "data-focus": "tailor", disabled: state.busy, onclick: tailor }, "Tailor"),
-        h("button", { class: "primary", type: "button", "data-focus": "apply", disabled: state.busy, onclick: applyAndFill },
-          state.applying ? "Working…" : refill ? "Fill again" : "Apply & fill")),
+        applyButton()),
       message && messageView(message),
       state.open && quickView(),
+    );
+  }
+
+  /** On sites without an anchor: a pill with the status and Apply & fill; the pill opens the menu above it. */
+  function floatingContent() {
+    const status = STATUSES[state.app?.status];
+    const dot = h("span", { class: `dot${state.app ? "" : " empty"}` });
+    if (status) dot.style.background = status.color;
+    return h("div", { class: "anchor" },
+      h("div", { class: "strip" },
+        h("button", {
+          class: "pill",
+          type: "button",
+          "data-focus": "menu",
+          "aria-expanded": String(state.open),
+          "aria-label": state.open ? "Close job-tracker menu" : "Open job-tracker menu",
+          onclick: () => {
+            state.open = !state.open;
+            render();
+          },
+        }, dot, "JT", h("span", { class: "sep" }, "·"), h("span", { class: "state" }, status?.label ?? "Not tracked"), icon("chevron")),
+        applyButton()),
+      state.message && messageView(state.message),
+      state.open && menuView(),
+    );
+  }
+
+  function menuItem(focusKey, iconName, label, onclick, { trail, tone } = {}) {
+    return h("button", { type: "button", "data-focus": focusKey, disabled: state.busy, onclick, class: tone },
+      icon(iconName, { filled: tone === "active" }), h("span", { class: "grow" }, label), trail && h("span", { class: "trail" }, trail));
+  }
+
+  /** The job (editable when the page didn't give a role or company), its status, then the actions. */
+  function menuView() {
+    const role = (state.edits.role ?? state.job.role).trim();
+    const company = (state.edits.company ?? state.job.company).trim();
+    const editing = !role || !company || state.edits.role !== null || state.edits.company !== null;
+    const { flagged, flagIcon, flagLabel } = flag();
+    return h("div", { class: "pop panel menu" },
+      h("div", { class: "menu-head" },
+        ...(editing
+          ? [textField("role", "Role"), textField("company", "Company")]
+          : [h("span", { class: "role" }, role), h("span", { class: "company" }, company)])),
+      h("div", { class: "menu-items" },
+        state.app && statusSelect(),
+        menuItem("flag", flagIcon, flagLabel, toggleFlag, { tone: flagged ? "active" : undefined }),
+        menuItem("tailor", "lines", "Tailor CV", tailor, { trail: "↗" }),
+        menuItem("copy", state.copied ? "check" : "copy", state.copied ? "Copied" : "Copy description", copyDescription),
+        menuItem("open", "open", state.app ? "Open on dashboard" : "Open dashboard", openDashboard, { trail: "↗" }),
+        menuItem("hide", "close", "Hide on this job", () => {
+          state.hiddenUrl = state.job.url;
+          state.open = false;
+          render();
+        }, { tone: "muted" })),
     );
   }
 
@@ -449,16 +508,7 @@
       floating.root.className = "corner bottom floating";
     }
     if (!floating.host.isConnected) document.documentElement.append(floating.host);
-    floating.root.replaceChildren(
-      barContent(),
-      h("button", {
-        class: "hide", type: "button", title: "Hide on this job", "aria-label": "Hide on this job", "data-focus": "hide",
-        onclick: () => {
-          state.hiddenUrl = state.job.url;
-          render();
-        },
-      }, "×"),
-    );
+    floating.root.replaceChildren(floatingContent());
   }
 
   function render() {
