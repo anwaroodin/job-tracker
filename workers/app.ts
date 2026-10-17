@@ -1,4 +1,5 @@
 import { RouterContextProvider, createRequestHandler } from "react-router";
+import * as build from "virtual:react-router/server-build";
 import { sessionCookies } from "~/server/auth/session.server";
 import { envContext, execContext } from "~/server/context.server";
 import { syncGmail } from "~/server/gmail/sync/index.server";
@@ -9,10 +10,7 @@ const AUTH_PATH = "/api/auth/";
 const EXTENSION_PATH = "/api/ext/";
 const EXTENSION_ORIGIN = /^(chrome|moz)-extension:\/\//;
 
-const requestHandler = createRequestHandler(
-  () => import("virtual:react-router/server-build"),
-  import.meta.env.MODE,
-);
+const requestHandler = createRequestHandler(build, import.meta.env.MODE);
 
 export default {
   async fetch(request, env, ctx) {
