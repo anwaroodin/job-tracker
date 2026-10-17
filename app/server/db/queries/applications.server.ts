@@ -1,13 +1,15 @@
-import { and, desc, eq, gte, ne, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, gte, ne, sql, type SQL } from "drizzle-orm";
 import { ANALYTICS_CACHE, invalidate } from "../../cache.server";
 import type { Db } from "../client.server";
 import { application, type NewApplication } from "../schema";
 
 const nowIso = () => new Date().toISOString();
 
+const { description: _description, notes: _notes, contactsJson: _contacts, jdKeywordsJson: _keywords, researchJson: _research, ...listColumns } = getTableColumns(application);
+
 export function applicationRows(db: Db, userId: string) {
   return db
-    .select()
+    .select(listColumns)
     .from(application)
     .where(eq(application.userId, userId))
     .orderBy(desc(application.appliedAt), desc(application.updatedAt));

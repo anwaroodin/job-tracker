@@ -2,7 +2,7 @@ import type { Application } from "~/server/db/schema";
 
 export type { Application, NewApplication } from "~/server/db/schema";
 
-export type ApplicationRowData = Application & { unread?: number };
+export type ApplicationRowData = Omit<Application, "description" | "notes" | "contactsJson" | "jdKeywordsJson" | "researchJson"> & { unread?: number };
 
 export type SavedJobData = Pick<Application, "id" | "company" | "role"> & {
   logoUrl?: string | null;
