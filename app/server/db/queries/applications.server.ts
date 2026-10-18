@@ -1,7 +1,7 @@
-import { and, desc, eq, getTableColumns, gte, ne, sql, type SQL } from "drizzle-orm";
-import { ANALYTICS_CACHE, invalidate } from "../../cache.server";
+import { and, desc, eq, getTableColumns, gte, isNull, ne, notExists, sql, type SQL } from "drizzle-orm";
+import { ANALYTICS_CACHE, invalidate, UNREAD_COUNTS_CACHE } from "../../cache.server";
 import type { Db } from "../client.server";
-import { application, type NewApplication } from "../schema";
+import { application, emailLink, type NewApplication } from "../schema";
 
 const nowIso = () => new Date().toISOString();
 
@@ -82,10 +82,31 @@ export async function updateApplication(
   return updated ?? null;
 }
 
+export async function deleteApplication(db: Db, userId: string, id: string) {
+  const deleted = await db
+    .delete(application)
+    .where(and(eq(application.id, id), eq(application.userId, userId)))
+    .returning({ id: application.id });
+  await Promise.all([invalidate(ANALYTICS_CACHE, userId), invalidate(UNREAD_COUNTS_CACHE, userId)]);
+  return deleted.length > 0;
+}
+
 export function deleteSavedApplication(db: Db, userId: string, id: string) {
   return db
     .delete(application)
     .where(and(eq(application.id, id), eq(application.userId, userId), eq(application.status, "saved")))
+    .returning({ id: application.id });
+}
+
+export function unapplyApplication(db: Db, userId: string, id: string) {
+  const linkedEmail = db
+    .select({ id: emailLink.id })
+    .from(emailLink)
+    .where(and(eq(emailLink.applicationId, application.id), eq(emailLink.userId, userId), isNull(emailLink.dismissedAt)));
+  return db
+    .update(application)
+    .set({ status: "saved", starred: true, manualStatusAt: null, updatedAt: nowIso() })
+    .where(and(eq(application.id, id), eq(application.userId, userId), ne(application.status, "saved"), notExists(linkedEmail)))
     .returning({ id: application.id });
 }
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
 import { ContactList } from "~/components/application-detail/contact-list";
+import { EditDetails } from "~/components/application-detail/edit-details";
 import { CompanyLogo } from "~/components/applications/company-logo";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { RichText } from "~/components/ui/rich-text";
@@ -74,6 +75,7 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
               Tailor CV
             </Link>
           </Button>
+          <EditDetails job={job} variant="secondary" size="medium" />
           <Button type="button" variant="secondary" disabled={busy} onClick={() => act({ intent: "saved-applied" })}>
             <Check />
             Mark applied
