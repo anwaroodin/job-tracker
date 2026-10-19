@@ -3,6 +3,7 @@ import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
 import { CompanyLogo } from "~/components/applications/company-logo";
 import { FlagMark } from "~/components/applications/flag-toggle";
+import { TailorLink } from "~/components/applications/tailor-link";
 import { fmtDate } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import type { SavedJobData } from "~/types/application";
@@ -13,7 +14,7 @@ import type { SavedJobData } from "~/types/application";
  * Desktop: 4-column (Company | Role | Saved Date | Actions)
  */
 export const SAVED_APPLICATION_ROW_GRID_COLS =
-  "grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_90px_205px]";
+  "grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_90px_250px]";
 
 export interface SavedApplicationRowItemProps {
   job: SavedJobData;
@@ -143,6 +144,7 @@ export function SavedApplicationRowItem({
         <div className="flex items-center gap-1 shrink-0">
           {actions ?? (
             <>
+              <TailorLink id={job.id} tailored={job.tailored} className="px-1.5 sm:px-2" />
               {job.url && (
                 <Button
                   asChild
