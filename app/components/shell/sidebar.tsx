@@ -1,4 +1,3 @@
-import { useSelector } from "@legendapp/state/react";
 import { ChevronsUpDown, LogOut, PanelLeft } from "lucide-react";
 import { motion } from "motion/react";
 import { NavLink, useNavigate } from "react-router";
@@ -14,6 +13,7 @@ import {
 import { SyncStatus } from "~/components/gmail/sync-status";
 import { sidebarView$ } from "~/lib/state/sidebar-view";
 import type { GmailStatus } from "~/types/gmail";
+import { usePersisted } from "~/hooks/use-persisted";
 import { cn } from "~/lib/cn";
 import logo from "~/assets/job-tracker.png";
 import { NAV } from "./nav";
@@ -25,7 +25,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ user, gmail, unread }: SidebarProps) {
-  const collapsed = useSelector(sidebarView$.collapsed);
+  const collapsed = usePersisted(() => sidebarView$.collapsed.get(), false);
   const navigate = useNavigate();
   const signOut = () =>
     authClient.signOut({
