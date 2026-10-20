@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { data, Link } from "react-router";
 import type { Route } from "./+types/cv";
+import type { SidePanelHandle } from "~/components/shell/side-panel";
 import { PdfButton, TypstPreview } from "~/components/cv/typst-preview";
 import { CoverLetterDocument } from "~/components/tailored-cv/document";
 import { TailoredCvEditor } from "~/components/tailored-cv/editor";
 import { EditsView } from "~/components/tailored-cv/edits";
 import { ResearchView } from "~/components/tailored-cv/research";
 import { ScoreView } from "~/components/tailored-cv/score";
+import { JobDescriptionPanel } from "~/components/tailored-cv/job-description-panel";
 import { TailorPanel } from "~/components/tailored-cv/tailor-panel";
 import { Button } from "~/components/ui/button";
 import { Section, fmtDate, stagger } from "~/components/ui/terminal";
@@ -24,6 +26,11 @@ import { getApplication, saveResearch } from "~/server/db/queries/applications.s
 import { getCv, getCvTemplate, getProfile } from "~/server/db/queries/profile.server";
 import { insertTailoredCv, latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
 import type { AtsScore } from "~/types/cv";
+
+export const handle: SidePanelHandle = {
+  sidePanel: (data: Awaited<ReturnType<typeof loader>>) =>
+    data.application.description ? { title: "Job description", text: data.application.description } : null,
+};
 
 export async function loader({ context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
@@ -43,7 +50,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
   const hasCv = cv.experience.length > 0 || cv.summaries.length > 0;
   const score: { before: AtsScore; after?: AtsScore } | null = tailored?.cv.score ?? (keywords ? { before: scoreBefore(master, cv.confirmed, keywords) } : null);
   return {
-    application: { id: row.id, company: row.company, role: row.role },
+    application: { id: row.id, company: row.company, role: row.role, description: row.description },
     canTailor: hasCv && !!row.description,
     researchRequest: row.description ? researchRequest(row) : null,
     research: storedResearch(row.researchJson),
@@ -101,10 +108,17 @@ export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
           <span className="mx-2 opacity-50">/</span>
           CV
         </p>
-        <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-          Tailored CV
-          <span className="block text-text-tertiary">{application.role}</span>
-        </h1>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
+            Tailored CV
+            <span className="block text-text-tertiary">{application.role}</span>
+          </h1>
+          {application.description && (
+            <div className="lg:hidden">
+              <JobDescriptionPanel description={application.description} />
+            </div>
+          )}
+        </div>
       </header>
 
       <Section n="01" title="Tailor" hint={tailored ? `Version ${tailored.version} · ${fmtDate(tailored.createdAt)}` : undefined} i={1}>

@@ -8,6 +8,7 @@ import type { GmailStatus } from "~/types/gmail";
 import { ActivityBell } from "./activity-feed";
 import { ActivityToasts } from "./activity-feed/toasts";
 import { BottomNav } from "./bottom-nav";
+import { SidePanel } from "./side-panel";
 import { Sidebar } from "./sidebar";
 
 interface AppShellProps {
@@ -28,6 +29,7 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
             {children}
           </div>
         </main>
+        <SidePanel />
       </div>
       <BottomNav unread={unread} />
       <ActivityToasts initial={gmail} />
