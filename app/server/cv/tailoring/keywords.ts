@@ -101,8 +101,8 @@ function recommendations(score: Omit<AtsScore, "recommendations" | "overall" | "
 
 const round = (n: number) => Math.round(n * 10) / 10;
 
-export function atsScore(cv: CvContent, jk: JobKeywords, masterText: string): AtsScore {
-  const text = contentText(cv);
+export function atsScore(cv: CvContent, jk: JobKeywords, masterText: string, implied: string[] = []): AtsScore {
+  const text = [contentText(cv), ...implied].join("\n");
   const terms = allKeywords(jk);
   const keywords = terms.map((k) => ({ ...k, found: keywordInText(k.term, text) }));
   const keywordMatch = terms.length ? (keywords.filter((k) => k.found).length / terms.length) * 100 : 0;

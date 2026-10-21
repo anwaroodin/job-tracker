@@ -14,7 +14,7 @@ import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { applyEdits } from "~/server/cv/tailored";
 import { atsScore } from "~/server/cv/tailoring/keywords";
-import { evidenceText, scoreBefore } from "~/server/cv/tailoring/questions";
+import { evidenceText, impliedTerms, scoreBefore } from "~/server/cv/tailoring/questions";
 import { getDb } from "~/server/db/client.server";
 import { getCv, getCvTemplate, getProfile } from "~/server/db/queries/profile.server";
 import { deleteRoleCv, getRoleCv, saveRoleCv } from "~/server/db/queries/role-cv.server";
@@ -45,7 +45,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   }
   if (form.get("intent") !== "edit" || !role.cv) throw data("Unknown action", { status: 400 });
   const edited = applyEdits(role.cv, JSON.parse(String(form.get("cv") ?? "{}")));
-  if (role.keywords && edited.score) edited.score = { ...edited.score, after: atsScore(edited, role.keywords, evidenceText(cvContent(cv), cv.confirmed)) };
+  if (role.keywords && edited.score) edited.score = { ...edited.score, after: atsScore(edited, role.keywords, evidenceText(cvContent(cv), cv.confirmed), impliedTerms(cv.confirmed)) };
   await saveRoleCv(db, user.id, role.id, role.version + 1, edited);
   return { ok: true };
 }

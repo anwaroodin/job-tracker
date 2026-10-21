@@ -28,6 +28,8 @@ export function evidenceText(cv: CvContent, confirmed: Confirmation[]) {
 
 const ASSUMED = "Assumed from your CV";
 
+export const impliedTerms = (confirmed: Confirmation[]) => confirmed.filter((c) => c.has && c.detail === ASSUMED).map((c) => c.term);
+
 export function skillGaps(jk: JobKeywords, cv: CvContent, confirmed: Confirmation[]): JobQuestion[] {
   const answered = new Set(confirmed.map((c) => normalizeSkillKey(c.term)));
   const text = contentText(cv);
@@ -68,5 +70,5 @@ export function confirmedForPrompt(confirmed: Confirmation[]) {
 }
 
 export function scoreBefore(master: CvContent, confirmed: Confirmation[], jk: JobKeywords) {
-  return atsScore({ ...master, projects: shownProjects(master) }, jk, evidenceText(master, confirmed));
+  return atsScore({ ...master, projects: shownProjects(master) }, jk, evidenceText(master, confirmed), impliedTerms(confirmed));
 }

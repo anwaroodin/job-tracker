@@ -200,6 +200,8 @@ describe("refining", () => {
       ["billing", "supported_by_resume"],
     ]);
     expect(plan.rejected).toEqual(["Kubernetes", "Cobol"]);
+    const implied = verifySkillPlan({ target_skills: [{ skill: "Kubernetes" }] }, CV, KEYWORDS, JOB, contentText(CV), ["kubernetes"]);
+    expect([implied.accepted, implied.rejected]).toEqual([[], []]);
   });
 
   it("replaces AI-sounding phrases unless the job uses them", () => {
@@ -230,6 +232,10 @@ describe("verifyEmphasis", () => {
 });
 
 describe("atsScore", () => {
+  it("counts skills the CV implies as covered", () => {
+    expect(atsScore(CV, KEYWORDS, contentText(CV), ["Kubernetes"]).missing).toEqual(["PostgreSQL"]);
+  });
+
   it("weights keyword match, skills coverage and sections 55/25/20", () => {
     const score = atsScore(CV, KEYWORDS, contentText(CV));
     expect(score.keywordMatch).toBe(60);

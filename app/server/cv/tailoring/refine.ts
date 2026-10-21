@@ -4,7 +4,8 @@ import { contentText, jdSkillIndex, keywordInText, normalizeSkillKey } from "./k
 
 export const MAX_NOTE_CHARS = 4000;
 
-export function verifySkillPlan(raw: unknown, cv: CvContent, jk: JobKeywords, jobDescription: string, evidence = contentText(cv)) {
+export function verifySkillPlan(raw: unknown, cv: CvContent, jk: JobKeywords, jobDescription: string, evidence = contentText(cv), implied: string[] = []) {
+  const impliedKeys = new Set(implied.map(normalizeSkillKey));
   const existing = new Map(cv.skills.flatMap((g) => g.items).map((s) => [normalizeSkillKey(s), s]));
   const jdSkills = jdSkillIndex(jk, jobDescription);
   const text = evidence;
@@ -19,6 +20,7 @@ export function verifySkillPlan(raw: unknown, cv: CvContent, jk: JobKeywords, jo
     if (!skill || seen.has(key)) continue;
     seen.add(key);
     if (existing.has(key)) accepted.push({ skill: existing.get(key)!, source: "existing", reason: reason || "Already in your skills" });
+    else if (impliedKeys.has(key)) continue;
     else if (!keywordInText(skill, text)) rejected.push(skill);
     else if (jdSkills.has(key)) accepted.push({ skill: jdSkills.get(key)!, source: "jd_added", reason: reason || "Asked for by the job and backed by your CV or answers" });
     else accepted.push({ skill, source: "supported_by_resume", reason: reason || "Appears in your CV or answers" });

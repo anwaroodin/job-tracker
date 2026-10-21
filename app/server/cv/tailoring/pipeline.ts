@@ -15,7 +15,7 @@ import {
   SYSTEM_PROMPTS,
   type Strategy,
 } from "./prompts";
-import { confirmedForPrompt, evidenceText, scoreBefore } from "./questions";
+import { confirmedForPrompt, evidenceText, impliedTerms, scoreBefore } from "./questions";
 import { alignWithMaster, MAX_NOTE_CHARS, mergeInjected, removeAiPhrases, verifySkillPlan, withInjectedEdits } from "./refine";
 import { applyDiffs, chooseProjects, resumeView, verifyDiffResult, withProjects } from "./resume";
 import { rolePosting } from "./role";
@@ -151,7 +151,7 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
   if (!jk) throw new Error("Job keywords are missing");
 
   if (stage === "plan") {
-    const plan = verifySkillPlan(result, ctx.master, jk, ctx.jobDescription, evidence(ctx));
+    const plan = verifySkillPlan(result, ctx.master, jk, ctx.jobDescription, evidence(ctx), impliedTerms(ctx.confirmed));
     const warnings = plan.rejected.length ? [...state.warnings, `${plan.rejected.length} skill target(s) not backed by your CV or your answers: ${plan.rejected.join(", ")}.`] : state.warnings;
     const next = { ...state, targets: plan.accepted, warnings, notes: plan.notes ? [plan.notes] : [], projects: chooseProjects(result, ctx.master) };
     return { stage: "diffs", request: diffsRequest(ctx, jk, next), state: next };
@@ -202,7 +202,7 @@ function finished(ctx: TailorContext, state: TailorState, tailored: CvContent, l
       flags: state.warnings,
       edits: state.edits,
       rejectedEdits: state.rejected,
-      score: { before: scoreBefore(ctx.master, ctx.confirmed, jk), after: atsScore(tailored, jk, evidence(ctx)) },
+      score: { before: scoreBefore(ctx.master, ctx.confirmed, jk), after: atsScore(tailored, jk, evidence(ctx), impliedTerms(ctx.confirmed)) },
       strategy: state.strategy,
     },
   };

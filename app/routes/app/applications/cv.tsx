@@ -20,7 +20,7 @@ import { cleanResearch, researchRequest, storedResearch } from "~/server/cv/rese
 import { applyEdits } from "~/server/cv/tailored";
 import { storedJobKeywords } from "~/server/cv/tailoring/cache";
 import { atsScore } from "~/server/cv/tailoring/keywords";
-import { evidenceText, scoreBefore } from "~/server/cv/tailoring/questions";
+import { evidenceText, impliedTerms, scoreBefore } from "~/server/cv/tailoring/questions";
 import { getDb } from "~/server/db/client.server";
 import { getApplication, saveResearch } from "~/server/db/queries/applications.server";
 import { getCv, getCvTemplate, getProfile } from "~/server/db/queries/profile.server";
@@ -85,7 +85,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (intent !== "edit" || !latest) throw data("Unknown action", { status: 400 });
   const edited = applyEdits(latest.cv, JSON.parse(String(form.get("cv") ?? "{}")));
   const keywords = await storedJobKeywords(row);
-  if (keywords && edited.score) edited.score = { ...edited.score, after: atsScore(edited, keywords, evidenceText(cvContent(cv), cv.confirmed)) };
+  if (keywords && edited.score) edited.score = { ...edited.score, after: atsScore(edited, keywords, evidenceText(cvContent(cv), cv.confirmed), impliedTerms(cv.confirmed)) };
   await insertTailoredCv(db, user.id, row.id, latest.version + 1, edited);
   return { ok: true };
 }
