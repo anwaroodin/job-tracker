@@ -142,6 +142,8 @@ describe("keywordInText", () => {
     expect(keywordInText("microservices", "unified microservice-based pipelines")).toBe(true);
     expect(keywordInText("REST API", "Built REST APIs")).toBe(true);
     expect(keywordInText("AWS", "Used AW tooling")).toBe(false);
+    expect(keywordInText("Frontend development", "Front-end development")).toBe(true);
+    expect(keywordInText("Java", "Wrote JavaScript")).toBe(false);
   });
 });
 

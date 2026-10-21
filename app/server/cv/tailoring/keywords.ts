@@ -49,12 +49,14 @@ export function allKeywords(jk: JobKeywords) {
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const spacingFree = (term: string) => [...term].map(escape).join(" ?");
+
 export function keywordInText(keyword: string, text: string) {
-  const term = normalizeSkillKey(keyword);
+  const term = normalizeSkillKey(keyword).replace(/ /g, "");
   if (!term) return false;
   const haystack = normalizeSkillKey(text);
   const plural = term.endsWith("s") ? (term.length > 4 ? term.slice(0, -1) : term) : `${term}s`;
-  return [...new Set([term, term.replace(/ /g, ""), plural])].some((variant) => new RegExp(`(?<!\\w)${escape(variant)}(?!\\w)`).test(haystack));
+  return [...new Set([term, plural])].some((variant) => new RegExp(`(?<!\\w)${spacingFree(variant)}(?!\\w)`).test(haystack));
 }
 
 export function contentText(cv: CvContent) {
