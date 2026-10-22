@@ -43,7 +43,7 @@ Rules:
 2. Include existing resume skills that are highly relevant to the JD.
 3. You may include JD skills that are missing from the resume skills list.
 4. Do not include skills unrelated to the JD.
-5. Do not include certifications.
+5. Do not include certifications, and do not include a broad discipline (such as front-end development) that the candidate's title or a broader listed skill already covers. Target concrete tools, technologies, methods and qualifications.
 6. Generate reasons in British English.
 7. Use the company research only to judge which of the candidate's skills this company values most.
 8. Choose which personal projects to show, as indices into "personalProjects", most relevant to the job first. Projects marked "optional" are not on the resume yet: include one whenever it shows a skill or experience the job asks for better than a shown project does. Keep the number of projects about the same as now.
@@ -77,17 +77,56 @@ Output this exact JSON format:
   "strategy_notes": "brief notes for the next editing pass"
 }`;
 
+const HUMAN_VOICE = `HOW IT SHOULD SOUND (a recruiter must not be able to tell a model wrote it):
+- Write the way an experienced software engineer writes about their own work: plain, specific and understated. Keep that voice whatever the candidate's field.
+- Cut any sentence or phrase that only signals enthusiasm or importance, and vague audience tails such as "for real users", "for client users" or "for production users".
+- No "not just X but Y", "it's not X, it's Y" or "X rather than Y" contrasts, and no closing line that restates the point.
+- No lists of three for rhythm. List three things only when there are exactly three real things.
+- No dashes (— or –) between clauses. Use a full stop, comma or colon.
+- No "-ing" tails that claim more than the facts show ("..., ensuring quality", "..., demonstrating leadership").
+- Plain verbs: "is", "has", "built", "ran", "led", never "serves as", "boasts", "spearheaded", "leveraged".
+- Mix short sentences with longer ones, and don't start consecutive sentences the same way.
+- Never use: passionate, excited, thrilled, eager, driven, results-driven, dynamic, proven track record, seamless, cutting-edge, innovative, pivotal, crucial, key (as an adjective), vibrant, showcase, underscore, highlight (as a verb), delve, landscape, journey, testament, foster, enhance, meticulous, synergy, align with, make an impact, add value, hit the ground running, great fit.
+- Don't praise the company or repeat its values back to it. Naming what the role will build and how the candidate's work fits it is fine.`;
+
+const SUMMARY_RULES = `## Professional summary
+
+Write a 2–3 sentence summary (45–70 words) that sits at the top of the CV, tailored to this job.
+
+What it must do:
+- Open with who the candidate is: their title (the job's title only if the CV genuinely supports it) and the core of what they do, in the job description's own vocabulary.
+- Give the strongest one or two pieces of evidence from the CV that match what this job asks for most. Prefer concrete things: a scale, a result, a type of product, a kind of team. One number is fine if the CV states it; never invent or round up.
+- End on what they'd bring to this specific role or company. Name the company if given. Point to the actual work in the job description, not to "the mission" in the abstract.
+
+Style:
+- Implied first person: no "I", "me", "my", and no "he/she/they" or the candidate's name. Start sentences with the title, a noun or a verb.
+- Plain, specific language a hiring manager would say out loud. Vary sentence length.
+- Banned phrases: "proven track record", "well-positioned", "results-driven", "passionate about", "dynamic", "detail-oriented", "team player", "leverage", "seeking to", "excellent communication skills".
+- No tool lists; tools belong in the skills section.
+- Every claim must be traceable to the CV. If the CV doesn't back something the job wants, leave it out rather than stretch.
+
+Before writing, pick the 2–3 requirements the job description stresses most and check which ones the CV actually supports. Build the summary around those.
+
+Example (unrelated job — copy the quality, not the content or wording):
+Good: "Retail supervisor with four years running the tills and stockroom at a busy high-street store. Trained most of the current weekend team and cut returns-desk queues by reorganising how refunds are processed. Ready to bring the same steady floor management to Northfield Stores' new Leeds branch."
+Bad: "Retail Assistant with experience in customer service, stock management and teamwork. Proven track record of achieving targets and collaborating with stakeholders. Well-positioned to support Northfield Stores' mission by delivering excellent service."
+The bad one could describe anyone. The good one could only describe this person.
+
+`;
+
 const WRITING_RULES = `CV WRITING RULES (every line you write must follow these):
 - Start each bullet with a strong past-tense action verb (present tense only for a current role whose bullets already use it).
 - One idea per bullet, about 12 to 25 words. Cut filler.
-- Structure every bullet as action verb + task or project + outcome, for example "Added Redis caching to the payments service, cutting average API latency by ~34%". Make the outcome measurable when the candidate gave a number, and use only numbers they gave.
+- Structure every bullet as action verb + task or project + outcome, for example "Added Redis caching to the payments service, cutting average API latency by ~34%". Put a number in as many bullets as the CV honestly allows: use any number from the CV or the candidate's answers that belongs to that work (including one stated in the summary or another line), and otherwise quantify scope the CV supports, such as how many users, clients, services or people. Never invent a percentage, revenue figure or result the CV and answers don't give.
+- IMPORTANT: every number appears in one bullet only. Never repeat a figure, time period or phrase such as "2-week sprints" across bullets, and vary the kind of metric: scale (users, transactions, records), time saved, speed or latency, money, quantity delivered, team size. Process details like sprint length, meeting frequency or "end to end" are not results; leave them out rather than use them as the number. A bullet with no honest number is better than a repeated one.
 - Write plain, grammatical British English, the way a strong candidate would write it themselves. Read each line back; if it sounds stuffed or awkward, rewrite it or keep the original.
 - Never name personal qualities or soft skills (empathy, transparency, passion, ownership, hardworking and the like). Show them through what the candidate did and what came of it.
 - Use the job's terms only where they name a real skill, tool or practice the candidate used, at most once per line, and never bolt them on with phrases like "with empathy" or "leveraging".
 - Treat the candidate's confirmed answers as facts to draw on, not text to copy.
-- Bullets have no pronouns: start with the verb ("Built", never "Builds" or "He built").
-- Write the summary in the implied first person: no "I", "me" or "my", and never the third person. Open with a noun phrase ("Full-stack software engineer building…") and use verbs as the candidate would say them ("Cut API latency by ~34%", "Maintain open-source projects", never "Maintains" or "He maintains"). Two to four sentences.
-- No buzzwords or clichés.`;
+- IMPORTANT: end every bullet the same way. Either every bullet in the CV ends with a full stop or none does; follow what most of the master resume's bullets do.
+- No personal pronouns (I, me, my, we, our, he, she, they) and no articles (a, an, the) anywhere in the bullets. Rephrase so the line still reads cleanly without them ("Added caching to payments service", never "I added a cache to the payments service").
+- Start each bullet with the verb ("Built", never "Builds" or "He built"). Use each opening verb once across the whole CV where you can, never more than twice. Pick plain, common verbs that say exactly what happened (Built, Led, Ran, Wrote, Cut, Moved, Fixed, Set up, Shipped, Trained, Reduced), never thesaurus verbs (Orchestrated, Spearheaded, Architected, Championed, Pioneered, Effectuated, Revolutionised).
+${SUMMARY_RULES}${HUMAN_VOICE}`;
 
 export const DIFF_IMPROVE_PROMPT = `Given this resume and job description, output a JSON object with targeted changes to better align the resume with the job.
 
@@ -105,7 +144,9 @@ RULES:
 11. Scan the summary and every work, project, and education description for content that already demonstrates a job-description keyword or skill, and reframe that text using the job description's terminology where it is not already phrased that way and reads naturally (per rule 9, leave content that already aligns well), while preserving the candidate's actual accomplishment. Do NOT add new work, metrics, or responsibilities; only restate existing content in the JD's language, and verify every reframe stays factually accurate.
 12. Preserve original capitalization, especially for proper nouns, technical terms (e.g., REST, API, AWS), and acronyms. Do not change the casing of words that were capitalized in the original.
 13. Use the company research only to decide which of the candidate's real experience to emphasise. Never copy its wording, slogans or values into the resume, and never claim the candidate shares a value the resume doesn't show.
-14. Before answering, go through every bullet in workExperience and personalProjects one at a time and check it against the CV WRITING RULES, above all the action verb + task or project + outcome structure. Return a change for each bullet that fails.
+14. Align the CV with this job's main responsibilities, not only its keywords. For each bullet, lead with the part of the work this job cares about and name it the way the job description does, wherever the candidate's work honestly supports it.
+15. Never add a broad discipline or area to the skills section (for example "Front-end development" or "Software development") when the candidate's job title or a broader skill they list already covers it, as "Full-stack" covers front-end and back-end. The skills section lists concrete tools, technologies, methods and qualifications.
+16. Before answering, go through every bullet in workExperience and personalProjects one at a time and check it against the CV WRITING RULES, above all the action verb + task or project + outcome structure, a number wherever the CV supports one and no number or time period repeated across bullets, the full stop rule, no pronouns or articles, and no opening verb used more than twice. Return a change for each bullet that fails.
 
 ${WRITING_RULES}
 
@@ -201,9 +242,7 @@ Job description context:
 
 Output the complete resume JSON with keywords naturally integrated. Return ONLY valid JSON.`;
 
-export const COVER_LETTER_PROMPT = `Write a brief cover letter for this job application.
-
-IMPORTANT: Write in British English.
+export const COVER_LETTER_PROMPT = `Write a short cover letter for this job application, as the candidate, in the first person and in British English.
 
 Job Description:
 {job_description}
@@ -214,19 +253,18 @@ Candidate Resume (JSON):
 What the candidate found out about the company (may be empty):
 {company_research}
 
-Requirements:
-- 100-150 words maximum
-- 3-4 short paragraphs
-- Opening: Reference ONE specific thing from the job description (product, tech stack, or problem they're solving) - not generic excitement about "the role"
-- Middle: Pick 1-2 qualifications from resume that DIRECTLY match stated requirements, and reframe them in the job's language/terminology where the candidate's proven experience supports it (e.g., if the resume shows "built automated data pipelines" and the job says "ETL," describe that real work as ETL) - prioritize relevance over impressiveness
-- Closing: Simple availability to discuss, no desperate enthusiasm
-- If resume shows career transition, frame the pivot as intentional and relevant
-- Extract company name from job description - do not use placeholders
-- Do NOT invent information not in the resume
-- Tone: Confident peer, not eager applicant
-- Do NOT use em dash ("—") anywhere in the writing/output, even if it exists, remove it
+${HUMAN_VOICE}
 
-Output JSON with the greeting line, the paragraphs, and the sign-off line (for example "Kind regards,"), without the candidate's name.`;
+Requirements:
+- 100 to 150 words over three short paragraphs.
+- First paragraph: name the role, then one concrete thing from the job description (a product, a problem they're solving or part of their stack) and how it connects to the candidate's own work. Never open with "I am writing to apply", "I was excited to see" or praise of the company.
+- Second paragraph: one or two pieces of the candidate's real work that match what the job asks for, with the specifics: what they built or ran, for whom, and what came of it. Use the job's term for something only when it names what the candidate actually did (if the CV shows "built automated data pipelines" and the job says "ETL", call that work ETL).
+- Last paragraph: one or two sentences saying they'd like to talk it through. No "at your earliest convenience" and no stacked thanks.
+- If the CV shows a change of career, say what carries over in one sentence without justifying the move.
+- Use the company's real name from the job description, never a placeholder.
+- Use only facts from the CV. Use the company research only to choose what to mention, never to repeat its wording or values.
+
+Output JSON with the greeting line ("Dear <name>," when the job description names who is hiring, otherwise "Dear Hiring Manager,"), the paragraphs, and the sign-off line ("Kind regards,"), without the candidate's name.`;
 
 export const SYSTEM_PROMPTS = {
   gaps: "You judge which skills a CV already shows or clearly implies. Output only valid JSON.",
@@ -235,7 +273,7 @@ export const SYSTEM_PROMPTS = {
   diffs: "You are an expert resume editor. Output only valid JSON with targeted changes.",
   inject: "You are a resume editor. Inject keywords naturally without adding fabricated content. Return only valid JSON matching the input schema.",
   emphasis: "You are an expert CV editor who knows how recruiters skim. Output only valid JSON.",
-  letter: "You write concise, specific cover letters. Output only valid JSON.",
+  letter: "You write cover letters the way the candidate would write them: plain, specific and indistinguishable from their own writing. Output only valid JSON.",
 };
 
 export function fill(template: string, values: Record<string, string>) {
