@@ -180,3 +180,17 @@ export function alignWithMaster(cv: CvContent, master: CvContent, evidence = con
   });
   return { cv: out, removed };
 }
+
+const bulletTexts = (cv: CvContent) => [...cv.experience, ...cv.projects].flatMap((e) => e.bullets.map((b) => b.text));
+
+export function matchFullStops(cv: CvContent, master: CvContent) {
+  const lines = bulletTexts(master).filter(Boolean);
+  const stops = lines.filter((line) => line.trimEnd().endsWith(".")).length > lines.length / 2;
+  const end = (text: string) => {
+    const bare = text.trimEnd().replace(/\.+$/, "");
+    return bare && stops ? `${bare}.` : bare;
+  };
+  const out = structuredClone(cv);
+  for (const entry of [...out.experience, ...out.projects]) entry.bullets = entry.bullets.map((b) => ({ ...b, text: end(b.text) }));
+  return out;
+}

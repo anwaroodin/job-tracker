@@ -16,7 +16,7 @@ import {
   type Strategy,
 } from "./prompts";
 import { confirmedForPrompt, evidenceText, impliedTerms, scoreBefore } from "./questions";
-import { alignWithMaster, MAX_NOTE_CHARS, mergeInjected, removeAiPhrases, verifySkillPlan, withInjectedEdits } from "./refine";
+import { alignWithMaster, matchFullStops, MAX_NOTE_CHARS, mergeInjected, removeAiPhrases, verifySkillPlan, withInjectedEdits } from "./refine";
 import { applyDiffs, chooseProjects, resumeView, verifyDiffResult, withProjects } from "./resume";
 import { rolePosting } from "./role";
 import { DIFFS_SCHEMA, EMPHASIS_SCHEMA, INJECT_SCHEMA, KEYWORDS_SCHEMA, LETTER_SCHEMA, PLAN_SCHEMA } from "./schemas";
@@ -135,7 +135,7 @@ function polished(ctx: TailorContext, state: TailorState, cv: CvContent): Tailor
   const warnings = [...state.warnings];
   if (phrases.length) warnings.push(`Replaced AI-sounding phrases: ${phrases.join(", ")}.`);
   if (removed.length) warnings.push(`Removed skills or certifications not backed by your CV or your answers: ${removed.join(", ")}.`);
-  return { ...state, tailored: aligned, warnings };
+  return { ...state, tailored: matchFullStops(aligned, ctx.master), warnings };
 }
 
 export function startTailoring(ctx: TailorContext, strategy: Strategy): Step {

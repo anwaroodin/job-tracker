@@ -9,7 +9,7 @@ import { cleanState, continueTailoring, startTailoring, type TailorContext } fro
 import { roleDescription } from "~/server/cv/tailoring/role";
 import { verifyEmphasis } from "~/server/cv/tailoring/emphasis";
 import { confirmedForPrompt, gapsRequest, skillGaps, sortGaps, withAnswers } from "~/server/cv/tailoring/questions";
-import { alignWithMaster, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
+import { alignWithMaster, matchFullStops, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
 import { applyDiffs, chooseProjects, resumeView, verifyDiffResult } from "~/server/cv/tailoring/resume";
 import { typstCv } from "~/lib/cv";
 import type { CvContent, ResumeChange, SkillTarget } from "~/types/cv";
@@ -204,6 +204,16 @@ describe("refining", () => {
     expect(plan.rejected).toEqual(["Kubernetes", "Cobol"]);
     const implied = verifySkillPlan({ target_skills: [{ skill: "Kubernetes" }] }, CV, KEYWORDS, JOB, contentText(CV), ["kubernetes"]);
     expect([implied.accepted, implied.rejected]).toEqual([[], []]);
+  });
+
+  it("ends every bullet the way most of the master's bullets end", () => {
+    const tailored = structuredClone(CV);
+    tailored.experience[0].bullets[0].text = "Built REST APIs in Go.";
+    const texts = (cv: CvContent) => [...cv.experience, ...cv.projects].flatMap((e) => e.bullets.map((b) => b.text));
+    expect(texts(matchFullStops(tailored, CV))).toEqual(["Built REST APIs in Go", "Cut deploy time by 40% with a new CI pipeline", "Built a watering tracker"]);
+    const stopped = structuredClone(CV);
+    stopped.experience[0].bullets.forEach((b) => (b.text += "."));
+    expect(texts(matchFullStops(CV, stopped)).every((t) => t.endsWith(".") && !t.endsWith(".."))).toBe(true);
   });
 
   it("replaces AI-sounding phrases unless the job uses them", () => {
