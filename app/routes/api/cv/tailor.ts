@@ -61,6 +61,7 @@ function parsed(text: string) {
       state: body.state,
       strategy: body.strategy,
       answered: body.answered === true,
+      letter: body.letter !== false,
       answers: cleanConfirmations(body.answers),
     };
   } catch {
@@ -97,6 +98,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     research: target.research,
     confirmed: cv.confirmed,
     title: target.title,
+    letter: body.letter,
   };
   const begin = (c: TailorContext, strategy: Strategy) => {
     const gaps = c.keywords && !body.answered ? skillGaps(c.keywords, master, c.confirmed) : [];

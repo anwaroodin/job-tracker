@@ -175,9 +175,11 @@ export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
               <TypstPreview template={template} cv={typstCv(person, tailored.cv)} />
             </div>
           </Section>
-          <Section n="06" title="Cover letter" i={5}>
-            <CoverLetterDocument person={person} letter={tailored.cv.coverLetter} />
-          </Section>
+          {tailored.cv.coverLetter.paragraphs.length > 0 && (
+            <Section n="06" title="Cover letter" i={5}>
+              <CoverLetterDocument person={person} letter={tailored.cv.coverLetter} />
+            </Section>
+          )}
         </>
       )}
     </div>

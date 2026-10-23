@@ -296,6 +296,9 @@ describe("pipeline", () => {
     const letter = continueTailoring(withKeywords, "emphasis", bold, cleanState(JSON.parse(JSON.stringify(emphasis.state))));
     if (!("request" in letter)) throw new Error("expected a request");
     expect(letter.stage).toBe("letter");
+    const noLetter = continueTailoring({ ...withKeywords, letter: false }, "emphasis", bold, cleanState(JSON.parse(JSON.stringify(emphasis.state))));
+    if (!("done" in noLetter)) throw new Error("expected to finish without a letter");
+    expect(noLetter.done.coverLetter.paragraphs).toEqual([]);
 
     const done = continueTailoring(withKeywords, "letter", { greeting: "Dear team,", paragraphs: ["I build Go APIs."], signOff: "Kind regards," }, letter.state);
     if (!("done" in done)) throw new Error("expected done");

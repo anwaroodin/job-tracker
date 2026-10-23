@@ -42,6 +42,7 @@ export interface TailorContext {
   research: CompanyResearch | null;
   confirmed: Confirmation[];
   title?: string;
+  letter?: boolean;
 }
 
 export type Step = { stage: Stage; request: TailorRequest; state: TailorState } | { keywords: JobKeywords } | { done: TailoredCv };
@@ -187,7 +188,7 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
 
   if (stage === "emphasis") {
     const next = { ...state, emphasis: verifyEmphasis(tailored, result) };
-    return ctx.title ? finished(ctx, next, tailored, null) : { stage: "letter", request: letterRequest(ctx, tailored), state: next };
+    return ctx.title || ctx.letter === false ? finished(ctx, next, tailored, null) : { stage: "letter", request: letterRequest(ctx, tailored), state: next };
   }
   return finished(ctx, state, tailored, result);
 }
