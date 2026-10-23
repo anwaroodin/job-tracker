@@ -105,7 +105,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     return gaps.length ? { stage: "gaps", request: gapsRequest(gaps, master), state: { strategy } } : startTailoring(c, strategy);
   };
 
-  if (!body.stage) return begin(ctx, isStrategy(body.strategy) ? body.strategy : "keywords");
+  if (!body.stage) return begin(ctx, isStrategy(body.strategy) ? body.strategy : "full");
   const state = cleanState(body.state);
 
   if (body.stage === "gaps") {
