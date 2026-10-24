@@ -79,7 +79,7 @@ export default function RoleCvPage({ loaderData }: Route.ComponentProps) {
 
       <Section n="01" title="Tailor" hint={role.cv ? `Version ${role.version} · ${fmtDate(role.updatedAt)}` : "No job description: tailored to what the job title usually asks for."} i={1}>
         {hasCv ? (
-          <TailorPanel target={{ roleId: role.id }} research={null} hasResearch={false} retailor={!!role.cv} />
+          <TailorPanel target={{ roleId: role.id }} company={role.title} role="Job title only" research={null} hasResearch={false} retailor={!!role.cv} />
         ) : (
           <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
             Add your{" "}

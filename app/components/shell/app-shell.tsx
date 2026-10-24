@@ -10,6 +10,7 @@ import { ActivityToasts } from "./activity-feed/toasts";
 import { BottomNav } from "./bottom-nav";
 import { SidePanel } from "./side-panel";
 import { Sidebar } from "./sidebar";
+import { TailoringTray } from "./tailoring-tray";
 
 interface AppShellProps {
   user: { name?: string | null; email: string; image?: string | null };
@@ -34,6 +35,7 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
       <BottomNav unread={unread} />
       <ActivityToasts initial={gmail} />
       <CommandPalette />
+      <TailoringTray />
     </MotionConfig>
   );
 }

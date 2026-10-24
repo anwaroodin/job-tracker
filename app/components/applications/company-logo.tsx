@@ -37,7 +37,7 @@ export function CompanyLogo({ company, logoUrl, className }: { company: string; 
       {src ? (
         <img ref={img} key={src} src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed((n) => n + 1)} className="size-full object-contain" />
       ) : (
-        company.trim().charAt(0).toUpperCase()
+        company.trim().charAt(0).toUpperCase() || "·"
       )}
     </span>
   );
