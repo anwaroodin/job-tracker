@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { detailsFromForm } from "~/server/services/applications/details.server";
 import { getApplication } from "~/server/db/queries/applications.server";
 import { applicationSuggestions } from "~/server/services/applications/suggestions.server";
 import { trackPosting } from "~/server/services/applications/track.server";
@@ -109,5 +110,31 @@ describe("applicationSuggestions", () => {
     ];
     const [suggestion] = await applicationSuggestions(db, USER_ID, Promise.resolve(apps));
     expect(suggestion).toMatchObject({ company: "Acme", role: "Engineer", emailIds: ["s1"], existing: { id: "new" } });
+  });
+});
+
+describe("detailsFromForm", () => {
+  const form = (fields: Record<string, string>) => {
+    const data = new FormData();
+    for (const [key, value] of Object.entries(fields)) data.set(key, value);
+    return data;
+  };
+
+  it("trims fields, clears empty ones and drops non-web URLs", () => {
+    expect(detailsFromForm(form({ company: " Acme ", role: "Engineer", salary: "", url: "javascript:alert(1)", description: "Build things" }))).toEqual({
+      company: "Acme",
+      role: "Engineer",
+      url: "",
+      location: "",
+      workType: "",
+      employmentType: "",
+      salary: "",
+      notes: "",
+      description: "Build things",
+    });
+  });
+
+  it("needs a company and a role", () => {
+    expect(detailsFromForm(form({ company: "Acme", role: "  " }))).toBeNull();
   });
 });

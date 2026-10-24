@@ -56,6 +56,8 @@ export function ApplicationsTable({
               <SortIndicator column="status" current={sortCol} dir={sortDir} />
             </button>
 
+            <span>CV</span>
+
             <div className="flex justify-end">
               <button
                 type="button"

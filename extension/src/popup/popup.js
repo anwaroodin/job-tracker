@@ -150,7 +150,6 @@ async function saveJob() {
 
 async function tailor() {
   const application = await ensureTracked("saved");
-  if (application.status === "saved" && !application.starred) await updateTracked({ starred: true });
   await openTab(tailorUrl(state.origin, application.id));
 }
 

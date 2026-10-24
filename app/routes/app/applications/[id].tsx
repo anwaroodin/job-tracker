@@ -7,8 +7,11 @@ import { FactChips, listingFacts } from "~/components/application-detail/fact-ch
 import { FlagToggle } from "~/components/applications/flag-toggle";
 import { GmailSync } from "~/components/gmail/gmail-sync";
 import { RichText } from "~/components/ui/rich-text";
+import { DeleteApplication } from "~/components/application-detail/delete-application";
+import { EditDetails } from "~/components/application-detail/edit-details";
 import { SavedListing } from "~/components/application-detail/saved-listing";
 import { StatusPicker } from "~/components/application-detail/status-picker";
+import { BackToSaved } from "~/components/application-detail/back-to-saved";
 import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { parseContacts } from "~/lib/contacts";
@@ -19,10 +22,11 @@ import { useArrivals } from "~/hooks/use-arrivals";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { createApplication, updateApplication } from "~/server/db/queries/applications.server";
+import { createApplication, deleteApplication, updateApplication } from "~/server/db/queries/applications.server";
 import { applicationsFor } from "~/server/db/queries/status.server";
+import { detailsFromForm } from "~/server/services/applications/details.server";
 import { setStatusByHand } from "~/server/services/status/manual.server";
-import { settleSavedJob } from "~/server/services/status/saved.server";
+import { settleSavedJob, unsettleAppliedJob } from "~/server/services/status/saved.server";
 import { markReplyDone, markViewed, moveEmail, setEmailCategory, setEmailDismissed } from "~/server/db/queries/emails.server";
 import { applicationTimeline } from "~/server/services/timeline/index.server";
 import { syncGmail } from "~/server/gmail/sync/index.server";
@@ -69,6 +73,20 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     const outcome = intent === "saved-remove" ? "removed" : "applied";
     if (!(await settleSavedJob(db, user.id, params.id, outcome))) throw data("Not a saved posting", { status: 400 });
     return outcome === "removed" ? redirect("/applications") : { ok: true };
+  }
+  if (intent === "unapply") {
+    if (!(await unsettleAppliedJob(db, user.id, params.id))) throw data("It already has emails", { status: 400 });
+    return { ok: true };
+  }
+  if (intent === "edit") {
+    const details = detailsFromForm(form);
+    if (!details) return { error: "Company and role are required" };
+    await updateApplication(db, user.id, params.id, details);
+    return { ok: true };
+  }
+  if (intent === "delete") {
+    if (!(await deleteApplication(db, user.id, params.id))) throw data("Not found", { status: 404 });
+    return redirect("/applications");
   }
   if (intent === "status") {
     if (!(await setStatusByHand(db, user.id, params.id, String(form.get("status") ?? "")))) throw data("Unknown status", { status: 400 });
@@ -163,12 +181,15 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
           <p className="flex items-center gap-4 text-[11px] tracking-[0.1em]">
             <StatusPicker status={row.status} />
             <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
+            {!loaderData.emails.some((e) => !e.dismissedAt) && <BackToSaved />}
+            <EditDetails job={row} />
+            <DeleteApplication company={row.company} role={row.role} />
           </p>
           <GmailSync status={gmail} />
         </div>
       </header>
 
-      <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+      <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-start">
         <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
           <Progress status={row.status} reached={reached} />
 
@@ -211,7 +232,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
         {/* Sticky while it's short enough to fit on screen; with people listed it scrolls with the page. */}
         <aside
           className={cn(
-            "flex flex-col gap-12 w-full lg:self-start lg:col-start-2 lg:row-start-1",
+            "flex flex-col gap-12 w-full lg:self-start lg:col-start-2 lg:row-span-2 lg:row-start-1",
             contacts.length === 0 && "lg:sticky lg:top-16",
           )}
         >

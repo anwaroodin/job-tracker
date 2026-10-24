@@ -2,7 +2,10 @@ import type { Application } from "~/server/db/schema";
 
 export type { Application, NewApplication } from "~/server/db/schema";
 
-export type ApplicationRowData = Application & { unread?: number };
+/** What the Edit dialog on a saved or applied job can change. */
+export type EditableDetails = Pick<Application, "company" | "role" | "url" | "location" | "workType" | "employmentType" | "salary" | "notes" | "description">;
+
+export type ApplicationRowData = Omit<Application, "description" | "notes" | "contactsJson" | "jdKeywordsJson" | "researchJson"> & { unread?: number; tailored?: boolean };
 
 export type SavedJobData = Pick<Application, "id" | "company" | "role"> & {
   logoUrl?: string | null;
@@ -12,6 +15,7 @@ export type SavedJobData = Pick<Application, "id" | "company" | "role"> & {
   appliedAt?: string | null;
   status?: string | null;
   unread?: number;
+  tailored?: boolean;
 };
 
 export type SavedListingJob = Pick<
@@ -33,5 +37,6 @@ export type SavedListingJob = Pick<
   | "cvType"
   | "category"
   | "description"
+  | "notes"
   | "appliedAt"
 >;

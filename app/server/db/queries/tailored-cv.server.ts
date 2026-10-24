@@ -19,6 +19,12 @@ export async function latestTailoredCv(db: Db, userId: string, applicationId: st
   return row ? { version: row.version, createdAt: row.createdAt, cv: parseTailored(row.json) } : null;
 }
 
+/** Ids of the user's applications that have at least one tailored CV. */
+export async function tailoredApplicationIds(db: Db, userId: string) {
+  const rows = await db.selectDistinct({ id: tailoredCv.applicationId }).from(tailoredCv).where(eq(tailoredCv.userId, userId));
+  return new Set(rows.map((r) => r.id));
+}
+
 export function insertTailoredCv(db: Db, userId: string, applicationId: string, version: number, cv: TailoredCv) {
   return db.insert(tailoredCv).values({
     id: crypto.randomUUID(),

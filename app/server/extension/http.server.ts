@@ -16,7 +16,7 @@ function corsHeaders(request: Request): HeadersInit {
   return {
     "Access-Control-Allow-Origin": EXTENSION_ORIGIN.test(origin) ? origin : "",
     "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "content-type",
     Vary: "Origin",
   };

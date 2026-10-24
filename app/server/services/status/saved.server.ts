@@ -1,6 +1,6 @@
 import { ANALYTICS_CACHE, invalidate } from "../../cache.server";
 import type { Db } from "../../db/client.server";
-import { deleteSavedApplication, updateSavedApplication } from "../../db/queries/applications.server";
+import { deleteSavedApplication, unapplyApplication, updateSavedApplication } from "../../db/queries/applications.server";
 import { clearBookmarkOnApply } from "./rules";
 
 /**
@@ -17,6 +17,13 @@ export async function settleSavedJob(db: Db, userId: string, id: string, outcome
           updatedAt: now,
         });
   if (!settled.length) return false;
+  await invalidate(ANALYTICS_CACHE, userId);
+  return true;
+}
+
+/** Moves an application back to a saved posting. Returns false once any email is linked to it. */
+export async function unsettleAppliedJob(db: Db, userId: string, id: string) {
+  if (!(await unapplyApplication(db, userId, id)).length) return false;
   await invalidate(ANALYTICS_CACHE, userId);
   return true;
 }

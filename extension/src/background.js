@@ -13,6 +13,7 @@
  *   job:check    { job }                        → { application, cvType, category }
  *   job:save     { record }                     → { application }
  *   job:update   { applicationId, patch }       → { application }
+ *   job:remove   { applicationId, url }          → {}   (a saved job only)
  *   job:apply    { record, applicationId?, keepStatus, open, applyUrl? } → { application }
  *   fill:get     {}                             → { values, company, role, sourceUrl } | null
  *                (values use the application's tailored summary and cover letter when it has them)
@@ -23,10 +24,10 @@
  * "not_configured" while no dashboard address is set (see config.js).
  */
 import { NotConfiguredError, dashboardUrl, getDashboardOrigin, tailorUrl } from "./config.js";
-import { AuthError, getProfile, getTailored, logApplication, lookupApplication, updateApplication } from "./lib/api.js";
+import { AuthError, getProfile, getTailored, logApplication, lookupApplication, removeSavedApplication, updateApplication } from "./lib/api.js";
 import { detectCategory, detectCvType } from "./lib/cv.js";
 import { formValues } from "./lib/profile.js";
-import { findTracked, normaliseUrl, rememberTracked } from "./lib/tracked.js";
+import { findTracked, forgetTracked, normaliseUrl, rememberTracked } from "./lib/tracked.js";
 
 const APPLY_TAB_MS = 2 * 60 * 60 * 1000;
 /** How long the listing tab keeps filling in-page apply dialogs. */
@@ -174,6 +175,13 @@ async function updateJob({ applicationId, patch }) {
   return { application: summary(application) };
 }
 
+/** Un-bookmarks a saved job, which removes it: saved and bookmarked are the same thing. */
+async function removeJob({ applicationId, url }) {
+  await removeSavedApplication(applicationId);
+  await forgetTracked({ url });
+  return {};
+}
+
 /**
  * Starts an application from a listing: arms the tab for autofill, records
  * the application and opens the apply link when there is one.
@@ -291,6 +299,7 @@ const HANDLERS = {
   "job:check": checkJob,
   "job:save": saveJob,
   "job:update": updateJob,
+  "job:remove": removeJob,
   "job:apply": applyToJob,
   "fill:get": fillValues,
   "fill:stop": stopFill,

@@ -5,24 +5,32 @@ import { getApplication, updateApplication } from "~/server/db/queries/applicati
 import { latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
 import { setByHand } from "~/server/services/status/manual";
 import { clearBookmarkOnApply } from "~/server/services/status/rules";
+import { settleSavedJob } from "~/server/services/status/saved.server";
 import type { NewApplication } from "~/types/application";
 import { extUser, guarded, json, preflight, readJsonBody } from "~/server/extension/http.server";
 import { applicationStatus, jobDetails } from "~/server/extension/input.server";
 
 /**
  * PATCH /api/ext/applications/:id with { status?, starred?, ...job details }:
- * status and bookmark changes from the extension's action bar, and details
- * the page rendered after the job was saved.
+ * status and star changes from the extension's action bar, and details the
+ * page rendered after the job was saved.
+ * DELETE /api/ext/applications/:id removes a saved job (saved means bookmarked,
+ * so this is the bar's un-bookmark). Applications past "saved" are kept.
  */
 export const action = (args: Route.ActionArgs) => guarded(args.request, () => update(args));
 
 async function update({ request, params, context }: Route.ActionArgs) {
   if (request.method === "OPTIONS") return preflight(request);
-  if (request.method !== "PATCH") return json(request, { error: "method_not_allowed" }, { status: 405 });
+  if (request.method !== "PATCH" && request.method !== "DELETE") return json(request, { error: "method_not_allowed" }, { status: 405 });
 
   const env = context.get(envContext);
   const user = await extUser(request, env);
   if (!user) return json(request, { error: "not_authenticated" }, { status: 401 });
+
+  if (request.method === "DELETE") {
+    const removed = await settleSavedJob(getDb(env.DB), user.id, params.id, "removed");
+    return removed ? json(request, { success: true }) : json(request, { error: "not_a_saved_job" }, { status: 404 });
+  }
 
   const body = await readJsonBody(request);
   if (body instanceof Response) return body;

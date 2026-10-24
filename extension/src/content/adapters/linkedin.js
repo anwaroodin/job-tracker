@@ -42,9 +42,10 @@
   const CARD_SCOPES = `${SEL.searchCard}, ${SEL.resultsCard}`;
   const outsideCards = (el) => !el.closest(CARD_SCOPES);
 
-  const jobId = () =>
-    location.pathname.match(/\/jobs\/view\/(\d+)/)?.[1] ??
-    new URLSearchParams(location.search).get("currentJobId");
+  /** "/jobs/view/123/" or the slug form "/jobs/view/graduate-engineer-at-acme-123/". */
+  const viewId = (path) => path.match(/\/jobs\/view\/(?:[^/]*-)?(\d+)(?:\/|$)/)?.[1] ?? null;
+
+  const jobId = () => viewId(location.pathname) ?? new URLSearchParams(location.search).get("currentJobId");
 
   /**
    * Decided from markers only one layout has, resolved per call because
@@ -79,17 +80,18 @@
   function paneReady(id, kind) {
     if (kind === "A") {
       const link = document.querySelector(`${SEL.jobTitle} a[href*="/jobs/view/"]`);
-      return !link || link.href.includes(`/jobs/view/${id}`);
+      return !link || viewId(link.pathname) === id;
     }
     // Another job's description block means the pane hasn't switched yet.
     if (document.querySelector(SEL.aboutJob) && !document.querySelector(SEL.aboutJobFor(id))) return false;
-    // The title (role and company) can land after the pane; check both against the job's card
-    // (role alone isn't enough: "Software Engineer" is inside "Software Engineer - Backend").
+    // The title (role and company) can land after the pane; check both against the job's card.
+    // The role must be a whole line of the card: "Software Engineer" is inside "Software Engineer - Backend".
     const card = document.querySelector(SEL.cardFor(id));
     if (!card) return true;
-    const text = clean(card.innerText).toLowerCase();
+    const lines = card.innerText.split("\n").map((line) => clean(line).toLowerCase());
     const { role, company } = titleIdentity();
-    return [role, company].every((part) => !part || text.includes(part.toLowerCase()));
+    const wholeRole = (r) => lines.some((line) => line.startsWith(r) && /^(with verification)?$/.test(line.slice(r.length).trim()));
+    return (!role || wholeRole(role.toLowerCase())) && (!company || lines.join(" ").includes(company.toLowerCase()));
   }
 
   function job() {

@@ -9,7 +9,7 @@ export function coverLetterFrom(raw: unknown): CoverLetter {
   const letter = obj(raw);
   return {
     greeting: str(letter.greeting),
-    paragraphs: list(letter.paragraphs).map((p) => str(p, MAX_TEXT)).filter(Boolean),
+    paragraphs: list(letter.paragraphs).map((p) => str(p, MAX_TEXT).replace(/\s*—\s*/g, ", ")).filter(Boolean),
     signOff: str(letter.signOff),
   };
 }

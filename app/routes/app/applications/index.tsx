@@ -8,6 +8,7 @@ import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { createApplication } from "~/server/db/queries/applications.server";
+import { tailoredApplicationIds } from "~/server/db/queries/tailored-cv.server";
 import { listApplications } from "~/server/services/applications/list.server";
 import { applicationSuggestions } from "~/server/services/applications/suggestions.server";
 import { settleSavedJob } from "~/server/services/status/saved.server";
@@ -33,11 +34,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const user = context.get(userContext);
   const db = getDb(env.DB);
   const applicationsQuery = listApplications(db, user.id);
-  const [apps, suggestions, unsure] = await Promise.all([
+  const [listed, suggestions, unsure, tailored] = await Promise.all([
     applicationsQuery,
     applicationSuggestions(db, user.id, applicationsQuery),
     emailsToConfirm(db, user.id),
+    tailoredApplicationIds(db, user.id),
   ]);
+  const apps = listed.map((a) => ({ ...a, tailored: tailored.has(a.id) }));
   const saved = apps.filter((a) => a.status === "saved");
   const rows = apps.filter((a) => a.status !== "saved");
   return { rows, saved, suggestions, unsure, accountEmail: user.email };

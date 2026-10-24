@@ -9,7 +9,7 @@ import { cleanState, continueTailoring, startTailoring, type TailorContext } fro
 import { roleDescription } from "~/server/cv/tailoring/role";
 import { verifyEmphasis } from "~/server/cv/tailoring/emphasis";
 import { confirmedForPrompt, gapsRequest, skillGaps, sortGaps, withAnswers } from "~/server/cv/tailoring/questions";
-import { alignWithMaster, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
+import { alignWithMaster, matchFullStops, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
 import { applyDiffs, chooseProjects, resumeView, verifyDiffResult } from "~/server/cv/tailoring/resume";
 import { typstCv } from "~/lib/cv";
 import type { CvContent, ResumeChange, SkillTarget } from "~/types/cv";
@@ -142,6 +142,8 @@ describe("keywordInText", () => {
     expect(keywordInText("microservices", "unified microservice-based pipelines")).toBe(true);
     expect(keywordInText("REST API", "Built REST APIs")).toBe(true);
     expect(keywordInText("AWS", "Used AW tooling")).toBe(false);
+    expect(keywordInText("Frontend development", "Front-end development")).toBe(true);
+    expect(keywordInText("Java", "Wrote JavaScript")).toBe(false);
   });
 });
 
@@ -200,6 +202,18 @@ describe("refining", () => {
       ["billing", "supported_by_resume"],
     ]);
     expect(plan.rejected).toEqual(["Kubernetes", "Cobol"]);
+    const implied = verifySkillPlan({ target_skills: [{ skill: "Kubernetes" }] }, CV, KEYWORDS, JOB, contentText(CV), ["kubernetes"]);
+    expect([implied.accepted, implied.rejected]).toEqual([[], []]);
+  });
+
+  it("ends every bullet the way most of the master's bullets end", () => {
+    const tailored = structuredClone(CV);
+    tailored.experience[0].bullets[0].text = "Built REST APIs in Go.";
+    const texts = (cv: CvContent) => [...cv.experience, ...cv.projects].flatMap((e) => e.bullets.map((b) => b.text));
+    expect(texts(matchFullStops(tailored, CV))).toEqual(["Built REST APIs in Go", "Cut deploy time by 40% with a new CI pipeline", "Built a watering tracker"]);
+    const stopped = structuredClone(CV);
+    stopped.experience[0].bullets.forEach((b) => (b.text += "."));
+    expect(texts(matchFullStops(CV, stopped)).every((t) => t.endsWith(".") && !t.endsWith(".."))).toBe(true);
   });
 
   it("replaces AI-sounding phrases unless the job uses them", () => {
@@ -230,6 +244,10 @@ describe("verifyEmphasis", () => {
 });
 
 describe("atsScore", () => {
+  it("counts skills the CV implies as covered", () => {
+    expect(atsScore(CV, KEYWORDS, contentText(CV), ["Kubernetes"]).missing).toEqual(["PostgreSQL"]);
+  });
+
   it("weights keyword match, skills coverage and sections 55/25/20", () => {
     const score = atsScore(CV, KEYWORDS, contentText(CV));
     expect(score.keywordMatch).toBe(60);
@@ -278,6 +296,9 @@ describe("pipeline", () => {
     const letter = continueTailoring(withKeywords, "emphasis", bold, cleanState(JSON.parse(JSON.stringify(emphasis.state))));
     if (!("request" in letter)) throw new Error("expected a request");
     expect(letter.stage).toBe("letter");
+    const noLetter = continueTailoring({ ...withKeywords, letter: false }, "emphasis", bold, cleanState(JSON.parse(JSON.stringify(emphasis.state))));
+    if (!("done" in noLetter)) throw new Error("expected to finish without a letter");
+    expect(noLetter.done.coverLetter.paragraphs).toEqual([]);
 
     const done = continueTailoring(withKeywords, "letter", { greeting: "Dear team,", paragraphs: ["I build Go APIs."], signOff: "Kind regards," }, letter.state);
     if (!("done" in done)) throw new Error("expected done");

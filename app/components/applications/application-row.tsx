@@ -7,14 +7,15 @@ import { fmtDate } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import type { ApplicationRowData, SavedJobData } from "~/types/application";
 import { SavedApplicationRowItem } from "~/components/applications/saved-application-row";
+import { TailorLink } from "~/components/applications/tailor-link";
 
 /**
  * Standard grid layout across tracked application list views:
- * Mobile: 2-column compact (Company & Role | Status & Date)
- * Desktop: 4-column (Company | Role | Status | Applied Date)
+ * Mobile: 2-column compact (Company & Role | Status, Date & CV)
+ * Desktop: 5-column (Company | Role | Status | CV | Applied Date)
  */
 export const APPLICATION_ROW_GRID_COLS =
-  "grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1.7fr)_110px_110px]";
+  "grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1.7fr)_110px_56px_110px]";
 
 export type ApplicationRowItemProps =
   | {
@@ -86,11 +87,12 @@ export function ApplicationRowItem(props: ApplicationRowItemProps) {
 
   const { app, arrived = false, className, gridCols = APPLICATION_ROW_GRID_COLS } = props;
 
+  // The company link stretches over the whole row (its ::after), so the row
+  // stays one click target while the CV link sits on top of it.
   return (
-    <Link
-      to={`/applications/${app.id}`}
+    <div
       className={cn(
-        "group grid min-h-[48px] items-center gap-x-3 gap-y-0.5 sm:gap-4 border-b border-stroke-secondary px-3 py-2 sm:py-2.5 transition-colors last:border-0 hover:bg-text-primary",
+        "group relative grid min-h-[48px] items-center gap-x-3 gap-y-0.5 sm:gap-4 border-b border-stroke-secondary px-3 py-2 sm:py-2.5 transition-colors last:border-0 hover:bg-text-primary",
         app.unread && "shadow-[inset_2px_0_0_var(--color-green-primary)]",
         arrived && "arrive",
         gridCols,
@@ -102,12 +104,13 @@ export function ApplicationRowItem(props: ApplicationRowItemProps) {
         <div className="flex items-center gap-2 truncate">
           <CompanyLogo company={app.company} logoUrl={app.logoUrl} />
           {app.starred && <FlagMark status={app.status} />}
-          <span
+          <Link
+            to={`/applications/${app.id}`}
             title={app.company}
-            className="truncate font-medium text-text-primary text-[13px] group-hover:!text-text-inverse"
+            className="truncate font-medium text-text-primary text-[13px] group-hover:!text-text-inverse after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-1 focus-visible:after:outline-text-secondary"
           >
             {app.company}
-          </span>
+          </Link>
           {Boolean(app.unread) && <NewBadge count={app.unread} className="self-center" />}
         </div>
         {app.location && (
@@ -140,12 +143,21 @@ export function ApplicationRowItem(props: ApplicationRowItemProps) {
         <StatusBadge status={app.status} className="group-hover:!text-text-inverse" />
       </div>
 
-      {/* Column 4: Applied Date */}
+      {/* Column 4: whether a CV was tailored for it (no Tailor action: it's already applied to) */}
+      <div className="col-start-2 row-start-3 justify-self-end sm:col-auto sm:row-auto sm:justify-self-auto">
+        {app.tailored ? (
+          <TailorLink id={app.id} tailored />
+        ) : (
+          <span aria-hidden className="hidden sm:inline font-mono text-[10.5px] text-text-tertiary group-hover:!text-text-inverse/60">—</span>
+        )}
+      </div>
+
+      {/* Column 5: Applied Date */}
       <div className="col-start-2 row-start-2 justify-self-end text-right sm:col-auto sm:row-auto sm:justify-self-auto">
         <span className="tabular-nums font-mono text-[10.5px] sm:text-[11px] text-text-secondary group-hover:!text-text-inverse/80">
           {app.appliedAt ? fmtDate(app.appliedAt) : "—"}
         </span>
       </div>
-    </Link>
+    </div>
   );
 }

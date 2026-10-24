@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findRecentDuplicate } from "~/server/db/queries/applications.server";
+import { deleteApplication, findRecentDuplicate, getApplication, unapplyApplication } from "~/server/db/queries/applications.server";
 import { reclassifyEstimate, usageDashboard } from "~/server/db/queries/usage.server";
 import { USER_ID, testDb } from "./db";
 import { addApplication, addEmail, at, link, setMinConfidence } from "./fixtures";
@@ -91,5 +91,33 @@ describe("suggestion activity", () => {
     expect(wasDismissed({ threadId: "t2", company: "Acme", role: "engineer" })).toBe(true);
     expect(wasDismissed({ threadId: "t2", company: "Acme", role: "Designer" })).toBe(false);
     expect(wasDismissed({ threadId: "t2", company: "Globex", role: null })).toBe(false);
+  });
+});
+
+describe("deleteApplication", () => {
+  it("deletes any status, only for its owner", async () => {
+    const { db } = testDb();
+    await addApplication(db, { id: "offer", status: "offer" });
+    expect(await deleteApplication(db, "someone-else", "offer")).toBe(false);
+    expect(await deleteApplication(db, USER_ID, "offer")).toBe(true);
+    expect(await getApplication(db, USER_ID, "offer")).toBeFalsy();
+  });
+});
+
+describe("unapplyApplication", () => {
+  it("moves an application back to saved only while no email is linked", async () => {
+    const { db } = testDb();
+    await addApplication(db, { id: "quiet", status: "applied" });
+    await addApplication(db, { id: "heard", status: "applied" });
+    await addApplication(db, { id: "unlinked", status: "applied" });
+    await addEmail(db, { id: "m1" });
+    await addEmail(db, { id: "m2" });
+    await link(db, "m1", "heard");
+    await link(db, "m2", "unlinked", daysAgo(1));
+    expect(await unapplyApplication(db, USER_ID, "heard")).toHaveLength(0);
+    expect(await unapplyApplication(db, "someone-else", "quiet")).toHaveLength(0);
+    expect(await unapplyApplication(db, USER_ID, "quiet")).toHaveLength(1);
+    expect(await unapplyApplication(db, USER_ID, "unlinked")).toHaveLength(1);
+    expect((await getApplication(db, USER_ID, "quiet"))?.status).toBe("saved");
   });
 });
