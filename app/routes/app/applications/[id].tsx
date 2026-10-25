@@ -9,6 +9,7 @@ import { GmailSync } from "~/components/gmail/gmail-sync";
 import { RichText } from "~/components/ui/rich-text";
 import { DeleteApplication } from "~/components/application-detail/delete-application";
 import { EditDetails } from "~/components/application-detail/edit-details";
+import { ShareLink } from "~/components/application-detail/share-link";
 import { SavedListing } from "~/components/application-detail/saved-listing";
 import { StatusPicker } from "~/components/application-detail/status-picker";
 import { BackToSaved } from "~/components/application-detail/back-to-saved";
@@ -24,6 +25,8 @@ import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { createApplication, deleteApplication, updateApplication } from "~/server/db/queries/applications.server";
 import { applicationsFor } from "~/server/db/queries/status.server";
+import { shareLinkFor } from "~/server/db/queries/share-links.server";
+import { tailoredApplicationIds } from "~/server/db/queries/tailored-cv.server";
 import { detailsFromForm } from "~/server/services/applications/details.server";
 import { setStatusByHand } from "~/server/services/status/manual.server";
 import { settleSavedJob, unsettleAppliedJob } from "~/server/services/status/saved.server";
@@ -43,9 +46,11 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [{ row, emails }, apps] = await Promise.all([
+  const [{ row, emails }, apps, shareLink, tailored] = await Promise.all([
     applicationTimeline(db, user.id, params.id),
     applicationsFor(db, user.id),
+    shareLinkFor(db, user.id, params.id, new Date().toISOString()),
+    tailoredApplicationIds(db, user.id),
   ]);
   if (!row) throw data("Not found", { status: 404 });
   const unseen = emails.filter((e) => !e.viewedAt && !e.dismissedAt).map((e) => e.id);
@@ -53,7 +58,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const otherApplications = apps
     .filter((a) => a.id !== row.id && a.status !== "saved")
     .map(({ id, company, role, appliedAt }) => ({ id, company, role, appliedAt }));
-  return { row, emails, otherApplications, accountEmail: user.email };
+  const share = { applicationId: row.id, link: shareLink, hasTailoredCv: tailored.has(row.id) };
+  return { row, emails, otherApplications, accountEmail: user.email, share };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -132,7 +138,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
 export default function ApplicationDetail({ loaderData }: Route.ComponentProps) {
   // A saved posting hasn't been applied to yet: show it as the job listing.
-  if (loaderData.row.status === "saved") return <SavedListing job={loaderData.row} />;
+  if (loaderData.row.status === "saved") return <SavedListing job={loaderData.row} share={loaderData.share} />;
   return <TrackedApplication key={loaderData.row.id} loaderData={loaderData} />;
 }
 
@@ -183,6 +189,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
             <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
             {!loaderData.emails.some((e) => !e.dismissedAt) && <BackToSaved />}
             <EditDetails job={row} />
+            <ShareLink {...loaderData.share} />
             <DeleteApplication company={row.company} role={row.role} />
           </p>
           <GmailSync status={gmail} />

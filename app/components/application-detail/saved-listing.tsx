@@ -4,6 +4,7 @@ import { Link, useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
 import { ContactList } from "~/components/application-detail/contact-list";
 import { EditDetails } from "~/components/application-detail/edit-details";
+import { ShareLink, type ShareProps } from "~/components/application-detail/share-link";
 import { CompanyLogo } from "~/components/applications/company-logo";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { RichText } from "~/components/ui/rich-text";
@@ -19,7 +20,7 @@ import type { SavedListingJob } from "~/types/application";
  * headline facts and apply actions up top, the full description below, and
  * the captured details in a side column.
  */
-export function SavedListing({ job }: { job: SavedListingJob }) {
+export function SavedListing({ job, share }: { job: SavedListingJob; share: ShareProps }) {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -76,6 +77,7 @@ export function SavedListing({ job }: { job: SavedListingJob }) {
             </Link>
           </Button>
           <EditDetails job={job} variant="secondary" size="medium" />
+          <ShareLink {...share} variant="secondary" size="medium" />
           <Button type="button" variant="secondary" disabled={busy} onClick={() => act({ intent: "saved-applied" })}>
             <Check />
             Mark applied
