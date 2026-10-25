@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 import { MotionConfig } from "motion/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { CommandPalette } from "~/components/shell/command-palette";
 import { commandPalette$ } from "~/lib/state/command-palette";
@@ -40,8 +40,17 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
   );
 }
 
+function useShortcutLabel() {
+  const [label, setLabel] = useState("Ctrl+K");
+  useEffect(() => {
+    if (/Mac|iPhone|iPad/.test(navigator.platform)) setLabel("⌘K");
+  }, []);
+  return label;
+}
+
 function PathBar({ gmail }: { gmail: GmailStatus }) {
   const { pathname } = useLocation();
+  const shortcut = useShortcutLabel();
   const segments = pathname.split("/").filter(Boolean);
   const short = (s: string) => (s.length > 14 ? `${s.slice(0, 8)}…` : s);
 
@@ -64,11 +73,11 @@ function PathBar({ gmail }: { gmail: GmailStatus }) {
             type="button"
             onClick={() => commandPalette$.open.set(true)}
             className="hidden sm:inline-flex items-center gap-2 border border-stroke-secondary bg-fill-secondary px-2.5 py-1 font-mono text-[11px] text-text-tertiary transition-colors hover:border-stroke-primary hover:text-text-primary cursor-pointer"
-            title="Search (Ctrl+K)"
+            title={`Search (${shortcut})`}
           >
             <Search className="size-3" />
             <span>Search</span>
-            <kbd className="border border-stroke-secondary px-1 text-[9px] text-text-tertiary">Ctrl+K</kbd>
+            <kbd className="border border-stroke-secondary px-1 text-[9px] text-text-tertiary">{shortcut}</kbd>
           </button>
           <button
             type="button"
