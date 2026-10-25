@@ -23,16 +23,22 @@ import { Setting } from "~/components/settings/setting-row";
 import { ReclassifyAll } from "~/components/settings/reclassify-all";
 import { SignOutButton } from "~/components/settings/sign-out-button";
 import { ClassificationSection } from "~/components/settings/classification-section";
+import { SharedLinks } from "~/components/settings/shared-links";
+import { activeShareLinks } from "~/server/db/queries/share-links.server";
+import { tailoredApplicationIds } from "~/server/db/queries/tailored-cv.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [settings, estimate] = await Promise.all([
+  const [settings, estimate, links, tailored] = await Promise.all([
     getSettings(db, user.id),
     reclassifyEstimate(db, user.id),
+    activeShareLinks(db, user.id, new Date().toISOString()),
+    tailoredApplicationIds(db, user.id),
   ]);
-  return { user, settings, estimate, jevAvailable: jevAvailable(env) };
+  const shared = links.map((l) => ({ ...l, hasTailoredCv: tailored.has(l.applicationId) }));
+  return { user, settings, estimate, shared, jevAvailable: jevAvailable(env) };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -70,7 +76,8 @@ const SECTIONS = [
   { n: "02", id: "classification", title: "Email classification" },
   { n: "03", id: "gmail", title: "Gmail" },
   { n: "04", id: "data", title: "Data" },
-  { n: "05", id: "account", title: "Account" },
+  { n: "05", id: "sharing", title: "Shared links" },
+  { n: "06", id: "account", title: "Account" },
 ] as const;
 
 export default function SettingsPage({ loaderData }: Route.ComponentProps) {
@@ -157,7 +164,11 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
             />
           </Section>
 
-          <Section n="05" id="account" title="Account" i={4}>
+          <Section n="05" id="sharing" title="Shared links" hint={loaderData.shared.length ? `${loaderData.shared.length} on` : undefined} i={4}>
+            <SharedLinks links={loaderData.shared} />
+          </Section>
+
+          <Section n="06" id="account" title="Account" i={5}>
             <Leader label="Name">{user.name || "—"}</Leader>
             <Leader label="Email">
               <span className="normal-case">{user.email}</span>
