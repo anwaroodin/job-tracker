@@ -15,3 +15,4 @@ export * from "./jev-usage";
 export * from "./activity";
 export * from "./tailored-cv";
 export * from "./role-cv";
+export * from "./share-link";
