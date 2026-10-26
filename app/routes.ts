@@ -24,6 +24,9 @@ export default [
   route("api/cv/render", "routes/api/cv/render.ts"),
   route("api/cv/tailor", "routes/api/cv/tailor.ts"),
   
+  route("s/:token", "routes/share/index.tsx"),
+  route("s/:token/cv.pdf", "routes/share/pdf.ts"),
+
   ...prefix("auth", [
     route("login", "routes/auth/login.tsx"),
     route("logout", "routes/auth/logout.ts"),
@@ -35,6 +38,7 @@ export default [
     route("applications", "routes/app/applications/index.tsx"),
     route("applications/:id", "routes/app/applications/[id].tsx"),
     route("applications/:id/cv", "routes/app/applications/cv.tsx"),
+    route("applications/:id/share", "routes/app/applications/share.ts"),
     route("cv", "routes/app/cv.tsx"),
     route("cv/roles/:id", "routes/app/role-cv.tsx"),
     route("profile", "routes/app/profile.tsx"),

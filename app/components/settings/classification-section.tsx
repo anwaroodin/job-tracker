@@ -4,7 +4,7 @@ import { Section } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { CONFIDENCE_LEVELS, type Classifier, type Settings } from "~/lib/settings";
 import { Setting } from "~/components/settings/setting-row";
-import { Segmented } from "~/components/settings/segmented";
+import { Segmented } from "~/components/ui/segmented";
 
 export function ClassificationSection({
   form,
