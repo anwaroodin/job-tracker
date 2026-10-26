@@ -46,7 +46,7 @@
     "unpdf": "^1.8.1"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.56.0",
+    "@cloudflare/vite-plugin": "^1.65.0",
     "@react-router/dev": "^8.3.1",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.20.4",
@@ -58,6 +58,6 @@
     "vite": "^8.0.3",
     "vite-plugin-webfont-dl": "^3.13.1",
     "vitest": "^5.0.3",
-    "wrangler": "^4.135.0"
+    "wrangler": "^4.154.0"
   }
 }
