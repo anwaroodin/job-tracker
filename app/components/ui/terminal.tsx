@@ -45,7 +45,7 @@ export function Section({
 }) {
   return (
     <section id={id} className={cn("rise scroll-mt-16 border-t border-dashed border-white/15 pt-5", className)} style={stagger(i)}>
-      <header className="mb-4 flex items-baseline justify-between gap-4 text-[11px] tracking-[0.12em]">
+      <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-[11px] tracking-[0.12em]">
         <h2>
           <b className="mr-2 font-semibold text-text-primary">[{n}]</b>
           <span className="text-text-secondary">{title}</span>
@@ -63,7 +63,7 @@ export function Leader({ label, children }: { label: string; children: React.Rea
     <div className="flex items-baseline gap-2.5 py-[7px]">
       <span className="shrink-0 text-text-secondary">{label}</span>
       <span className="min-w-3 flex-1 -translate-y-[3px] border-b border-dotted border-white/25" />
-      <span className="text-right text-text-primary">{children}</span>
+      <span className="min-w-0 text-right text-text-primary [overflow-wrap:anywhere]">{children}</span>
     </div>
   );
 }

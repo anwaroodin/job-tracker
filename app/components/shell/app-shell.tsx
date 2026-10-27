@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { cn } from "~/lib/cn";
 import { MotionConfig } from "motion/react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useLocation } from "react-router";
@@ -58,10 +59,10 @@ function PathBar({ gmail }: { gmail: GmailStatus }) {
     <div className="max-lg:sticky max-lg:top-0 max-lg:z-30 max-lg:border-b max-lg:border-stroke-secondary max-lg:bg-bg-primary/95 max-lg:pt-[env(safe-area-inset-top)] max-lg:backdrop-blur-sm">
       <div className="mx-auto flex h-[52px] w-full max-w-[1200px] items-center gap-3 px-4 sm:px-6 lg:px-8">
         <nav className="eyebrow flex min-w-0 items-center gap-2.5 overflow-hidden">
-          <span className="shrink-0">job-tracker</span>
+          <span className="shrink-0 max-sm:hidden">job-tracker</span>
           {segments.map((s, i) => (
             <span key={i} className="flex min-w-0 items-center gap-2.5">
-              <span className="shrink-0 opacity-50">/</span>
+              <span className={cn("shrink-0 opacity-50", i === 0 && "max-sm:hidden")}>/</span>
               <span className={i === segments.length - 1 ? "truncate text-text-primary" : "shrink-0"}>
                 {short(s)}
               </span>

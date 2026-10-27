@@ -116,8 +116,13 @@ body {
   }
 }
 
+html,
 body {
   overflow-x: clip;
+}
+
+body {
+  overflow-wrap: break-word;
   -webkit-tap-highlight-color: transparent;
 }
 
