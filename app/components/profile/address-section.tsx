@@ -17,7 +17,7 @@ export function AddressSection({
       n={n}
       id="address"
       title="Address"
-      hint="Used for postal fields on applications."
+      description="Used for postal fields on applications."
       i={2}
     >
       <div className="flex flex-col gap-4">

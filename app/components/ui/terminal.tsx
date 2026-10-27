@@ -29,6 +29,7 @@ export function Section({
   n,
   title,
   hint,
+  description,
   i,
   id,
   className,
@@ -37,6 +38,7 @@ export function Section({
   n: string;
   title: string;
   hint?: React.ReactNode;
+  description?: string;
   i: number;
   /** Anchor id for jump-to-section nav — gets scroll-margin so the sticky path bar doesn't cover it. */
   id?: string;
@@ -51,6 +53,9 @@ export function Section({
           <span className="text-text-secondary">{title}</span>
         </h2>
         {hint && <span className="text-text-tertiary">{hint}</span>}
+        {description && (
+          <p className="font-sans sm:text-right text-[12.5px] normal-case tracking-normal text-text-tertiary">{description}</p>
+        )}
       </header>
       <div className="flex flex-col">{children}</div>
     </section>

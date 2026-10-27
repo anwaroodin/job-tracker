@@ -17,7 +17,7 @@ export function LinksSection({
       n={n}
       id="links"
       title="Links"
-      hint="Attached to auto-filled applications."
+      description="Attached to auto-filled applications."
       i={3}
     >
       <FieldGrid cols={2}>
