@@ -13,6 +13,7 @@ export const STATUS_COLORS: Record<string, string> = {
   ghosted: "#86878e",
   withdrawn: "#4a4c53",
 };
+export const statusColor = (status: string) => STATUS_COLORS[status] ?? "var(--color-text-tertiary)";
 export const CV_COLORS = ["#ececec", "#86878e", "#4a4c53"];
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];

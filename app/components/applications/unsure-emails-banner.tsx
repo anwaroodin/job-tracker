@@ -9,7 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { fmtDate, STATUS_COLORS } from "~/components/ui/terminal";
+import { fmtDate, statusColor } from "~/components/ui/terminal";
 import { EMAIL_CATEGORIES } from "~/lib/email";
 import type { UnsureEmail } from "~/types/unsure-email";
 
@@ -64,7 +64,7 @@ function UnsureEmailRow({ email }: { email: UnsureEmail }) {
             <DropdownMenuLabel>It's about a job: mark as</DropdownMenuLabel>
             {EMAIL_CATEGORIES.filter((c) => c !== "other").map((category) => (
               <DropdownMenuItem key={category} onSelect={() => submit({ intent: "label-email", category })}>
-                <span aria-hidden className="size-[7px] shrink-0" style={{ background: STATUS_COLORS[category] ?? "#6e6f76" }} />
+                <span aria-hidden className="size-[7px] shrink-0" style={{ background: statusColor(category) }} />
                 {category}
               </DropdownMenuItem>
             ))}

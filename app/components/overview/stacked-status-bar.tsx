@@ -1,4 +1,4 @@
-import { STATUS_COLORS } from "~/components/ui/terminal";
+import { statusColor } from "~/components/ui/terminal";
 
 /**
  * Splits `cells` between counts in proportion (largest remainder method), so
@@ -25,7 +25,7 @@ export function StackedStatusBar({ byStatus, cells = 34 }: { byStatus: { status:
     cells,
   );
   const segments = present
-    .map((s, i) => ({ status: s.status, color: STATUS_COLORS[s.status] ?? "#6e6f76", width: widths[i] }))
+    .map((s, i) => ({ status: s.status, color: statusColor(s.status), width: widths[i] }))
     .filter((s) => s.width > 0);
   const LEGEND = 4;
 
