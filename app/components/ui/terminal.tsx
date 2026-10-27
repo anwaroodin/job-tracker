@@ -10,10 +10,10 @@ export const STATUS_COLORS: Record<string, string> = {
   offer: "#58b68a",
   accepted: "#8fd0ae",
   rejected: "#d1707a",
-  ghosted: "#6e6f76",
+  ghosted: "#86878e",
   withdrawn: "#4a4c53",
 };
-export const CV_COLORS = ["#ececec", "#6e6f76", "#4a4c53"];
+export const CV_COLORS = ["#ececec", "#86878e", "#4a4c53"];
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 export const two = (n: number) => String(n).padStart(2, "0");
