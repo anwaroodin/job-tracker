@@ -25,6 +25,7 @@ let latest: GmailStatus | undefined;
 const listeners = new Set<() => void>();
 const wake = new EventTarget();
 let started = false;
+let channel: BroadcastChannel | null = null;
 
 function emit(status: GmailStatus) {
   latest = status;
@@ -61,16 +62,14 @@ function startSharedPolling() {
   started = true;
 
   const canShare = "locks" in navigator && typeof BroadcastChannel !== "undefined";
-  const channel = canShare ? new BroadcastChannel(CHANNEL_NAME) : null;
+  channel = canShare ? new BroadcastChannel(CHANNEL_NAME) : null;
   channel?.addEventListener("message", (e) => {
     if (e.data?.type === "status") emit(e.data.status as GmailStatus);
     if (e.data?.type === "refresh") poke();
   });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
-    if (channel) channel.postMessage({ type: "refresh" });
-    else poke(); // no cross-tab sharing available: this tab polls for itself
+    if (document.visibilityState === "visible") refreshGmailStatus();
   });
 
   const loop = async () => {
@@ -88,6 +87,11 @@ function startSharedPolling() {
 
   if (canShare) navigator.locks.request(LOCK_NAME, loop);
   else loop();
+}
+
+export function refreshGmailStatus() {
+  channel?.postMessage({ type: "refresh" });
+  poke();
 }
 
 export function useGmailStatus(initial: GmailStatus): GmailStatus {

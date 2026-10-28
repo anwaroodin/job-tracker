@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import { Link, useFetchers, useRevalidator } from "react-router";
 import { cn } from "~/lib/cn";
-import { syncedAgo, useGmailStatus } from "~/lib/gmail-status";
+import { refreshGmailStatus, syncedAgo, useGmailStatus } from "~/lib/gmail-status";
 import { useNow } from "~/hooks/use-now";
 import type { GmailStatus, SyncStage } from "~/types/gmail";
+
+const SERVER_CLAIM_DELAY_MS = 1000;
 
 const STAGES: { stage: SyncStage; label: string }[] = [
   { stage: "checking", label: "Checking inbox" },
@@ -19,6 +21,7 @@ export function SyncStatus({ initial, collapsed }: { initial: GmailStatus; colla
   const ago = syncedAgo(status, useNow());
 
   useRefreshOnNewResults(status);
+  useRefreshAroundManualSync(manualSyncRunning);
 
   return (
     <div className="border-t border-dashed border-white/15 px-2.5 py-3 font-mono text-[10.5px] uppercase tracking-[0.08em]">
@@ -111,4 +114,15 @@ function useRefreshOnNewResults(status: GmailStatus) {
     if (finishedAgain) revalidator.revalidate();
     lastFinished.current = status.lastFinishedAt;
   }, [status.lastFinishedAt]);
+}
+
+function useRefreshAroundManualSync(running: boolean) {
+  const wasRunning = useRef(running);
+  useEffect(() => {
+    if (wasRunning.current === running) return;
+    wasRunning.current = running;
+    if (!running) return refreshGmailStatus();
+    const timer = setTimeout(refreshGmailStatus, SERVER_CLAIM_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [running]);
 }
