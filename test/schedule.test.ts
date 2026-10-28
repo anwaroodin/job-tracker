@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { Db } from "~/server/db/client.server";
+import { claimRun, updateSyncState } from "~/server/db/queries/gmail-sync.server";
+import { STUCK_RUN_MS } from "~/server/gmail/sync/run";
 import { isSyncHour } from "~/server/gmail/sync/schedule.server";
+import { USER_ID, testDb } from "./db";
 
 const env = (vars: Partial<Env> = {}) => vars as Env;
 const london = (iso: string) => new Date(iso);
@@ -27,5 +31,18 @@ describe("isSyncHour", () => {
   it("falls back to the default hours when the setting is malformed", () => {
     expect(isSyncHour(env({ SYNC_HOURS: "soon" }), london("2026-01-15T03:00:00Z"))).toBe(false);
     expect(isSyncHour(env({ SYNC_HOURS: "soon" }), london("2026-01-15T12:00:00Z"))).toBe(true);
+  });
+});
+
+describe("claimRun", () => {
+  const claim = (db: Db, startedAt: string) => claimRun(db, USER_ID, startedAt, STUCK_RUN_MS, null);
+
+  it("lets a manual sync start right after a finished run, but not during a live one", async () => {
+    const { db } = testDb();
+    expect(await claim(db, "2026-01-15T12:00:00.000Z")).toHaveLength(1);
+    expect(await claim(db, "2026-01-15T12:00:10.000Z")).toHaveLength(0);
+    await updateSyncState(db, USER_ID, { stage: null });
+    expect(await claim(db, "2026-01-15T12:00:20.000Z")).toHaveLength(1);
+    expect(await claim(db, "2026-01-15T12:03:00.000Z")).toHaveLength(1);
   });
 });

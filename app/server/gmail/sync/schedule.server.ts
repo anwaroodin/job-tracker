@@ -4,9 +4,8 @@ import { getDb, type Db } from "../../db/client.server";
 import { unseenActivityCount } from "../../db/queries/activity.server";
 import { gmailStatusRow, usersWithAutoSync } from "../../db/queries/gmail-sync.server";
 import { syncGmail } from "./index.server";
-import { AUTH_ERROR, AUTO_SYNC_EVERY_MS, MIN_GAP_BETWEEN_RUNS_MS, MINUTE } from "./run";
+import { AUTH_ERROR, AUTO_SYNC_EVERY_MS, MIN_GAP_BETWEEN_RUNS_MS, STUCK_RUN_MS } from "./run";
 
-const STUCK_RUN_MS = 2 * MINUTE;
 const DEFAULT_SYNC_HOURS = "7-23";
 const DEFAULT_SYNC_TIMEZONE = "Europe/London";
 

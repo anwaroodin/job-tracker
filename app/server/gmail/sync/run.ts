@@ -9,6 +9,7 @@ export const MINUTE = 60_000;
 export const DAY = 86_400_000;
 export const AUTO_SYNC_EVERY_MS = 15 * MINUTE;
 export const MIN_GAP_BETWEEN_RUNS_MS = MINUTE;
+export const STUCK_RUN_MS = 2 * MINUTE;
 const RECENT_FOR_ACTIVITY_MS = 7 * DAY;
 export const MAX_LOOKBACK_MS = 180 * DAY;
 export const AUTH_ERROR = "Gmail access expired or was revoked. Reconnect Gmail in your profile.";

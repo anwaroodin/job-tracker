@@ -39,7 +39,7 @@ export function claimRun(db: Db, userId: string, startedAt: string, gapMs: numbe
   const ranBefore = (ms: number) => sql`${gmailSync.lastRunAt} < ${new Date(now - ms).toISOString()}`;
   const due =
     autoEveryMs === null
-      ? ranBefore(gapMs)
+      ? sql`${gmailSync.stage} is null or ${ranBefore(gapMs)}`
       : sql`${ranBefore(autoEveryMs)} or (${gmailSync.hasMore} = 1 and ${ranBefore(gapMs)})`;
 
   return db
