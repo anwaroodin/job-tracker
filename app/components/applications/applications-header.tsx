@@ -34,9 +34,11 @@ export function ApplicationsHeader({
     ? "Syncing Gmail…"
     : error
       ? error
-      : ago
-        ? `Synced ${ago}${counts}`
-        : "Gmail not synced yet";
+      : result?.busy
+        ? "Already syncing, check back in a minute"
+        : ago
+          ? `Synced ${ago}${counts}`
+          : "Gmail not synced yet";
 
   return (
     <header className="rise flex flex-col gap-4" style={stagger(0)}>
