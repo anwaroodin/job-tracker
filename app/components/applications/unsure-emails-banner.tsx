@@ -36,7 +36,7 @@ export function UnsureEmailsBanner({ emails }: { emails: UnsureEmail[] }) {
   );
 }
 
-function UnsureEmailRow({ email }: { email: UnsureEmail }) {
+export function UnsureEmailRow({ email }: { email: UnsureEmail }) {
   const fetcher = useFetcher();
   if (fetcher.state !== "idle" || fetcher.data) return null;
   const submit = (fields: Record<string, string>) => fetcher.submit({ id: email.id, ...fields }, { method: "post" });
