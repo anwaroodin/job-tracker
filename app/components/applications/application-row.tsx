@@ -113,14 +113,12 @@ export function ApplicationRowItem(props: ApplicationRowItemProps) {
           </Link>
           {Boolean(app.unread) && <NewBadge count={app.unread} className="self-center" />}
         </div>
-        {app.location && (
-          <p
-            title={app.location}
-            className="mt-0.5 truncate text-[10.5px] text-text-tertiary group-hover:!text-text-inverse/60 hidden sm:block"
-          >
-            {app.location}
-          </p>
-        )}
+        <p
+          title={app.location || undefined}
+          className="mt-0.5 hidden truncate pl-7 text-[10.5px] text-text-tertiary group-hover:!text-text-inverse/60 sm:block"
+        >
+          {app.location || "—"}
+        </p>
       </div>
 
       {/* Column 2: Role (and mobile location) */}
