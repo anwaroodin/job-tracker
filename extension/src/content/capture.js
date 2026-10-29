@@ -103,6 +103,7 @@
         meta("description"),
       url: location.href,
       logo: structured.logo,
+      location: structured.location,
     };
   }
 
@@ -112,6 +113,7 @@
     url: job.url || location.href,
     description: cleanBlock(job.description, LIMITS.description),
     logo: httpUrl(job.logo),
+    location: clean(job.location, 100),
   });
 
   /** Whether the generic reader should treat this page as a single job posting. */
@@ -197,7 +199,7 @@
     const header = site?.summaryText?.() ?? "";
     const description = (job?.description ?? "").slice(0, 3000);
     const facts = [];
-    const location = clean(site?.location?.(), 100);
+    const location = clean(site?.location?.() || job?.location, 100);
     if (location) facts.push({ key: "location", text: location });
     for (const [key, pattern] of FACTS) {
       const match = header.match(pattern) ?? description.match(pattern);

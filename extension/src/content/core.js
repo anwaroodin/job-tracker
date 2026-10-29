@@ -161,6 +161,19 @@
 
   // ── Structured data ──────────────────────────────────────────────────────
 
+  const placeName = (place) => {
+    const address = typeof place === "string" ? place : (place?.address ?? place);
+    if (typeof address === "string") return clean(address, 100);
+    const country = address?.addressCountry;
+    return clean(address?.addressLocality || address?.addressRegion || (typeof country === "string" ? country : country?.name), 100);
+  };
+
+  const postingLocation = (node) => {
+    const places = [...new Set([].concat(node.jobLocation ?? []).map(placeName).filter(Boolean))];
+    if (places.length) return places.slice(0, 3).join(" / ");
+    return [].concat(node.jobLocationType ?? []).includes("TELECOMMUTE") ? "Remote" : "";
+  };
+
   /** A schema.org JobPosting from the page's JSON-LD, the most reliable source when present. */
   function jsonLdJob() {
     const stack = [];
@@ -188,6 +201,7 @@
           logo: httpUrl(typeof logo === "string" ? logo : logo?.url),
           description: node.description ? htmlToText(node.description) : "",
           url: httpUrl(node.url),
+          location: postingLocation(node),
         };
       }
       if (node["@graph"]) stack.push(node["@graph"]);
@@ -210,6 +224,7 @@
           org?.textContent,
       ),
       description: description ? richText(description) : "",
+      location: clean(root.querySelector('[itemprop="jobLocation"] [itemprop="addressLocality"]')?.textContent, 100),
     };
   }
 
