@@ -1,6 +1,8 @@
 import { ChevronsUpDown, LogOut, PanelLeft } from "lucide-react";
 import { motion } from "motion/react";
-import { NavLink, useNavigate } from "react-router";
+import { Fragment } from "react";
+import { Link, NavLink, useNavigate } from "react-router";
+import { useApplicationViews } from "~/components/applications/view-tabs";
 import { authClient } from "~/lib/auth-client";
 import {
   DropdownMenu,
@@ -27,6 +29,7 @@ interface SidebarProps {
 export function Sidebar({ user, gmail, unread }: SidebarProps) {
   const collapsed = usePersisted(() => sidebarView$.collapsed.get(), false);
   const navigate = useNavigate();
+  const views = useApplicationViews();
   const signOut = () =>
     authClient.signOut({
       fetchOptions: { onSuccess: () => navigate("/auth/login") },
@@ -70,45 +73,47 @@ export function Sidebar({ user, gmail, unread }: SidebarProps) {
       </p>
       <nav className="flex flex-col gap-0.5">
         {NAV.map(({ to, label }, idx) => (
-          <NavLink
-            key={to}
-            to={to}
-            title={collapsed ? label : undefined}
-            className={({ isActive }) =>
-              cn(
-                "relative flex items-center gap-3 px-2.5 py-[7px] font-mono text-[11.5px] uppercase tracking-[0.08em] transition-colors duration-150",
-                collapsed && "lg:justify-center lg:px-0",
-                isActive
-                  ? "bg-fill-secondary text-text-primary"
-                  : "text-[#c9c9cd] hover:bg-fill-tertiary hover:text-text-primary",
-              )
-            }
-          >
-            <span className="text-text-tertiary">
-              {String(idx + 1).padStart(2, "0")}
-            </span>
-            <span className={cn(collapsed && "lg:hidden")}>{label}</span>
-            {to === "/applications" && unread > 0 && (
-              <>
-                <motion.span
-                  key={unread}
-                  initial={{ scale: 0.6, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 26 }}
-                  className={cn(
-                    "ml-auto bg-green-quaternary px-1.5 text-[10px] leading-4 tabular-nums text-green-primary",
-                    collapsed && "lg:hidden",
+          <Fragment key={to}>
+            <NavLink
+              to={to}
+              title={collapsed ? label : undefined}
+              className={({ isActive }) =>
+                cn(
+                  "relative flex items-center gap-3 px-2.5 py-[7px] font-mono text-[11.5px] uppercase tracking-[0.08em] transition-colors duration-150",
+                  collapsed && "lg:justify-center lg:px-0",
+                  isActive
+                    ? "bg-fill-secondary text-text-primary"
+                    : "text-[#c9c9cd] hover:bg-fill-tertiary hover:text-text-primary",
+                )
+              }
+            >
+              <span className="text-text-tertiary">
+                {String(idx + 1).padStart(2, "0")}
+              </span>
+              <span className={cn(collapsed && "lg:hidden")}>{label}</span>
+              {to === "/applications" && unread > 0 && (
+                <>
+                  <motion.span
+                    key={unread}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 26 }}
+                    className={cn(
+                      "ml-auto bg-green-quaternary px-1.5 text-[10px] leading-4 tabular-nums text-green-primary",
+                      collapsed && "lg:hidden",
+                    )}
+                    aria-label={`${unread} new ${unread === 1 ? "email" : "emails"}`}
+                  >
+                    {unread}
+                  </motion.span>
+                  {collapsed && (
+                    <span aria-hidden className="absolute right-3 top-1.5 hidden size-1.5 rounded-full bg-green-primary lg:block" />
                   )}
-                  aria-label={`${unread} new ${unread === 1 ? "email" : "emails"}`}
-                >
-                  {unread}
-                </motion.span>
-                {collapsed && (
-                  <span aria-hidden className="absolute right-3 top-1.5 hidden size-1.5 rounded-full bg-green-primary lg:block" />
-                )}
-              </>
-            )}
-          </NavLink>
+                </>
+              )}
+            </NavLink>
+            {to === "/applications" && views && !collapsed && <SubNav views={views} />}
+          </Fragment>
         ))}
       </nav>
 
@@ -174,5 +179,35 @@ export function Sidebar({ user, gmail, unread }: SidebarProps) {
         </DropdownMenu>
       </div>
     </aside>
+  );
+}
+
+function SubNav({ views }: { views: NonNullable<ReturnType<typeof useApplicationViews>> }) {
+  return (
+    <ul className="flex flex-col gap-0.5 pb-1">
+      {views.tabs.map((tab, i) => {
+        const on = tab.key === views.selected;
+        return (
+          <li key={tab.key}>
+            <Link
+              to={`/applications?view=${tab.key}`}
+              replace={views.onListPage}
+              preventScrollReset
+              aria-current={on ? "page" : undefined}
+              className={cn(
+                "flex items-center justify-between py-[5px] pl-[34px] pr-2.5 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors duration-150",
+                on ? "bg-fill-tertiary text-text-primary" : "text-text-secondary hover:bg-fill-tertiary hover:text-text-primary",
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <span aria-hidden className="text-text-tertiary">{i === views.tabs.length - 1 ? "└─" : "├─"}</span>
+                {tab.label}
+              </span>
+              <span className="text-[10px] tabular-nums text-text-tertiary">{tab.count}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
