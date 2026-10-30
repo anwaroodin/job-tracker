@@ -1,7 +1,7 @@
-import { and, desc, eq, getTableColumns, gte, isNull, ne, notExists, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, gte, inArray, isNull, ne, notExists, sql, type SQL } from "drizzle-orm";
 import { ANALYTICS_CACHE, invalidate, UNREAD_COUNTS_CACHE } from "../../cache.server";
 import type { Db } from "../client.server";
-import { application, emailLink, type NewApplication } from "../schema";
+import { application, emailLink, emailMessage, type NewApplication } from "../schema";
 
 const nowIso = () => new Date().toISOString();
 
@@ -167,4 +167,22 @@ export function saveResearch(db: Db, userId: string, id: string, json: string) {
     .update(application)
     .set({ researchJson: json })
     .where(and(eq(application.id, id), eq(application.userId, userId)));
+}
+
+export function followUpRows(db: Db, userId: string, statuses: string[]) {
+  return db
+    .select({
+      applicationId: application.id,
+      company: application.company,
+      role: application.role,
+      status: application.status,
+      appliedAt: application.appliedAt,
+      followedUpAt: application.followedUpAt,
+      lastEmailAt: sql<string | null>`max(${emailMessage.receivedAt})`,
+    })
+    .from(application)
+    .leftJoin(emailLink, and(eq(emailLink.applicationId, application.id), eq(emailLink.userId, application.userId), isNull(emailLink.dismissedAt)))
+    .leftJoin(emailMessage, and(eq(emailMessage.id, emailLink.id), eq(emailMessage.userId, emailLink.userId)))
+    .where(and(eq(application.userId, userId), inArray(application.status, statuses)))
+    .groupBy(application.id);
 }
