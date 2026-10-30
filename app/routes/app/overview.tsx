@@ -42,7 +42,7 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
   const companyMax = Math.max(1, ...a.topCompanies.map((c) => c.count));
   const last =
     t.total === 0 ? "NOTHING TRACKED YET" : t.streakDays === 0 ? "LAST ONE TODAY" : `LAST ONE ${t.streakDays}D AGO`;
-  const upNextTotal = loaderData.next.replies.length + loaderData.next.upcoming.length;
+  const upNextTotal = loaderData.next.replies.length + loaderData.next.upcoming.length + loaderData.next.followUps.length;
   // Sections are numbered in page order; Up next only appears when something's waiting.
   let section = 1;
   const next = () => two(++section);

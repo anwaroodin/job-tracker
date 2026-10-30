@@ -20,4 +20,5 @@ export interface FollowUpItem {
 export interface UpNext {
   replies: UpNextItem[];
   upcoming: UpNextItem[];
+  followUps: FollowUpItem[];
 }
