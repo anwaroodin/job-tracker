@@ -2,13 +2,15 @@ import { NavLink } from "react-router";
 import { cn } from "~/lib/cn";
 import { NAV } from "./nav";
 
+const MOBILE_NAV = NAV.map((item, i) => ({ ...item, n: i + 1 })).filter((item) => item.to !== "/usage");
+
 export function BottomNav({ unread }: { unread: number }) {
   return (
     <nav
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-40 flex border-t border-stroke-secondary bg-bg-secondary/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm lg:hidden"
     >
-      {NAV.map(({ to, short }, idx) => (
+      {MOBILE_NAV.map(({ to, short, n }) => (
         <NavLink
           key={to}
           to={to}
@@ -22,7 +24,7 @@ export function BottomNav({ unread }: { unread: number }) {
           }
         >
           <span className="relative">
-            <span className="text-[11px] tabular-nums text-text-tertiary">{String(idx + 1).padStart(2, "0")}</span>
+            <span className="text-[11px] tabular-nums text-text-tertiary">{String(n).padStart(2, "0")}</span>
             {to === "/applications" && unread > 0 && (
               <span
                 className="absolute -right-5 -top-1.5 min-w-4 bg-green-quaternary px-1 text-center text-[9px] leading-4 tabular-nums text-green-primary"
