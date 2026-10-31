@@ -179,6 +179,8 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
   const source = hostOf(row.url);
   const contacts = parseContacts(row.contactsJson);
   const move = { company: row.company, applications: loaderData.otherApplications };
+  let n = 2;
+  const next = () => String(++n).padStart(2, "0");
 
   return (
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
@@ -221,7 +223,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
           <Progress status={row.status} reached={reached} />
 
           <Section
-            n="03"
+            n={next()}
             title="Timeline"
             hint={emails.length ? `${emails.length} ${emails.length === 1 ? "email" : "emails"}` : undefined}
             i={2}
@@ -263,7 +265,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
             contacts.length === 0 && "lg:sticky lg:top-16",
           )}
         >
-          <Section n="04" title="Details" i={3}>
+          <Section n={next()} title="Details" i={3}>
             <Leader label="Location">{row.location || "—"}</Leader>
             <Leader label="Work type">{row.workType || "—"}</Leader>
             {row.employmentType && <Leader label="Employment">{row.employmentType}</Leader>}
@@ -297,7 +299,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
             )}
           </Section>
           {contacts.length > 0 && (
-            <Section n="05" title="People to reach out to" hint={String(contacts.length)} i={4}>
+            <Section n={next()} title="People to reach out to" hint={String(contacts.length)} i={4}>
               <ContactList contacts={contacts} />
             </Section>
           )}
@@ -305,7 +307,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
 
         {row.description && (
           <div className="lg:col-start-1 lg:row-start-2">
-            <Section n="06" title="Job description" hint={source || undefined} i={5}>
+            <Section n={next()} title="Job description" hint={source || undefined} i={5}>
               <RichText text={row.description} />
             </Section>
           </div>
