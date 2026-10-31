@@ -1,7 +1,7 @@
 import { fmtDate } from "~/components/ui/terminal";
 import type { CompanyResearch } from "~/types/cv";
 
-function Points({ title, items }: { title: string; items: string[] }) {
+export function Points({ title, items }: { title: string; items: string[] }) {
   if (!items.length) return null;
   return (
     <div className="flex flex-col gap-1.5">

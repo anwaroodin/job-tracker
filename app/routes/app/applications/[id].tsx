@@ -15,6 +15,7 @@ import { StatusPicker } from "~/components/application-detail/status-picker";
 import { BackToSaved } from "~/components/application-detail/back-to-saved";
 import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
+import { PREP_STATUSES } from "~/lib/status";
 import { parseContacts } from "~/lib/contacts";
 import { isEmailCategory } from "~/lib/email";
 import { gmailComposeUrl, gmailThreadUrl } from "~/lib/gmail";
@@ -23,7 +24,14 @@ import { useArrivals } from "~/hooks/use-arrivals";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { createApplication, deleteApplication, updateApplication } from "~/server/db/queries/applications.server";
+import { createApplication, deleteApplication, savePrep, updateApplication } from "~/server/db/queries/applications.server";
+import { getCv, getStories } from "~/server/db/queries/profile.server";
+import { latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
+import { cleanPrep, prepRequest, storedPrep, storedStories } from "~/server/cv/prep";
+import { storedResearch } from "~/server/cv/research";
+import { cvContent } from "~/lib/cv";
+import type { Db } from "~/server/db/client.server";
+import type { Application } from "~/types/application";
 import { applicationsFor } from "~/server/db/queries/status.server";
 import { shareLinkFor } from "~/server/db/queries/share-links.server";
 import { tailoredApplicationIds } from "~/server/db/queries/tailored-cv.server";
@@ -40,6 +48,7 @@ import { UnlinkedEmails } from "~/components/application-detail/unlinked-emails"
 import { useNewOnArrival } from "~/components/application-detail/use-new-on-arrival";
 import { Progress } from "~/components/application-detail/progress";
 import { FollowUp } from "~/components/application-detail/follow-up";
+import { InterviewPrep } from "~/components/application-detail/interview-prep";
 import { followUpDraft, followUpRecipient, quietDays } from "~/server/services/follow-up/rules";
 
 const MAX_FIELD_LENGTH = 200;
@@ -61,7 +70,17 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     .filter((a) => a.id !== row.id && a.status !== "saved")
     .map(({ id, company, role, appliedAt }) => ({ id, company, role, appliedAt }));
   const share = { applicationId: row.id, link: shareLink, hasTailoredCv: tailored.has(row.id) };
-  return { row, emails, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user) };
+  const prep = await prepFor(db, user.id, row);
+  return { row, emails, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user), prep };
+}
+
+async function prepFor(db: Db, userId: string, row: Application) {
+  const prep = storedPrep(row.prepJson);
+  if (!prep && !PREP_STATUSES.has(row.status)) return null;
+  if (!row.description) return { prep, request: null };
+  const [cv, tailored, stories] = await Promise.all([getCv(db, userId), latestTailoredCv(db, userId, row.id), getStories(db, userId)]);
+  const request = prepRequest(row, tailored?.cv ?? cvContent(cv), cv.confirmed, storedResearch(row.researchJson), storedStories(stories));
+  return { prep, request };
 }
 
 function followUpFor(
@@ -108,6 +127,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (intent === "delete") {
     if (!(await deleteApplication(db, user.id, params.id))) throw data("Not found", { status: 404 });
     return redirect("/applications");
+  }
+  if (intent === "prep") {
+    await savePrep(db, user.id, params.id, JSON.stringify(cleanPrep(JSON.parse(String(form.get("result") ?? "{}")))));
+    return { ok: true };
   }
   if (intent === "followed-up") {
     await updateApplication(db, user.id, params.id, { followedUpAt: new Date().toISOString() });
@@ -221,6 +244,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
         <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
           {loaderData.followUp && <FollowUp {...loaderData.followUp} />}
           <Progress status={row.status} reached={reached} />
+          {loaderData.prep && <InterviewPrep n={next()} {...loaderData.prep} />}
 
           <Section
             n={next()}
