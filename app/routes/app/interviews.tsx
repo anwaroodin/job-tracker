@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { Form, Link, useNavigation } from "react-router";
 import type { Route } from "./+types/interviews";
-import { StoryList } from "~/components/interviews/stories";
+import { DraftStories, StoryList } from "~/components/interviews/stories";
+import { cvContent } from "~/lib/cv";
 import { Button } from "~/components/ui/button";
 import { StatusBadge } from "~/components/ui/status-badge";
 import { Section, fmtDate, stagger } from "~/components/ui/terminal";
 import { UnsavedBar } from "~/components/ui/unsaved-bar";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
-import { cleanStories, storedStories } from "~/server/cv/prep";
+import { cleanStories, draftStoriesRequest, storedStories } from "~/server/cv/prep";
 import { getDb } from "~/server/db/client.server";
-import { getStories, saveStories } from "~/server/db/queries/profile.server";
+import { getCv, getStories, saveStories } from "~/server/db/queries/profile.server";
 import { applicationsFor } from "~/server/db/queries/status.server";
 import type { StarStory } from "~/types/cv";
 import { PREP_STATUSES } from "~/lib/status";
@@ -18,10 +19,11 @@ import { PREP_STATUSES } from "~/lib/status";
 export async function loader({ context }: Route.LoaderArgs) {
   const user = context.get(userContext);
   const db = getDb(context.get(envContext).DB);
-  const [json, apps] = await Promise.all([getStories(db, user.id), applicationsFor(db, user.id)]);
+  const [json, apps, cv] = await Promise.all([getStories(db, user.id), applicationsFor(db, user.id), getCv(db, user.id)]);
   const stories = storedStories(json);
   const upcoming = apps.filter((a) => PREP_STATUSES.has(a.status)).sort((a, b) => b.appliedAt.localeCompare(a.appliedAt));
-  return { stories, upcoming };
+  const hasCv = cv.experience.length > 0 || cv.projects.length > 0;
+  return { stories, upcoming, draftRequest: hasCv ? draftStoriesRequest(cvContent(cv), cv.confirmed, stories) : null };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -94,6 +96,13 @@ export default function InterviewsPage({ loaderData, actionData }: Route.Compone
       </Section>
 
       <Section n="02" id="stories" title="STAR stories" description="In your own words. Specific beats polished." i={2}>
+        <DraftStories
+          request={loaderData.draftRequest}
+          onDrafted={(drafts) => {
+            setStories((current) => [...current, ...drafts]);
+            setDirty(true);
+          }}
+        />
         <StoryList
           value={stories}
           onChange={(next) => {

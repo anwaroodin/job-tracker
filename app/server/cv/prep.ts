@@ -80,6 +80,37 @@ export function storedStories(json: string | null): StarStory[] {
 
 const storiesText = (stories: StarStory[]) => stories.map((s) => `## ${s.title || "Untitled"}\n${s.text}`).join("\n\n");
 
+const DRAFT_SYSTEM = `You help a candidate start a bank of interview stories. Output only valid JSON.
+
+From the candidate's evidence inside <evidence>, pick the 5 to 8 moments that would answer the most common behavioural questions: a hard technical problem, a tight deadline, a disagreement or conflict, leading or influencing others, a mistake or failure, learning something fast, improving a process. Skip any moment already covered by a title inside <existing>.
+
+For each story:
+- title: a short headline of what happened, under 8 words.
+- text: four short lines, each starting with "Situation:", "Task:", "Action:" and "Result:", first person, using "I" not "we". Use only facts the evidence shows. Where the evidence doesn't say something (the stakes, a decision, a number), write a bracketed prompt for the candidate to fill in, like "[how many users this affected]". Never invent numbers, people or events.`;
+
+const DRAFT_SCHEMA = {
+  type: "object",
+  properties: {
+    stories: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { title: { type: "string" }, text: { type: "string" } },
+        required: ["title", "text"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["stories"],
+  additionalProperties: false,
+};
+
+export function draftStoriesRequest(cv: CvContent, confirmed: Confirmation[], existing: StarStory[]): TailorRequest {
+  const titles = existing.map((s) => `- ${s.title}`).join("\n");
+  const input = [`<evidence>\n${evidenceText(cv, confirmed)}\n</evidence>`, titles ? `<existing>\n${titles}\n</existing>` : ""].filter(Boolean).join("\n");
+  return { system: DRAFT_SYSTEM, schema: DRAFT_SCHEMA, input, model: PREP_MODEL, effort: "medium", provider: "claude" };
+}
+
 export function prepRequest(
   job: Pick<Application, "company" | "role" | "description">,
   cv: CvContent,
