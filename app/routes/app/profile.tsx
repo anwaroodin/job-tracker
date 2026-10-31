@@ -89,7 +89,7 @@ export default function ProfilePage({
       >
         <div>
           <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <b className="mr-2 font-semibold text-text-primary">[04]</b>Profile
+            <b className="mr-2 font-semibold text-text-primary">[05]</b>Profile
           </p>
           <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
             {displayName}
