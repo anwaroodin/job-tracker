@@ -5,7 +5,7 @@ import { application, emailLink, emailMessage, type NewApplication } from "../sc
 
 const nowIso = () => new Date().toISOString();
 
-const { description: _description, notes: _notes, contactsJson: _contacts, jdKeywordsJson: _keywords, researchJson: _research, ...listColumns } = getTableColumns(application);
+const { description: _description, notes: _notes, contactsJson: _contacts, jdKeywordsJson: _keywords, researchJson: _research, prepJson: _prep, ...listColumns } = getTableColumns(application);
 
 export function applicationRows(db: Db, userId: string) {
   return db
@@ -166,6 +166,13 @@ export function saveResearch(db: Db, userId: string, id: string, json: string) {
   return db
     .update(application)
     .set({ researchJson: json })
+    .where(and(eq(application.id, id), eq(application.userId, userId)));
+}
+
+export function savePrep(db: Db, userId: string, id: string, json: string) {
+  return db
+    .update(application)
+    .set({ prepJson: json })
     .where(and(eq(application.id, id), eq(application.userId, userId)));
 }
 

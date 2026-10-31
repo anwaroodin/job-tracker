@@ -33,6 +33,7 @@ export const application = sqliteTable(
       .default(sql`'[]'`),
     jdKeywordsJson: text("jd_keywords_json"),
     researchJson: text("research_json"),
+    prepJson: text("prep_json"),
     starred: integer("starred", { mode: "boolean" }).notNull().default(false),
     autoFilled: integer("auto_filled", { mode: "boolean" })
       .notNull()
