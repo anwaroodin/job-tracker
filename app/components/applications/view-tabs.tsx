@@ -42,6 +42,7 @@ export function ViewTabs({ className }: { className?: string }) {
             replace
             preventScrollReset
             aria-current={on ? "page" : undefined}
+            data-tour={tab.key}
             className={cn(
               "flex items-center gap-1.5 border px-2.5 py-1 text-[11px] tracking-[0.06em] transition-colors",
               on

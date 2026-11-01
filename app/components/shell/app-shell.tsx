@@ -75,6 +75,7 @@ function PathBar({ gmail }: { gmail: GmailStatus }) {
           <button
             type="button"
             onClick={() => commandPalette$.open.set(true)}
+            data-tour="search"
             className="hidden sm:inline-flex items-center gap-2 border border-stroke-secondary bg-fill-secondary px-2.5 py-1 font-mono text-[11px] text-text-tertiary transition-colors hover:border-stroke-primary hover:text-text-primary cursor-pointer"
             title={`Search (${shortcut})`}
           >

@@ -24,7 +24,7 @@ export function SyncStatus({ initial, collapsed }: { initial: GmailStatus; colla
   useRefreshAroundManualSync(manualSyncRunning);
 
   return (
-    <div className="border-t border-dashed border-white/15 px-2.5 py-3 font-mono text-[10.5px] uppercase tracking-[0.08em]">
+    <div data-tour="sync" className="border-t border-dashed border-white/15 px-2.5 py-3 font-mono text-[10.5px] uppercase tracking-[0.08em]">
       <div className={cn("min-h-[6.25rem]", collapsed && "lg:hidden")} aria-live="polite">
         <p className="eyebrow pb-2 !text-[10px]">Gmail sync</p>
         {syncing ? (
