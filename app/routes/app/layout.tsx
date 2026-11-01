@@ -1,4 +1,4 @@
-import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
+import { Outlet, redirect, type ShouldRevalidateFunctionArgs } from "react-router";
 import type { Route } from "./+types/layout";
 import { AppShell } from "~/components/shell/app-shell";
 import { useRevalidateOnFocus } from "~/hooks/use-revalidate-on-focus";
@@ -6,6 +6,7 @@ import { requireUser, userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { unreadEmailCounts } from "~/server/db/queries/emails.server";
+import { isOnboarded } from "~/server/db/queries/settings.server";
 import { getGmailStatus } from "~/server/gmail/sync/schedule.server";
 
 export const middleware: Route.MiddlewareFunction[] = [
@@ -20,6 +21,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const db = getDb(env.DB);
   const [gmail, unread] = await Promise.all([getGmailStatus(db, user.id), unreadEmailCounts(db, user.id)]);
   const path = new URL(request.url).pathname.replace(/\.data$/, "");
+  if (!gmail.connected && path !== "/welcome" && !(await isOnboarded(db, user.id))) throw redirect("/welcome");
   const openApplication = /^\/applications\/([^/]+)$/.exec(path)?.[1];
   const unreadTotal = Object.entries(unread).reduce((sum, [id, n]) => (id === openApplication ? sum : sum + n), 0);
   return { user, gmail, unread, unreadTotal, logoToken: env.LOGO_DEV_TOKEN || null };
