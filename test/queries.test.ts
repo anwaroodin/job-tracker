@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { deleteApplication, findRecentDuplicate, getApplication, unapplyApplication } from "~/server/db/queries/applications.server";
 import { reclassifyEstimate, usageDashboard } from "~/server/db/queries/usage.server";
+import { isOnboarded, markOnboarded } from "~/server/db/queries/settings.server";
 import { USER_ID, testDb } from "./db";
 import { addApplication, addEmail, at, link, setMinConfidence } from "./fixtures";
 import { asBatch } from "~/server/db/batch.server";
@@ -119,5 +120,15 @@ describe("unapplyApplication", () => {
     expect(await unapplyApplication(db, USER_ID, "quiet")).toHaveLength(1);
     expect(await unapplyApplication(db, USER_ID, "unlinked")).toHaveLength(1);
     expect((await getApplication(db, USER_ID, "quiet"))?.status).toBe("saved");
+  });
+});
+
+describe("onboarding", () => {
+  it("marks a user onboarded once setup is finished or skipped", async () => {
+    const { db } = testDb();
+    expect(await isOnboarded(db, USER_ID)).toBe(false);
+    await markOnboarded(db, USER_ID);
+    await markOnboarded(db, USER_ID);
+    expect(await isOnboarded(db, USER_ID)).toBe(true);
   });
 });

@@ -27,3 +27,20 @@ export async function saveSettings(db: Db, userId: string, settings: Settings) {
     .values({ userId, ...values })
     .onConflictDoUpdate({ target: userSettings.userId, set: values });
 }
+
+export async function isOnboarded(db: Db, userId: string) {
+  const [row] = await db
+    .select({ at: userSettings.onboardedAt })
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId))
+    .limit(1);
+  return !!row?.at;
+}
+
+export async function markOnboarded(db: Db, userId: string) {
+  const onboardedAt = new Date().toISOString();
+  await db
+    .insert(userSettings)
+    .values({ userId, onboardedAt })
+    .onConflictDoUpdate({ target: userSettings.userId, set: { onboardedAt } });
+}
