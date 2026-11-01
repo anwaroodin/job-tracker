@@ -1,5 +1,7 @@
 import type { Route } from "./+types/overview";
-import { Link } from "react-router";
+import { Link, useRouteLoaderData } from "react-router";
+import type { loader as layoutLoader } from "./layout";
+import { GettingStarted } from "~/components/onboarding/getting-started";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
@@ -34,6 +36,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
 export default function Overview({ loaderData }: Route.ComponentProps) {
   const a = loaderData.analytics;
+  const gmailConnected = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!.gmail.connected;
   const t = a.totals;
   const delta = t.weekly - t.previousWeekly;
   const peak = Math.max(1, ...a.weekly.map((w) => w.count));
@@ -103,6 +106,8 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
           </Stat>
         </div>
       </header>
+
+      <GettingStarted n="00" gmailConnected={gmailConnected} />
 
       {upNextTotal > 0 && <UpNextSection n={next()} next={loaderData.next} />}
 
