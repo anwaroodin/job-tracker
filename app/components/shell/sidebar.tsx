@@ -19,6 +19,7 @@ import { usePersisted } from "~/hooks/use-persisted";
 import { cn } from "~/lib/cn";
 import logo from "~/assets/job-tracker.png";
 import { NAV } from "./nav";
+import { SidebarLessons } from "~/components/onboarding/sidebar-lessons";
 
 interface SidebarProps {
   user: { name?: string | null; email: string; image?: string | null };
@@ -117,6 +118,8 @@ export function Sidebar({ user, gmail, unread }: SidebarProps) {
           </Fragment>
         ))}
       </nav>
+
+      <SidebarLessons gmailConnected={gmail.connected} collapsed={collapsed} />
 
       <div className="mt-auto">
         <SyncStatus initial={gmail} collapsed={collapsed} />
