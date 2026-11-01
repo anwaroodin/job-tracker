@@ -14,6 +14,7 @@ export function BottomNav({ unread }: { unread: number }) {
         <NavLink
           key={to}
           to={to}
+          data-nav={to}
           className={({ isActive }) =>
             cn(
               "relative flex h-14 flex-1 select-none flex-col items-center justify-center gap-0.5 font-mono text-[9.5px] uppercase tracking-[0.06em] transition-colors active:bg-fill-tertiary",

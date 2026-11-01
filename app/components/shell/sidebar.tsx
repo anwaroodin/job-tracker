@@ -76,6 +76,7 @@ export function Sidebar({ user, gmail, unread }: SidebarProps) {
           <Fragment key={to}>
             <NavLink
               to={to}
+              data-nav={to}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 cn(
