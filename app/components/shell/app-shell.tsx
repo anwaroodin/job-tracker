@@ -6,6 +6,7 @@ import { useLocation } from "react-router";
 import { CommandPalette } from "~/components/shell/command-palette";
 import { commandPalette$ } from "~/lib/state/command-palette";
 import type { GmailStatus } from "~/types/gmail";
+import { Tour } from "~/components/onboarding/tour";
 import { ActivityBell } from "./activity-feed";
 import { ActivityToasts } from "./activity-feed/toasts";
 import { BottomNav } from "./bottom-nav";
@@ -37,6 +38,7 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
       <ActivityToasts initial={gmail} />
       <CommandPalette />
       <TailoringTray />
+      <Tour />
     </MotionConfig>
   );
 }
