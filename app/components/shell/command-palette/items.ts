@@ -1,3 +1,4 @@
+import { LESSON_IDS, LESSONS } from "~/components/onboarding/lessons";
 import type { SearchApplicationItem, SearchEmailItem } from "~/types/search";
 
 export const NAV_ITEMS = [
@@ -7,6 +8,7 @@ export const NAV_ITEMS = [
   { id: "nav-profile", label: "Profile", to: "/profile", hint: "Personal info, CVs & integrations" },
   { id: "nav-usage", label: "Usage", to: "/usage", hint: "Spend & classification metrics" },
   { id: "nav-settings", label: "Settings", to: "/settings", hint: "Preferences & sync settings" },
+  ...LESSON_IDS.map((id) => ({ id: `lesson-${id}`, label: `Lesson: ${LESSONS[id].title}`, to: `?lesson=${id}`, hint: LESSONS[id].blurb })),
 ];
 
 export type SelectableItem =
