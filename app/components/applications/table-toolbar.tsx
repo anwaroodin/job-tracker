@@ -48,45 +48,7 @@ export function TableToolbar({ view }: { view: ApplicationsView }) {
           })}
         </div>
 
-        {/* Quick Search with Clear '×' and Shortcut '/' */}
-        <div className="relative w-full sm:w-64">
-          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary text-[11px]">
-            &gt;
-          </span>
-          <Input
-            ref={searchInputRef}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(0);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setSearch("");
-                searchInputRef.current?.blur();
-              }
-            }}
-            placeholder="search company, role…"
-            className="h-8 pl-6 pr-8 font-mono text-[11.5px] normal-case tracking-normal"
-          />
-          {search ? (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                searchInputRef.current?.focus();
-              }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-              aria-label="Clear search"
-            >
-              <X className="size-3.5" />
-            </button>
-          ) : (
-            <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 border border-stroke-secondary px-1 text-[10px] text-text-tertiary">
-              /
-            </kbd>
-          )}
-        </div>
+        <SearchField view={view} />
       </div>
 
       {/* Active Filter Chips & Reset Bar */}
@@ -131,5 +93,49 @@ export function TableToolbar({ view }: { view: ApplicationsView }) {
         </div>
       )}
     </>
+  );
+}
+
+export function SearchField({ view, className }: { view: ApplicationsView; className?: string }) {
+  const { search, setSearch, setPage, searchInputRef } = view;
+  return (
+    <div className={cn("relative w-full sm:w-64", className)}>
+      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary text-[11px]">
+        &gt;
+      </span>
+      <Input
+        ref={searchInputRef}
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(0);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setSearch("");
+            searchInputRef.current?.blur();
+          }
+        }}
+        placeholder="search company, role…"
+        className="h-8 pl-6 pr-8 font-mono text-[11.5px] normal-case tracking-normal"
+      />
+      {search ? (
+        <button
+          type="button"
+          onClick={() => {
+            setSearch("");
+            searchInputRef.current?.focus();
+          }}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+          aria-label="Clear search"
+        >
+          <X className="size-3.5" />
+        </button>
+      ) : (
+        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 border border-stroke-secondary px-1 text-[10px] text-text-tertiary">
+          /
+        </kbd>
+      )}
+    </div>
   );
 }

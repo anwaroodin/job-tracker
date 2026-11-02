@@ -3,7 +3,7 @@ import { ACTIVE_STATUSES, OFFER_STATUSES } from "~/lib/status";
 import type { ApplicationRowData } from "~/types/application";
 
 export const PAGE_SIZE = 15;
-const HIDDEN = new Set(["rejected", "ghosted", "withdrawn"]);
+export const CLOSED_TAB_STATUSES = new Set(["rejected", "ghosted", "withdrawn"]);
 
 const STATUS_PRIORITY: Record<string, number> = {
   offer: 1,
@@ -17,19 +17,21 @@ const STATUS_PRIORITY: Record<string, number> = {
   withdrawn: 9,
 };
 
-export type TabKey = "active" | "offers" | "closed" | "all";
+export type TabKey = "open" | "active" | "offers" | "closed" | "all";
 export type SortKey = "company" | "role" | "status" | "appliedAt";
 export type SortDir = "asc" | "desc";
 
-export function useApplicationsView(rows: ApplicationRowData[]) {
+export function useApplicationsView(rows: ApplicationRowData[], tab?: TabKey) {
   const total = rows.length;
   const activeCount = rows.filter((r) => ACTIVE_STATUSES.has(r.status)).length;
   const offersList = rows.filter((r) => OFFER_STATUSES.has(r.status));
   const offersCount = offersList.length;
-  const closedCount = rows.filter((r) => HIDDEN.has(r.status)).length;
+  const closedCount = rows.filter((r) => CLOSED_TAB_STATUSES.has(r.status)).length;
 
-  const [activeTab, setActiveTab] = useState<TabKey>("active");
+  const [chosenTab, setActiveTab] = useState<TabKey>("active");
+  const activeTab = tab ?? chosenTab;
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
   const [sortCol, setSortCol] = useState<SortKey>("appliedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
@@ -91,7 +93,9 @@ export function useApplicationsView(rows: ApplicationRowData[]) {
         // Tab filter
         if (activeTab === "active" && !ACTIVE_STATUSES.has(r.status)) return false;
         if (activeTab === "offers" && !OFFER_STATUSES.has(r.status)) return false;
-        if (activeTab === "closed" && !HIDDEN.has(r.status)) return false;
+        if (activeTab === "closed" && !CLOSED_TAB_STATUSES.has(r.status)) return false;
+        if (activeTab === "open" && CLOSED_TAB_STATUSES.has(r.status)) return false;
+        if (status && r.status !== status) return false;
 
         // Search query filter across company, role, location
         if (!q) return true;
@@ -118,7 +122,7 @@ export function useApplicationsView(rows: ApplicationRowData[]) {
         }
         return sortDir === "asc" ? cmp : -cmp;
       });
-  }, [rows, activeTab, search, sortCol, sortDir]);
+  }, [rows, activeTab, status, search, sortCol, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
@@ -135,6 +139,8 @@ export function useApplicationsView(rows: ApplicationRowData[]) {
     setActiveTab,
     search,
     setSearch,
+    status,
+    setStatus,
     sortCol,
     sortDir,
     setPage,

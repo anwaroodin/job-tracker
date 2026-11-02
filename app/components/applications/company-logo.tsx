@@ -42,14 +42,3 @@ export function CompanyLogo({ company, logoUrl, className }: { company: string; 
     </span>
   );
 }
-
-export function LogoCredit() {
-  if (!useLogoToken()) return null;
-  return (
-    <p className="text-[10.5px] tracking-[0.1em] text-text-tertiary">
-      <a href="https://logo.dev" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-text-primary">
-        Logos provided by Logo.dev
-      </a>
-    </p>
-  );
-}

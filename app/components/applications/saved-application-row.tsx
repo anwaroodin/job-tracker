@@ -101,14 +101,12 @@ export function SavedApplicationRowItem({
               {job.company}
             </span>
           </div>
-          {job.location && (
-            <p
-              title={job.location}
-              className="mt-0.5 truncate text-[10.5px] text-text-tertiary group-hover:!text-text-inverse/60 hidden sm:block"
-            >
-              {job.location}
-            </p>
-          )}
+          <p
+            title={job.location || undefined}
+            className="mt-0.5 hidden truncate pl-7 text-[10.5px] text-text-tertiary group-hover:!text-text-inverse/60 sm:block"
+          >
+            {job.location || "—"}
+          </p>
         </div>
 
         {/* Role Column */}

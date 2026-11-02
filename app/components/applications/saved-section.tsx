@@ -4,11 +4,20 @@ import { Section } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import type { SavedJobData } from "~/types/application";
 
-export function SavedSection({ saved, isArrival }: { saved: SavedJobData[]; isArrival: (id: string) => boolean }) {
+export function SavedSection({
+  n = "02",
+  saved,
+  isArrival,
+}: {
+  n?: string;
+  saved: SavedJobData[];
+  isArrival: (id: string) => boolean;
+}) {
   const savedCount = saved.length;
   return (
     <Section
-      n="02"
+      n={n}
+      id="saved"
       title="Saved jobs"
       hint={savedCount > 0 ? `${savedCount} to apply` : undefined}
       i={1}
@@ -16,7 +25,7 @@ export function SavedSection({ saved, isArrival }: { saved: SavedJobData[]; isAr
       {savedCount === 0 ? (
         <div className="border border-dashed border-stroke-secondary px-4 py-8 text-center text-text-tertiary">
           <p className="text-[12px] font-mono">No saved jobs pending.</p>
-          <p className="mt-1 font-sans text-[12px] text-text-tertiary/80 normal-case">
+          <p className="mt-1 font-sans text-[12px] text-text-tertiary normal-case">
             Bookmark job postings using the Chrome extension or star them to follow up later.
           </p>
         </div>

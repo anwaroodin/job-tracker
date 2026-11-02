@@ -14,6 +14,7 @@ interface ApplicationsHeaderProps {
   offersCount: number;
   closedCount: number;
   gmail: GmailStatus;
+  stats?: boolean;
 }
 
 export function ApplicationsHeader({
@@ -22,6 +23,7 @@ export function ApplicationsHeader({
   offersCount,
   closedCount,
   gmail,
+  stats = true,
 }: ApplicationsHeaderProps) {
   const status = useGmailStatus(gmail);
   const fetcher = useFetcher<{ sync?: SyncResult }>();
@@ -39,6 +41,26 @@ export function ApplicationsHeader({
         : ago
           ? `Synced ${ago}${counts}`
           : "Gmail not synced yet";
+
+  const heartbeat = (
+    <div className="flex items-center gap-2 text-[10.5px] tracking-[0.06em] text-text-tertiary">
+      <span
+        className={cn(
+          "size-1.5 rounded-full shrink-0",
+          syncing
+            ? "bg-accent-primary animate-ping"
+            : error
+              ? "bg-red-primary"
+              : status.connected
+                ? "bg-green-primary/80"
+                : "bg-text-tertiary",
+        )}
+      />
+      <span className={cn("truncate", error ? "text-red-primary normal-case" : "text-text-tertiary")}>
+        {syncLabel}
+      </span>
+    </div>
+  );
 
   return (
     <header className="rise flex flex-col gap-4" style={stagger(0)}>
@@ -85,61 +107,47 @@ export function ApplicationsHeader({
       </div>
 
       {/* Ticker bar: Telemetry metrics + docked live sync heartbeat */}
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-y border-dashed border-white/15 py-2.5 text-[11px] tracking-[0.06em]">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-text-tertiary">ACTIVE</span>
-            <span className="font-semibold text-text-primary tabular-nums">{two(activeCount)}</span>
+      {stats && (
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-y border-dashed border-white/15 py-2.5 text-[11px] tracking-[0.06em]">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-text-tertiary">ACTIVE</span>
+              <span className="font-semibold text-text-primary tabular-nums">{two(activeCount)}</span>
+            </div>
+
+            <span className="text-white/15">|</span>
+
+            <div className="flex items-center gap-2">
+              <span className="text-text-tertiary">OFFERS</span>
+              <span
+                className={cn(
+                  "font-semibold tabular-nums",
+                  offersCount > 0 ? "text-green-primary" : "text-text-primary",
+                )}
+              >
+                {two(offersCount)}
+              </span>
+            </div>
+
+            <span className="text-white/15">|</span>
+
+            <div className="flex items-center gap-2">
+              <span className="text-text-tertiary">CLOSED</span>
+              <span className="font-semibold text-text-secondary tabular-nums">{two(closedCount)}</span>
+            </div>
+
+            <span className="text-white/15">|</span>
+
+            <div className="flex items-center gap-2">
+              <span className="text-text-tertiary">TOTAL</span>
+              <span className="font-semibold text-text-primary tabular-nums">{two(total)}</span>
+            </div>
           </div>
 
-          <span className="text-white/15">|</span>
-
-          <div className="flex items-center gap-2">
-            <span className="text-text-tertiary">OFFERS</span>
-            <span
-              className={cn(
-                "font-semibold tabular-nums",
-                offersCount > 0 ? "text-green-primary" : "text-text-primary",
-              )}
-            >
-              {two(offersCount)}
-            </span>
-          </div>
-
-          <span className="text-white/15">|</span>
-
-          <div className="flex items-center gap-2">
-            <span className="text-text-tertiary">CLOSED</span>
-            <span className="font-semibold text-text-secondary tabular-nums">{two(closedCount)}</span>
-          </div>
-
-          <span className="text-white/15">|</span>
-
-          <div className="flex items-center gap-2">
-            <span className="text-text-tertiary">TOTAL</span>
-            <span className="font-semibold text-text-primary tabular-nums">{two(total)}</span>
-          </div>
+          {heartbeat}
         </div>
-
-        {/* Sync heartbeat docked on right side */}
-        <div className="flex items-center gap-2 text-[10.5px] tracking-[0.06em] text-text-tertiary">
-          <span
-            className={cn(
-              "size-1.5 rounded-full shrink-0",
-              syncing
-                ? "bg-accent-primary animate-ping"
-                : error
-                  ? "bg-red-primary"
-                  : status.connected
-                    ? "bg-green-primary/80"
-                    : "bg-text-tertiary",
-            )}
-          />
-          <span className={cn("truncate", error ? "text-red-primary normal-case" : "text-text-tertiary")}>
-            {syncLabel}
-          </span>
-        </div>
-      </div>
+      )}
+      {!stats && <div className="lg:hidden">{heartbeat}</div>}
     </header>
   );
 }
