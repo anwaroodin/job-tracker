@@ -18,7 +18,7 @@ import { extractPendingDetails, suggestUntrackedApplications } from "./enrich.se
 import { fetchNewMessages, searchWindowStart, withSentByUser } from "./fetch.server";
 import { changedCategories, finishRun, saveAndLoadForMatching } from "./persist.server";
 import { planLinksAndStatuses } from "./plan.server";
-import { AUTH_ERROR, AUTO_SYNC_EVERY_MS, isRecent, MIN_GAP_BETWEEN_RUNS_MS, type Plan, type Run } from "./run";
+import { AUTH_ERROR, AUTO_SYNC_EVERY_MS, isRecent, MIN_GAP_BETWEEN_RUNS_MS, STUCK_RUN_MS, type Plan, type Run } from "./run";
 
 const RETRY_ERROR = "Gmail sync failed. It will retry automatically.";
 
@@ -125,7 +125,9 @@ function statusActivity({ applicationId, from, to }: StatusChange): NewActivity 
 async function startRun(db: Db, env: Env, userId: string, trigger: SyncTrigger): Promise<Run | null> {
   const startedAt = new Date().toISOString();
   const [claimed, [gmailAccount], [firstApplication], [latestApplication], [settingsRow]] = await db.batch([
-    claimRun(db, userId, startedAt, MIN_GAP_BETWEEN_RUNS_MS, trigger === "manual" ? null : AUTO_SYNC_EVERY_MS),
+    trigger === "manual"
+      ? claimRun(db, userId, startedAt, STUCK_RUN_MS, null)
+      : claimRun(db, userId, startedAt, MIN_GAP_BETWEEN_RUNS_MS, AUTO_SYNC_EVERY_MS),
     gmailAccountFor(db, userId),
     earliestApplication(db, userId),
     latestApplicationUpdate(db, userId),
