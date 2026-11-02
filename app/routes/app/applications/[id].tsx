@@ -24,6 +24,7 @@ import { useArrivals } from "~/hooks/use-arrivals";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
+import { jsonField } from "~/server/form.server";
 import { createApplication, deleteApplication, savePrep, updateApplication } from "~/server/db/queries/applications.server";
 import { getCv, getStories } from "~/server/db/queries/profile.server";
 import { latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
@@ -129,7 +130,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     return redirect("/applications");
   }
   if (intent === "prep") {
-    await savePrep(db, user.id, params.id, JSON.stringify(cleanPrep(JSON.parse(String(form.get("result") ?? "{}")))));
+    await savePrep(db, user.id, params.id, JSON.stringify(cleanPrep(jsonField(form, "result", "{}"))));
     return { ok: true };
   }
   if (intent === "followed-up") {

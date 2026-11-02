@@ -16,6 +16,7 @@ import { applyEdits } from "~/server/cv/tailored";
 import { atsScore } from "~/server/cv/tailoring/keywords";
 import { evidenceText, impliedTerms, scoreBefore } from "~/server/cv/tailoring/questions";
 import { getDb } from "~/server/db/client.server";
+import { jsonField } from "~/server/form.server";
 import { getCv, getCvTemplate, getProfile } from "~/server/db/queries/profile.server";
 import { deleteRoleCv, getRoleCv, saveRoleCv } from "~/server/db/queries/role-cv.server";
 import type { AtsScore } from "~/types/cv";
@@ -44,7 +45,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     throw redirect("/cv");
   }
   if (form.get("intent") !== "edit" || !role.cv) throw data("Unknown action", { status: 400 });
-  const edited = applyEdits(role.cv, JSON.parse(String(form.get("cv") ?? "{}")));
+  const edited = applyEdits(role.cv, jsonField(form, "cv", "{}"));
   if (role.keywords && edited.score) edited.score = { ...edited.score, after: atsScore(edited, role.keywords, evidenceText(cvContent(cv), cv.confirmed), impliedTerms(cv.confirmed)) };
   await saveRoleCv(db, user.id, role.id, role.version + 1, edited);
   return { ok: true };
@@ -77,7 +78,7 @@ export default function RoleCvPage({ loaderData }: Route.ComponentProps) {
         </Form>
       </header>
 
-      <Section n="01" title="Tailor" hint={role.cv ? `Version ${role.version} · ${fmtDate(role.updatedAt)}` : "No job description: tailored to what the job title usually asks for."} i={1}>
+      <Section n="01" title="Tailor" hint={role.cv ? `Version ${role.version} · ${fmtDate(role.updatedAt)}` : undefined} description={role.cv ? undefined : "No job description: tailored to what the job title usually asks for."} i={1}>
         {hasCv ? (
           <TailorPanel target={{ roleId: role.id }} company={role.title} role="Job title only" research={null} hasResearch={false} retailor={!!role.cv} />
         ) : (
