@@ -133,3 +133,16 @@ export function saveCvTemplate(db: Db, userId: string, template: string | null) 
     .values({ userId, ...set })
     .onConflictDoUpdate({ target: profile.userId, set });
 }
+
+export async function getStories(db: Db, userId: string) {
+  const [row] = await db.select({ json: profile.storiesJson }).from(profile).where(eq(profile.userId, userId)).limit(1);
+  return row?.json ?? null;
+}
+
+export function saveStories(db: Db, userId: string, json: string) {
+  const set = { storiesJson: json, updatedAt: nowIso() };
+  return db
+    .insert(profile)
+    .values({ userId, ...set })
+    .onConflictDoUpdate({ target: profile.userId, set });
+}

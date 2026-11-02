@@ -113,6 +113,33 @@ export interface PlanUsage {
   sevenDay: number | null;
 }
 
+export interface Star {
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+}
+
+export interface StarStory {
+  id: string;
+  title: string;
+  text: string;
+}
+
+export interface InterviewQuestion {
+  question: string;
+  why: string;
+  story: string;
+  answer: Star;
+}
+
+export interface InterviewPrep {
+  questions: InterviewQuestion[];
+  askThem: string[];
+  brushUp: string[];
+  preparedAt: string;
+}
+
 export interface CompanyResearch {
   summary: string;
   values: string[];

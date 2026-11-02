@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useFetcher, useLocation, useRevalidator } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Switch } from "~/components/ui/switch";
-import { planUsage, runnerAvailable, runOnRunner } from "~/lib/runner";
+import { planUsage, runOnRunner } from "~/lib/runner";
+import { RunnerOffline, useRunnerStatus } from "./runner";
 import { recordRunCost, runCosts$ } from "~/lib/state/run-costs";
 import { answerSession, isActive, sessionId, startSession, tailoring$, type TailorTarget } from "~/lib/state/tailoring";
 import type { TailorRequest } from "~/types/cv";
@@ -71,7 +72,7 @@ export function TailorPanel({
   const fetcher = useFetcher();
   const revalidator = useRevalidator();
   const { pathname } = useLocation();
-  const [runner, setRunner] = useState<"checking" | "ready" | "offline">("checking");
+  const runner = useRunnerStatus();
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [model, setModel] = useModel();
@@ -84,11 +85,8 @@ export function TailorPanel({
   const status = useRef(session?.status);
 
   useEffect(() => {
-    runnerAvailable().then((ok) => {
-      setRunner(ok ? "ready" : "offline");
-      if (ok) planUsage().then((now) => runCosts$.now.set(now));
-    });
-  }, []);
+    if (runner === "ready") planUsage().then((now) => runCosts$.now.set(now));
+  }, [runner]);
 
   useEffect(() => {
     if (session?.status === "done" && status.current !== "done") revalidator.revalidate();
@@ -153,11 +151,7 @@ export function TailorPanel({
       {questions && <JobQuestions questions={questions} onSubmit={(answers) => answerSession(id, answers)} />}
       <RunCost calibrations={costs.calibrations} model={model} now={costs.now} last={costs.last} />
       <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
-        {runner === "offline" && (
-          <>
-            Start the runner on this Mac with <code className="font-mono text-text-secondary">npm run runner</code>, then reload.
-          </>
-        )}
+        {runner === "offline" && <RunnerOffline />}
         {progress}
         {error && <span className="text-red-primary">{error}</span>}
       </p>

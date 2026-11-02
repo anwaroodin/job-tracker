@@ -42,6 +42,7 @@ export default [
     route("applications/:id/share", "routes/app/applications/share.ts"),
     route("cv", "routes/app/cv.tsx"),
     route("cv/roles/:id", "routes/app/role-cv.tsx"),
+    route("interviews", "routes/app/interviews.tsx"),
     route("profile", "routes/app/profile.tsx"),
     route("usage", "routes/app/usage.tsx"),
     route("settings", "routes/app/settings.tsx"),
