@@ -19,6 +19,7 @@ import { usePersisted } from "~/hooks/use-persisted";
 import { cn } from "~/lib/cn";
 import logo from "~/assets/job-tracker.png";
 import { NAV } from "./nav";
+import { SidebarLessons } from "~/components/onboarding/sidebar-lessons";
 
 interface SidebarProps {
   user: { name?: string | null; email: string; image?: string | null };
@@ -71,11 +72,12 @@ export function Sidebar({ user, gmail, unread }: SidebarProps) {
       >
         Workspace
       </p>
-      <nav className="flex flex-col gap-0.5">
+      <nav data-tour="nav" className="flex flex-col gap-0.5">
         {NAV.map(({ to, label }, idx) => (
           <Fragment key={to}>
             <NavLink
               to={to}
+              data-nav={to}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 cn(
@@ -116,6 +118,8 @@ export function Sidebar({ user, gmail, unread }: SidebarProps) {
           </Fragment>
         ))}
       </nav>
+
+      <SidebarLessons gmailConnected={gmail.connected} collapsed={collapsed} />
 
       <div className="mt-auto">
         <SyncStatus initial={gmail} collapsed={collapsed} />
@@ -194,6 +198,7 @@ function SubNav({ views }: { views: NonNullable<ReturnType<typeof useApplication
               replace={views.onListPage}
               preventScrollReset
               aria-current={on ? "page" : undefined}
+              data-tour={tab.key}
               className={cn(
                 "flex items-center justify-between py-[5px] pl-[34px] pr-2.5 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors duration-150",
                 on ? "bg-fill-tertiary text-text-primary" : "text-text-secondary hover:bg-fill-tertiary hover:text-text-primary",

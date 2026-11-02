@@ -40,6 +40,8 @@
   --paper-text: #16171a;
   --paper-muted: #5c5e66;
 
+  --scrim: rgba(6, 6, 8, 0.78);
+
   --bottom-nav: calc(3.5rem + env(safe-area-inset-bottom));
 }
 
@@ -74,6 +76,7 @@
   --color-paper-muted: var(--paper-muted);
   --color-stroke-primary: var(--stroke-primary);
   --color-stroke-secondary: var(--stroke-secondary);
+  --color-scrim: var(--scrim);
 
   /* Amber — links and "needs attention" only. */
   --color-accent-primary: #e8b33c;

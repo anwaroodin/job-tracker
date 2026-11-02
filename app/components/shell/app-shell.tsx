@@ -6,6 +6,7 @@ import { useLocation } from "react-router";
 import { CommandPalette } from "~/components/shell/command-palette";
 import { commandPalette$ } from "~/lib/state/command-palette";
 import type { GmailStatus } from "~/types/gmail";
+import { Tour } from "~/components/onboarding/tour";
 import { ActivityBell } from "./activity-feed";
 import { ActivityToasts } from "./activity-feed/toasts";
 import { BottomNav } from "./bottom-nav";
@@ -37,6 +38,7 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
       <ActivityToasts initial={gmail} />
       <CommandPalette />
       <TailoringTray />
+      <Tour />
     </MotionConfig>
   );
 }
@@ -73,6 +75,7 @@ function PathBar({ gmail }: { gmail: GmailStatus }) {
           <button
             type="button"
             onClick={() => commandPalette$.open.set(true)}
+            data-tour="search"
             className="hidden sm:inline-flex items-center gap-2 border border-stroke-secondary bg-fill-secondary px-2.5 py-1 font-mono text-[11px] text-text-tertiary transition-colors hover:border-stroke-primary hover:text-text-primary cursor-pointer"
             title={`Search (${shortcut})`}
           >

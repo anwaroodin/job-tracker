@@ -34,6 +34,7 @@ export default [
   
   // Authenticated app shell
   layout("routes/app/layout.tsx", [
+    route("welcome", "routes/app/welcome.tsx"),
     route("overview", "routes/app/overview.tsx"),
     route("applications", "routes/app/applications/index.tsx"),
     route("applications/classic", "routes/app/applications/classic.tsx"),

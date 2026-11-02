@@ -110,7 +110,7 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
           {saved && <span className="text-green-primary">Saved</span>}
           {editing && save}
           {editing || styling ? (
-            <Button type="button" variant="ghost" size="medium" className="uppercase" onClick={() => setMode(null)}>
+            <Button type="button" variant="ghost" size="medium" className="uppercase" onClick={() => setMode(null)} data-tour="done-cv">
               Done
             </Button>
           ) : (
@@ -118,7 +118,7 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
               <Button type="button" variant="ghost" size="medium" className="uppercase" onClick={() => setMode("template")}>
                 Edit template
               </Button>
-              <Button type="button" size="medium" className="uppercase" onClick={() => setMode("edit")}>
+              <Button type="button" size="medium" className="uppercase" onClick={() => setMode("edit")} data-tour="edit-cv">
                 Edit CV
               </Button>
             </>
@@ -128,16 +128,16 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
 
       {!editing && !styling && (
         <>
-          <Section n="01" title="CV" description="What every tailored CV is rewritten from." i={1}>
+          <Section n="01" id="master-cv" title="CV" description="What every tailored CV is rewritten from." i={1}>
             <div className="flex flex-wrap items-start gap-6">
               <TypstPreview template={template} cv={data} width={380} />
               <PdfButton template={template} cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
             </div>
           </Section>
-          <Section n="02" title="Tailored CVs" description="The latest for each job, by job title." i={2}>
+          <Section n="02" id="tailored" title="Tailored CVs" description="The latest for each job, by job title." i={2}>
             <TailoredCvGrid person={loaderData.person} template={template} cards={loaderData.tailored} />
           </Section>
-          <Section n="03" title="Tailor to a role" description="No job description needed: just the job title." i={3}>
+          <Section n="03" id="roles" title="Tailor to a role" description="No job description needed: just the job title." i={3}>
             <RoleCvs roles={loaderData.roles} />
           </Section>
         </>

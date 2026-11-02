@@ -12,6 +12,7 @@ export const userSettings = sqliteTable("user_settings", {
   suggestApplications: integer("suggest_applications", { mode: "boolean" }).notNull().default(true),
   monthlyBudget: real("monthly_budget"),
   autoSync: integer("auto_sync", { mode: "boolean" }).notNull().default(true),
+  onboardedAt: text("onboarded_at"),
   updatedAt: text("updated_at"),
 });
 
