@@ -10,7 +10,15 @@ export interface UpNextItem {
   replyNeeded: number;
 }
 
+export interface FollowUpItem {
+  applicationId: string;
+  company: string;
+  role: string;
+  quietDays: number;
+}
+
 export interface UpNext {
   replies: UpNextItem[];
   upcoming: UpNextItem[];
+  followUps: FollowUpItem[];
 }

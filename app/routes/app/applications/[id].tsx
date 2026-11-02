@@ -17,7 +17,7 @@ import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { parseContacts } from "~/lib/contacts";
 import { isEmailCategory } from "~/lib/email";
-import { gmailThreadUrl } from "~/lib/gmail";
+import { gmailComposeUrl, gmailThreadUrl } from "~/lib/gmail";
 import { hostOf } from "~/lib/format/url";
 import { useArrivals } from "~/hooks/use-arrivals";
 import { userContext } from "~/server/auth/session.server";
@@ -39,6 +39,8 @@ import { EmailItem } from "~/components/application-detail/email-item";
 import { UnlinkedEmails } from "~/components/application-detail/unlinked-emails";
 import { useNewOnArrival } from "~/components/application-detail/use-new-on-arrival";
 import { Progress } from "~/components/application-detail/progress";
+import { FollowUp } from "~/components/application-detail/follow-up";
+import { followUpDraft, followUpRecipient, quietDays } from "~/server/services/follow-up/rules";
 
 const MAX_FIELD_LENGTH = 200;
 
@@ -59,7 +61,20 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     .filter((a) => a.id !== row.id && a.status !== "saved")
     .map(({ id, company, role, appliedAt }) => ({ id, company, role, appliedAt }));
   const share = { applicationId: row.id, link: shareLink, hasTailoredCv: tailored.has(row.id) };
-  return { row, emails, otherApplications, accountEmail: user.email, share };
+  return { row, emails, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user) };
+}
+
+function followUpFor(
+  row: Parameters<typeof quietDays>[0] & Parameters<typeof followUpDraft>[0],
+  emails: { fromAddress: string | null; receivedAt: string | null; dismissedAt: string | null }[],
+  user: { name?: string | null; email: string },
+) {
+  const linked = emails.flatMap((e) => (!e.dismissedAt && e.receivedAt ? [{ fromAddress: e.fromAddress ?? "", receivedAt: e.receivedAt }] : []));
+  const lastEmailAt = linked.map((e) => e.receivedAt).sort().at(-1) ?? null;
+  const days = quietDays(row, lastEmailAt, new Date());
+  if (days === null) return null;
+  const draft = { to: followUpRecipient(linked), ...followUpDraft(row, user.name ?? "") };
+  return { quietDays: days, composeUrl: gmailComposeUrl(user.email, draft) };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -93,6 +108,10 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (intent === "delete") {
     if (!(await deleteApplication(db, user.id, params.id))) throw data("Not found", { status: 404 });
     return redirect("/applications");
+  }
+  if (intent === "followed-up") {
+    await updateApplication(db, user.id, params.id, { followedUpAt: new Date().toISOString() });
+    return { ok: true };
   }
   if (intent === "status") {
     if (!(await setStatusByHand(db, user.id, params.id, String(form.get("status") ?? "")))) throw data("Unknown status", { status: 400 });
@@ -184,20 +203,21 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="flex items-center gap-4 text-[11px] tracking-[0.1em]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] tracking-[0.1em]">
             <StatusPicker status={row.status} />
             <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
             {!loaderData.emails.some((e) => !e.dismissedAt) && <BackToSaved />}
             <EditDetails job={row} />
             <ShareLink {...loaderData.share} />
             <DeleteApplication company={row.company} role={row.role} />
-          </p>
+          </div>
           <GmailSync status={gmail} />
         </div>
       </header>
 
       <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-start">
         <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
+          {loaderData.followUp && <FollowUp {...loaderData.followUp} />}
           <Progress status={row.status} reached={reached} />
 
           <Section

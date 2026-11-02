@@ -38,6 +38,7 @@ export const application = sqliteTable(
       .notNull()
       .default(true),
     manualStatusAt: text("manual_status_at"),
+    followedUpAt: text("followed_up_at"),
     appliedAt: text("applied_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },

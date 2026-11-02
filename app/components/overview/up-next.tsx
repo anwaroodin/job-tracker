@@ -8,10 +8,11 @@ import { Section } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 
 export function UpNextSection({ n, next }: { n: string; next: UpNext }) {
-  const total = next.replies.length + next.upcoming.length;
+  const total = next.replies.length + next.upcoming.length + next.followUps.length;
   const isArrival = useArrivals([
     ...next.replies.map((r) => `reply-${r.emailId}`),
     ...next.upcoming.map((r) => `event-${r.emailId}`),
+    ...next.followUps.map((r) => `follow-up-${r.applicationId}`),
   ]);
   return (
     <Section n={n} title="Up next" hint={`${total} ${total === 1 ? "thing" : "things"}`} i={1}>
@@ -36,6 +37,17 @@ export function UpNextSection({ n, next }: { n: string; next: UpNext }) {
             company={r.company}
             detail={r.role}
             note={eventLabel(r.category)}
+          />
+        ))}
+        {next.followUps.map((r) => (
+          <UpNextRow
+            key={`follow-up-${r.applicationId}`}
+            arrived={isArrival(`follow-up-${r.applicationId}`)}
+            to={`/applications/${r.applicationId}#follow-up`}
+            when={`No reply in ${r.quietDays}d`}
+            company={r.company}
+            detail={r.role}
+            note="Follow up"
           />
         ))}
       </ul>
