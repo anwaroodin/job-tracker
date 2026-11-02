@@ -18,6 +18,7 @@ import { cleanCv } from "~/server/cv/clean";
 import { importCv, MAX_PDF_BYTES, pdfText } from "~/server/cv/import.server";
 import { MAX_TITLE_CHARS } from "~/server/cv/tailoring/role";
 import { getDb } from "~/server/db/client.server";
+import { jsonField } from "~/server/form.server";
 import { getCv, getCvTemplate, getProfile, saveCv, saveCvTemplate } from "~/server/db/queries/profile.server";
 import { createRoleCv, listRoleCvs } from "~/server/db/queries/role-cv.server";
 import { tailoredCvCards } from "~/server/db/queries/tailored-cv.server";
@@ -62,7 +63,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     await saveCvTemplate(db, user.id, template.trim() ? template : null);
     return { ok: true };
   }
-  await saveCv(db, user.id, cleanCv(JSON.parse(String(form.get("cv") ?? "{}"))));
+  await saveCv(db, user.id, cleanCv(jsonField(form, "cv", "{}")));
   return { ok: true };
 }
 

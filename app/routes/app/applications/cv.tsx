@@ -22,6 +22,7 @@ import { storedJobKeywords } from "~/server/cv/tailoring/cache";
 import { atsScore } from "~/server/cv/tailoring/keywords";
 import { evidenceText, impliedTerms, scoreBefore } from "~/server/cv/tailoring/questions";
 import { getDb } from "~/server/db/client.server";
+import { jsonField } from "~/server/form.server";
 import { getApplication, saveResearch } from "~/server/db/queries/applications.server";
 import { getCv, getCvTemplate, getProfile } from "~/server/db/queries/profile.server";
 import { insertTailoredCv, latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
@@ -78,12 +79,12 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (!row) throw data("Not found", { status: 404 });
 
   if (intent === "research") {
-    await saveResearch(db, user.id, row.id, JSON.stringify(cleanResearch(JSON.parse(String(form.get("result") ?? "{}")))));
+    await saveResearch(db, user.id, row.id, JSON.stringify(cleanResearch(jsonField(form, "result", "{}"))));
     return { ok: true };
   }
 
   if (intent !== "edit" || !latest) throw data("Unknown action", { status: 400 });
-  const edited = applyEdits(latest.cv, JSON.parse(String(form.get("cv") ?? "{}")));
+  const edited = applyEdits(latest.cv, jsonField(form, "cv", "{}"));
   const keywords = await storedJobKeywords(row);
   if (keywords && edited.score) edited.score = { ...edited.score, after: atsScore(edited, keywords, evidenceText(cvContent(cv), cv.confirmed), impliedTerms(cv.confirmed)) };
   await insertTailoredCv(db, user.id, row.id, latest.version + 1, edited);
