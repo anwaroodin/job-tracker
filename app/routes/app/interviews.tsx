@@ -11,6 +11,7 @@ import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { cleanStories, draftStoriesRequest, storedStories } from "~/server/cv/prep";
 import { getDb } from "~/server/db/client.server";
+import { jsonField } from "~/server/form.server";
 import { getCv, getStories, saveStories } from "~/server/db/queries/profile.server";
 import { applicationsFor } from "~/server/db/queries/status.server";
 import type { StarStory } from "~/types/cv";
@@ -30,7 +31,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const user = context.get(userContext);
   const db = getDb(context.get(envContext).DB);
   const form = await request.formData();
-  const stories = cleanStories(JSON.parse(String(form.get("stories") ?? "[]")));
+  const stories = cleanStories(jsonField(form, "stories", "[]"));
   await saveStories(db, user.id, JSON.stringify(stories));
   return { ok: true };
 }
