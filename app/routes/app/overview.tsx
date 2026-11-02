@@ -12,7 +12,7 @@ import {
   ColumnChart,
   Leader,
   Section,
-  STATUS_COLORS,
+  statusColor,
   fmtDate,
   pct,
   stagger,
@@ -138,7 +138,7 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
                 label={s.status}
                 value={s.count}
                 share={(s.count / statusMax) * 100}
-                color={STATUS_COLORS[s.status] ?? "#6e6f76"}
+                color={statusColor(s.status)}
                 note={`${pct(s.count, t.total)}%`}
                 cells={34}
               />
@@ -167,7 +167,7 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
                 {/* inline-flex: Bar is a block, and would otherwise push the count onto its own line. */}
                 <span className="inline-flex items-baseline gap-3">
                   <span className="hidden text-text-tertiary sm:inline">
-                    <Bar share={(c.count / companyMax) * 100} color="#6e6f76" cells={10} />
+                    <Bar share={(c.count / companyMax) * 100} color="var(--color-text-tertiary)" cells={10} />
                   </span>
                   {two(c.count)}
                 </span>

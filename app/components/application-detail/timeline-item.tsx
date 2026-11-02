@@ -2,7 +2,7 @@ import { Reply } from "lucide-react";
 import { motion } from "motion/react";
 import { type ReactNode } from "react";
 import { NewBadge } from "~/components/ui/new-badge";
-import { STATUS_COLORS, fmtDate } from "~/components/ui/terminal";
+import { statusColor, fmtDate } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 
 export function TimelineItem({
@@ -38,7 +38,7 @@ export function TimelineItem({
   actions?: ReactNode;
   footer?: ReactNode;
 }) {
-  const color = STATUS_COLORS[category] ?? "#6e6f76";
+  const color = statusColor(category);
   const body = (
     <>
       <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[11px] tracking-[0.08em]">

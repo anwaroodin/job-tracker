@@ -10,10 +10,11 @@ export const STATUS_COLORS: Record<string, string> = {
   offer: "#58b68a",
   accepted: "#8fd0ae",
   rejected: "#d1707a",
-  ghosted: "#6e6f76",
+  ghosted: "#86878e",
   withdrawn: "#4a4c53",
 };
-export const CV_COLORS = ["#ececec", "#6e6f76", "#4a4c53"];
+export const statusColor = (status: string) => STATUS_COLORS[status] ?? "var(--color-text-tertiary)";
+export const CV_COLORS = ["#ececec", "#86878e", "#4a4c53"];
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 export const two = (n: number) => String(n).padStart(2, "0");
@@ -29,6 +30,7 @@ export function Section({
   n,
   title,
   hint,
+  description,
   i,
   id,
   className,
@@ -37,6 +39,7 @@ export function Section({
   n: string;
   title: string;
   hint?: React.ReactNode;
+  description?: string;
   i: number;
   /** Anchor id for jump-to-section nav — gets scroll-margin so the sticky path bar doesn't cover it. */
   id?: string;
@@ -45,12 +48,15 @@ export function Section({
 }) {
   return (
     <section id={id} className={cn("rise scroll-mt-16 border-t border-dashed border-white/15 pt-5", className)} style={stagger(i)}>
-      <header className="mb-4 flex items-baseline justify-between gap-4 text-[11px] tracking-[0.12em]">
+      <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-[11px] tracking-[0.12em]">
         <h2>
           <b className="mr-2 font-semibold text-text-primary">[{n}]</b>
           <span className="text-text-secondary">{title}</span>
         </h2>
         {hint && <span className="text-text-tertiary">{hint}</span>}
+        {description && (
+          <p className="font-sans sm:text-right text-[12.5px] normal-case tracking-normal text-text-tertiary">{description}</p>
+        )}
       </header>
       <div className="flex flex-col">{children}</div>
     </section>
@@ -63,7 +69,7 @@ export function Leader({ label, children }: { label: string; children: React.Rea
     <div className="flex items-baseline gap-2.5 py-[7px]">
       <span className="shrink-0 text-text-secondary">{label}</span>
       <span className="min-w-3 flex-1 -translate-y-[3px] border-b border-dotted border-white/25" />
-      <span className="text-right text-text-primary">{children}</span>
+      <span className="min-w-0 text-right text-text-primary [overflow-wrap:anywhere]">{children}</span>
     </div>
   );
 }

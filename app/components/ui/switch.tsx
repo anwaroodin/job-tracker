@@ -28,7 +28,7 @@ export function Switch({
           )}
         />
       </button>
-      {label && <span className="text-[13px] text-text-primary">{label}</span>}
+      {label && <span className="font-sans text-[13px] normal-case tracking-normal text-text-primary">{label}</span>}
     </label>
   );
 }

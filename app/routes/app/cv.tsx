@@ -128,23 +128,23 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
 
       {!editing && !styling && (
         <>
-          <Section n="01" title="CV" hint="What every tailored CV is rewritten from." i={1}>
+          <Section n="01" title="CV" description="What every tailored CV is rewritten from." i={1}>
             <div className="flex flex-wrap items-start gap-6">
               <TypstPreview template={template} cv={data} width={380} />
               <PdfButton template={template} cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
             </div>
           </Section>
-          <Section n="02" title="Tailored CVs" hint="The latest for each job, by job title." i={2}>
+          <Section n="02" title="Tailored CVs" description="The latest for each job, by job title." i={2}>
             <TailoredCvGrid person={loaderData.person} template={template} cards={loaderData.tailored} />
           </Section>
-          <Section n="03" title="Tailor to a role" hint="No job description needed: just the job title." i={3}>
+          <Section n="03" title="Tailor to a role" description="No job description needed: just the job title." i={3}>
             <RoleCvs roles={loaderData.roles} />
           </Section>
         </>
       )}
 
       {styling && (
-        <Section n="01" title="Template" hint="Typst. Controls how every CV looks." i={1}>
+        <Section n="01" title="Template" description="Typst. Controls how every CV looks." i={1}>
           <TemplateEditor saved={loaderData.template} cv={data} />
         </Section>
       )}

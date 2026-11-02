@@ -17,7 +17,7 @@ export function PersonalSection({
       n={n}
       id="personal"
       title="Personal information"
-      hint="Your name and how employers reach you."
+      description="Your name and how employers reach you."
       i={1}
     >
       <FieldGrid cols={2}>

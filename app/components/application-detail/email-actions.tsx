@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { STATUS_COLORS } from "~/components/ui/terminal";
+import { statusColor } from "~/components/ui/terminal";
 import { EMAIL_CATEGORIES } from "~/lib/email";
 import { MoveEmailDialog, type MoveTarget } from "~/components/application-detail/move-email-dialog";
 
@@ -79,7 +79,7 @@ export function EmailActions({
                   <span
                     aria-hidden
                     className="size-[7px] shrink-0"
-                    style={{ background: STATUS_COLORS[category] ?? "#6e6f76" }}
+                    style={{ background: statusColor(category) }}
                   />
                   {category}
                   {category === current && <Check className="ml-auto" />}

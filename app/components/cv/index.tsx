@@ -10,19 +10,19 @@ import { SkillGroupList } from "./skills";
 const MAX_SUMMARIES = 3;
 
 export const CV_SECTIONS = [
-  { n: "02", id: "import", title: "Import", hint: "Fill this page from a CV you already have." },
-  { n: "03", id: "summaries", title: "Summaries", hint: "Up to three versions, plus the roles you're after." },
-  { n: "04", id: "experience", title: "Experience", hint: "Newest first." },
+  { n: "02", id: "import", title: "Import", description: "Fill this page from a CV you already have." },
+  { n: "03", id: "summaries", title: "Summaries", description: "Up to three versions, plus the roles you're after." },
+  { n: "04", id: "experience", title: "Experience", description: "Newest first." },
   { n: "05", id: "education", title: "Education" },
   { n: "06", id: "projects", title: "Projects" },
-  { n: "07", id: "skills", title: "Skills", hint: "Grouped as on your CV, plus certifications." },
-  { n: "08", id: "answers", title: "Answers", hint: "What you told tailoring you have, or don't, beyond this CV." },
+  { n: "07", id: "skills", title: "Skills", description: "Grouped as on your CV, plus certifications." },
+  { n: "08", id: "answers", title: "Answers", description: "What you told tailoring you have, or don't, beyond this CV." },
 ] as const;
 
 function CvPart({ id, i, children }: { id: (typeof CV_SECTIONS)[number]["id"]; i: number; children: React.ReactNode }) {
   const section = CV_SECTIONS.find((s) => s.id === id)!;
   return (
-    <Section n={section.n} id={section.id} title={section.title} hint={"hint" in section ? section.hint : undefined} i={i}>
+    <Section n={section.n} id={section.id} title={section.title} description={"description" in section ? section.description : undefined} i={i}>
       <div className="flex flex-col gap-4">{children}</div>
     </Section>
   );

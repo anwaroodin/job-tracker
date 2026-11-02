@@ -47,7 +47,7 @@ export function CvImport({ onImported }: { onImported: (cv: Cv) => void }) {
         <Button type="button" variant="ghost" size="small" className="uppercase" disabled={busy} onClick={() => setPasting((p) => !p)}>
           Paste text
         </Button>
-        <span className="text-[11px] tracking-[0.08em] text-text-tertiary">
+        <span className="font-sans text-[12.5px] normal-case tracking-normal text-text-tertiary">
           {busy ? "Reading your CV…" : "Fills the fields below from your existing CV, in your own words."}
         </span>
       </div>

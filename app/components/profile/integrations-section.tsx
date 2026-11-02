@@ -8,7 +8,7 @@ export function IntegrationsSection({ n, gmail }: { n: string; gmail: GmailStatu
       n={n}
       id="integrations"
       title="Integrations"
-      hint="Third-party services connected to your account."
+      description="Third-party services connected to your account."
       i={5}
     >
       <div className="flex items-center justify-between gap-4 border border-stroke-secondary bg-bg-secondary px-4 py-3">

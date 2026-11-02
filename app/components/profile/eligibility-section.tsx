@@ -18,7 +18,7 @@ export function EligibilitySection({
       n={n}
       id="eligibility"
       title="Work eligibility"
-      hint="Right to work, sponsorship, availability and pay."
+      description="Right to work, sponsorship, availability and pay."
       i={4}
     >
       <div className="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
