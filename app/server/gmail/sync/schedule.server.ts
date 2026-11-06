@@ -3,7 +3,6 @@ import type { GmailStatus, SyncStage } from "~/types/gmail";
 import { getDb, type Db } from "../../db/client.server";
 import { unseenActivityCount } from "../../db/queries/activity.server";
 import { gmailStatusRow, usersWithAutoSync } from "../../db/queries/gmail-sync.server";
-import { syncGmail } from "./index.server";
 import { AUTH_ERROR, AUTO_SYNC_EVERY_MS, MIN_GAP_BETWEEN_RUNS_MS, STUCK_RUN_MS } from "./run";
 
 const DEFAULT_SYNC_HOURS = "7-23";
@@ -54,7 +53,7 @@ export function syncGmailInBackground(env: Env, ctx: ExecutionContext, userId: s
   const sinceLastRun = status.lastRunAt ? Date.now() - Date.parse(status.lastRunAt) : Infinity;
   const interval = status.hasMore ? MIN_GAP_BETWEEN_RUNS_MS : AUTO_SYNC_EVERY_MS;
   if (sinceLastRun < interval) return false;
-  ctx.waitUntil(syncGmail(env, userId, "auto"));
+  ctx.waitUntil(env.GMAIL_SYNC_QUEUE.send({ userId }));
   return true;
 }
 
