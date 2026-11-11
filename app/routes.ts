@@ -26,6 +26,7 @@ export default [
   
   route("s/:token", "routes/share/index.tsx"),
   route("s/:token/cv.pdf", "routes/share/pdf.ts"),
+  route("extension/download", "routes/extension/download.ts"),
 
   ...prefix("auth", [
     route("login", "routes/auth/login.tsx"),
