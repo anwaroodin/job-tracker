@@ -10,7 +10,7 @@
 
   const JT = globalThis.__jobTracker;
   if (!JT || JT.autofill) return;
-  const { h, shadowHost, send } = JT.ui;
+  const { h, icon, shadowHost, send } = JT.ui;
 
   const isTop = window === window.top;
   /** Subframes are only filled when they hold a real form, not an ad or a newsletter box. */
@@ -59,9 +59,9 @@
             h("span", { class: "count" }, `${state.filled} field${state.filled === 1 ? "" : "s"}`),
             h("button", { type: "button", onclick: (event) => event.isTrusted && stop() }, "Stop"))
         : h("div", { class: "strip fill-bar", role: "status" },
-            h("span", { class: "title" }, h("span", { class: "dot" }), "job-tracker"),
+            h("span", { class: "title" }, h("span", { class: "dot" }), "j*b"),
             h("span", { class: "job" }, state.notice),
-            h("button", { type: "button", "aria-label": "Dismiss", onclick: () => notify("") }, "×")),
+            h("button", { type: "button", "aria-label": "Dismiss", onclick: () => notify("") }, icon("close"))),
     );
   }
 
