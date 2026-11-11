@@ -81,8 +81,21 @@ export const LESSONS = {
         body: "The Chrome extension adds a bar to job listings on LinkedIn, Indeed, Google Jobs and most careers sites. One click saves the job, tracks your application or fills in the form from your profile.",
       },
       {
+        path: "/profile",
+        target: "[data-tour=extension-setup]",
+        click: true,
+        title: "Find it on your profile",
+        body: "Integrations on your profile has the extension next to Gmail. Click Set up.",
+      },
+      {
+        target: "[data-tour=extension-download]",
+        title: "Download it",
+        body: "This page always has the latest build. Download the zip and unzip it into a folder you'll keep, since Chrome runs the extension from there.",
+      },
+      {
+        target: "#install",
         title: "Install it",
-        body: "Open chrome://extensions, turn on Developer mode, click Load unpacked and pick the extension folder. Then click its icon and enter this site's address. It uses the session you're signed in with here.",
+        body: "Open chrome://extensions, turn on Developer mode, click Load unpacked and pick the unzipped folder. It uses the session you're signed in with here, so there's nothing to set up.",
       },
       {
         path: "/applications",
