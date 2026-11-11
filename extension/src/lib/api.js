@@ -4,6 +4,7 @@
  * Each request throws NotConfiguredError while no dashboard is set.
  */
 import { requireDashboardOrigin } from "../config.js";
+import { promptUpdate } from "./update.js";
 
 /** Thrown on a 401 so callers can switch to the sign-in prompt. */
 export class AuthError extends Error {
@@ -19,6 +20,7 @@ async function request(path, init = {}) {
     credentials: "include",
     headers: { "content-type": "application/json", ...init.headers },
   });
+  promptUpdate(res).catch(() => {});
   if (res.status === 401) throw new AuthError();
   if (!res.ok) {
     // The API answers errors with { error: "<code>" }; surface it rather than a bare status.
