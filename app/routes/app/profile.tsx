@@ -21,13 +21,14 @@ import { EligibilitySection } from "~/components/profile/eligibility-section";
 import { IntegrationsSection } from "~/components/profile/integrations-section";
 import { SECTIONS } from "~/components/profile/sections";
 import { SANS_PAGE } from "~/components/ui/page-section";
+import { publishedExtension } from "~/server/extension/download.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const profile = await getProfile(db, user.id);
-  return { profile, user };
+  const [profile, extensionUpdatedAt] = await Promise.all([getProfile(db, user.id), publishedExtension(env.CVS)]);
+  return { profile, user, extensionUpdatedAt };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -129,7 +130,7 @@ export default function ProfilePage({
 
           <EligibilitySection value={elig} onChange={(patch) => setP("eligibility", patch)} />
 
-          <IntegrationsSection gmail={gmail} />
+          <IntegrationsSection gmail={gmail} extensionUpdatedAt={loaderData.extensionUpdatedAt} />
         </main>
       </div>
 
