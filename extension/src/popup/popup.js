@@ -3,7 +3,10 @@ import { AuthError, getProfile, getStats, getTailored, logApplication, lookupApp
 import { detectCategory } from "../lib/cv.js";
 import { extractJob, fillForm, getActiveTab, isScriptable } from "../lib/page.js";
 import { formValues } from "../lib/profile.js";
+import { applyTheme } from "../lib/theme.js";
 import { findTracked, forgetTracked, normaliseUrl, rememberTracked } from "../lib/tracked.js";
+
+applyTheme();
 
 const $ = (id) => document.getElementById(id);
 

@@ -124,8 +124,9 @@ extension/
     │   ├── cv.js            CV variant and category detection
     │   ├── page.js          Lets the popup inject the content library
     │   ├── profile.js       Profile → form values
+    │   ├── theme.js         Light / dark / system setting (light by default)
     │   └── tracked.js       Recently tracked applications
-    ├── options/             Options page: a development dashboard address
+    ├── options/             Options page: theme and a development dashboard address
     └── popup/
 ```
 

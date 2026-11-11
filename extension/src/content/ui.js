@@ -58,9 +58,11 @@
   const CSS = `
     :host { all: initial; }
 
-    /* Tokens (app/app.css), light-dark pairs following the system theme. \`all\` doesn't reset custom properties. */
+    /* Tokens (app/app.css) as light-dark pairs; the host's data-theme picks the scheme. \`all\` doesn't reset custom properties. */
+    :host([data-theme="dark"]) { color-scheme: dark; }
+    :host([data-theme="system"]) { color-scheme: light dark; }
     :host {
-      color-scheme: light dark;
+      color-scheme: light;
       --bg: light-dark(#fafaf8, #0c0c0e); --surface: light-dark(#ffffff, #212227);
       --text: light-dark(#16171a, #ececec); --text-2: light-dark(#3f4147, #a6a7ad); --text-3: light-dark(#5c5e64, #86878e);
       --inverse: light-dark(#fafaf8, #0c0c0e); --primary-hover: light-dark(#34363c, #ffffff);
@@ -220,6 +222,18 @@
 
   let sheet = null;
 
+  const THEMES = ["light", "dark", "system"];
+  const hosts = [];
+  let theme = "light";
+  const setTheme = (value) => {
+    theme = THEMES.includes(value) ? value : "light";
+    for (const host of hosts) host.dataset.theme = theme;
+  };
+  chrome.storage.sync.get("theme").then(({ theme: value }) => setTheme(value), () => {});
+  chrome.storage.sync.onChanged.addListener((changes) => {
+    if (changes.theme) setTheme(changes.theme.newValue);
+  });
+
   /**
    * Creates a host element with a closed shadow root using the shared sheet.
    * @returns {{ host: HTMLElement, root: HTMLElement }}
@@ -230,6 +244,8 @@
       sheet.replaceSync(CSS);
     }
     const host = document.createElement(tag);
+    host.dataset.theme = theme;
+    hosts.push(host);
     const shadow = host.attachShadow({ mode: "closed" });
     shadow.adoptedStyleSheets = [sheet];
     const root = document.createElement("div");

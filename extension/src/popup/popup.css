@@ -1,6 +1,8 @@
-/* Tokens mirror app/app.css (light-dark pairs), following the system theme. */
+/* Tokens mirror app/app.css (light-dark pairs). data-theme comes from lib/theme.js; light by default. */
+:root[data-theme="dark"] { color-scheme: dark; }
+:root[data-theme="system"] { color-scheme: light dark; }
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg-primary: light-dark(#fafaf8, #0c0c0e);
   --sidebar: light-dark(#f6f5f1, #131417);
   --sidebar-active: light-dark(#ffffff, #212227);
