@@ -8,8 +8,8 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="eyebrow !text-[10px]">{label}</span>
+    <label className="flex flex-col gap-1">
+      <span className="text-[12.5px] text-text-tertiary">{label}</span>
       {children}
     </label>
   );

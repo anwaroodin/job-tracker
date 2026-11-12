@@ -8,7 +8,8 @@ import { Switch } from "~/components/ui/switch";
 import { GmailConnectButton, gmailStatusText } from "~/components/gmail/gmail-connect";
 import { GmailSync } from "~/components/gmail/gmail-sync";
 import { SettingsNav } from "~/components/ui/settings-nav";
-import { Leader, Section, stagger } from "~/components/ui/terminal";
+import { PageSection, SANS_PAGE } from "~/components/ui/page-section";
+import { stagger, PageTitle } from "~/components/ui/terminal";
 import { parseSettings, type Settings } from "~/lib/settings";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
@@ -24,6 +25,7 @@ import { ReclassifyAll } from "~/components/settings/reclassify-all";
 import { SignOutButton } from "~/components/settings/sign-out-button";
 import { ClassificationSection } from "~/components/settings/classification-section";
 import { SharedLinks } from "~/components/settings/shared-links";
+import { ThemeSetting } from "~/components/settings/theme-setting";
 import { activeShareLinks } from "~/server/db/queries/share-links.server";
 import { tailoredApplicationIds } from "~/server/db/queries/tailored-cv.server";
 
@@ -73,11 +75,12 @@ function parseJson(value: FormDataEntryValue | null) {
 }
 
 const SECTIONS = [
-  { n: "02", id: "classification", title: "Email classification" },
-  { n: "03", id: "gmail", title: "Gmail" },
-  { n: "04", id: "data", title: "Data" },
-  { n: "05", id: "sharing", title: "Shared links" },
-  { n: "06", id: "account", title: "Account" },
+  { id: "classification", title: "Email classification" },
+  { id: "gmail", title: "Gmail" },
+  { id: "data", title: "Data" },
+  { id: "sharing", title: "Shared links" },
+  { id: "appearance", title: "Appearance" },
+  { id: "account", title: "Account" },
 ] as const;
 
 export default function SettingsPage({ loaderData }: Route.ComponentProps) {
@@ -101,20 +104,12 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
+    <div className={`flex flex-col gap-10 ${SANS_PAGE}`}>
       <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
-        <div>
-          <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <b className="mr-2 font-semibold text-text-primary">[07]</b>Settings
-          </p>
-          <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-            Settings
-            <span className="block text-text-tertiary">How job-tracker reads your inbox.</span>
-          </h1>
-        </div>
+        <PageTitle title="Settings" sub="How j*b reads your inbox, and your account." />
         <div className="flex items-center gap-4">
-          {saved && <span className="text-green-primary">Saved</span>}
-          {dirty && !saving && <span className="text-text-tertiary">Unsaved changes</span>}
+          {saved && <span className="text-[13.5px] text-green-primary">Saved</span>}
+          {dirty && !saving && <span className="text-[13.5px] text-text-tertiary">Unsaved changes</span>}
           <Button type="button" size="medium" disabled={saving || !dirty || budgetInvalid} onClick={save}>
             {saving ? "Saving…" : "Save changes"}
           </Button>
@@ -123,7 +118,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[220px_1fr]">
         <aside className="hidden lg:block">
-          <SettingsNav items={SECTIONS.map((s) => ({ n: s.n, href: `#${s.id}`, label: s.title }))} />
+          <SettingsNav items={SECTIONS.map((s) => ({ href: `#${s.id}`, label: s.title }))} />
         </aside>
 
         <main className="flex flex-col gap-12">
@@ -136,7 +131,7 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
             budgetInvalid={budgetInvalid}
           />
 
-          <Section n="03" id="gmail" title="Gmail" hint="where emails come from" i={2}>
+          <PageSection id="gmail" title="Gmail" description="Where your emails come from.">
             <div className="flex flex-col gap-7">
               <Setting label="Connection" description={gmailStatusText(gmail)}>
                 <GmailConnectButton
@@ -153,30 +148,36 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
               </Setting>
               {gmail.connected && <GmailSync status={gmail} />}
             </div>
-          </Section>
+          </PageSection>
 
-          <Section n="04" id="data" title="Data" hint="stored emails" i={3}>
+          <PageSection id="data" title="Data" description="The emails j*b has stored.">
             <ReclassifyAll
               emails={estimate.emails}
               cost={estimate.cost}
               usesJev={loaderData.jevAvailable && loaderData.settings.classifier === "jev"}
               connected={gmail.connected}
             />
-          </Section>
+          </PageSection>
 
-          <Section n="05" id="sharing" title="Shared links" hint={loaderData.shared.length ? `${loaderData.shared.length} on` : undefined} i={4}>
+          <PageSection id="sharing" title="Shared links" description="Applications you've shared with a link.">
             <SharedLinks links={loaderData.shared} />
-          </Section>
+          </PageSection>
 
-          <Section n="06" id="account" title="Account" i={5}>
-            <Leader label="Name">{user.name || "—"}</Leader>
-            <Leader label="Email">
-              <span className="normal-case">{user.email}</span>
-            </Leader>
+          <PageSection id="appearance" title="Appearance">
+            <ThemeSetting />
+          </PageSection>
+
+          <PageSection id="account" title="Account">
+            <dl className="grid grid-cols-[120px_minmax(0,1fr)] gap-y-2.5">
+              <dt className="text-text-tertiary">Name</dt>
+              <dd className="text-text-primary">{user.name || "—"}</dd>
+              <dt className="text-text-tertiary">Email</dt>
+              <dd className="truncate text-text-primary">{user.email}</dd>
+            </dl>
             <div className="mt-5">
               <SignOutButton />
             </div>
-          </Section>
+          </PageSection>
         </main>
       </div>
 

@@ -2,8 +2,8 @@ export function Setting({ label, description, children }: { label: string; descr
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-10">
       <div className="max-w-md">
-        <p className="text-text-primary">{label}</p>
-        <p className="mt-1 font-sans text-[12.5px] normal-case leading-relaxed tracking-normal text-text-secondary">
+        <p className="font-medium text-text-primary">{label}</p>
+        <p className="mt-0.5 text-[13px] leading-relaxed text-text-tertiary">
           {description}
         </p>
       </div>

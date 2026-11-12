@@ -43,7 +43,7 @@ export function ReclassifyAll({
         {result && (
           <span
             className={cn(
-              "max-w-56 text-[10.5px] tracking-[0.08em] sm:text-right",
+              "max-w-56 text-[13px] sm:text-right",
               result.error ? "text-red-primary" : result.busy ? "text-text-tertiary" : "text-green-primary",
             )}
           >
