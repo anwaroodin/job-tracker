@@ -64,7 +64,7 @@ export function FactChips({ facts, className }: { facts: Fact[]; className?: str
       {facts.map((fact) => (
         <li
           key={fact.key}
-          className={cn("border px-2 py-1 text-[10.5px] uppercase tracking-[0.04em]", TONES[fact.tone ?? "default"])}
+          className={cn("border px-2 py-1 text-[12.5px]", TONES[fact.tone ?? "default"])}
         >
           {fact.text}
         </li>

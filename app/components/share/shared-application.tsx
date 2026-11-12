@@ -4,7 +4,7 @@ import { FactChips } from "~/components/application-detail/fact-chips";
 import { Button } from "~/components/ui/button";
 import { RichText } from "~/components/ui/rich-text";
 import { Segmented } from "~/components/ui/segmented";
-import { Section, fmtDate, stagger } from "~/components/ui/terminal";
+import { PageTitle, Section, fmtDate, stagger } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { hostOf } from "~/lib/format/url";
 
@@ -32,10 +32,7 @@ export function SharedApplication({ job, expiresAt, pages, pdfHref }: { job: Sha
       <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
         <div className="min-w-0">
           <p className="text-[11px] tracking-[0.12em] text-text-tertiary">Shared until {fmtDate(expiresAt)}</p>
-          <h1 className="mt-4 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-            {job.company}
-            <span className="block text-text-tertiary">{job.role}</span>
-          </h1>
+          <PageTitle className="mt-4" title={job.company} sub={job.role} />
           <FactChips facts={facts} className="mt-4" />
         </div>
         {pages && (

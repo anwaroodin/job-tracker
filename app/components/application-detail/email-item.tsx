@@ -12,12 +12,14 @@ export function EmailItem({
   href,
   isNew,
   arrived,
+  defaultOpen,
   move,
 }: {
   email: TimelineEmail;
   href: string;
   isNew: boolean;
   arrived: boolean;
+  defaultOpen?: boolean;
   move: { company: string; applications: MoveTarget[] };
 }) {
   if (email.category === "deleted") {
@@ -57,6 +59,7 @@ export function EmailItem({
       edited={email.edited}
       confirmed={email.confirmed}
       needsReply={email.needsReply}
+      defaultOpen={defaultOpen || isNew}
       footer={<EmailDetails email={email} />}
       actions={<EmailActions email={email} move={move} />}
     />
@@ -70,7 +73,7 @@ function EmailDetails({ email }: { email: TimelineEmail }) {
   if (!email.eventAt && !email.actionUrl && !needsReply) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[11px] tracking-[0.08em]">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[12.5px]">
       {email.eventAt && (
         <span className="flex items-center gap-1.5 text-text-primary" title={email.eventText ?? undefined}>
           <CalendarClock className="size-3.5 text-text-tertiary" />

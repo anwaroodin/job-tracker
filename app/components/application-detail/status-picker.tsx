@@ -13,7 +13,7 @@ export function StatusPicker({ status }: { status: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="tiny" className="-ml-3 gap-1 px-3 uppercase" disabled={fetcher.state !== "idle"} aria-label="Change status">
+        <Button type="button" variant="secondary" size="small" className="gap-2" disabled={fetcher.state !== "idle"} aria-label="Change status">
           <StatusBadge status={shown} />
           <ChevronDown />
         </Button>

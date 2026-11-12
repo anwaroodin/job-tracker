@@ -40,7 +40,7 @@ export function EmailActions({
           onClick={confirm}
           disabled={busy}
           title={`Jev wasn't sure. Confirm this email really is ${email.category}.`}
-          className="flex h-7 items-center gap-1.5 px-2 text-[10.5px] uppercase tracking-[0.1em] text-accent-primary transition-colors hover:bg-white/[0.06] hover:text-accent-secondary focus-visible:bg-white/[0.06] focus-visible:outline-none disabled:opacity-40"
+          className="flex h-7 items-center gap-1.5 px-2 text-[12.5px] text-accent-primary transition-colors hover:bg-ink/[0.06] hover:text-accent-secondary focus-visible:bg-ink/[0.06] focus-visible:outline-none disabled:opacity-40"
         >
           <Check className="size-3.5" />
           Confirm
@@ -52,12 +52,12 @@ export function EmailActions({
             type="button"
             aria-label="Email actions"
             disabled={busy}
-            className="flex size-7 shrink-0 items-center justify-center text-text-tertiary transition-colors hover:bg-white/[0.06] hover:text-text-primary focus-visible:bg-white/[0.06] focus-visible:text-text-primary focus-visible:outline-none disabled:opacity-40 data-[state=open]:bg-white/[0.06] data-[state=open]:text-text-primary"
+            className="flex size-7 shrink-0 items-center justify-center text-text-tertiary transition-colors hover:bg-ink/[0.06] hover:text-text-primary focus-visible:bg-ink/[0.06] focus-visible:text-text-primary focus-visible:outline-none disabled:opacity-40 data-[state=open]:bg-ink/[0.06] data-[state=open]:text-text-primary"
           >
             <Ellipsis className="size-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-56 whitespace-nowrap font-mono uppercase tracking-[0.04em]">
+        <DropdownMenuContent align="end" className="min-w-56 whitespace-nowrap">
           {!unlinkOnly && (
             <>
               {unsure && (

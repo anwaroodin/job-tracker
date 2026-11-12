@@ -1,13 +1,14 @@
+import { PageSection } from "~/components/ui/page-section";
 import { useState } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Points } from "~/components/tailored-cv/research";
-import { Section, fmtDate } from "~/components/ui/terminal";
+import { fmtDate } from "~/components/ui/terminal";
 import { RunnerOffline, useRunnerStatus } from "~/components/tailored-cv/runner";
 import { runOnRunner } from "~/lib/runner";
 import type { InterviewPrep as Prep, TailorRequest } from "~/types/cv";
 
-export function InterviewPrep({ n, prep, request }: { n: string; prep: Prep | null; request: TailorRequest | null }) {
+export function InterviewPrep({ prep, request }: { prep: Prep | null; request: TailorRequest | null }) {
   const fetcher = useFetcher();
   const runner = useRunnerStatus();
   const [running, setRunning] = useState(false);
@@ -29,31 +30,31 @@ export function InterviewPrep({ n, prep, request }: { n: string; prep: Prep | nu
 
   const busy = running || fetcher.state !== "idle";
   return (
-    <Section n={n} id="prep" title="Interview prep" hint={prep ? `Prepared ${fmtDate(prep.preparedAt)}` : undefined} i={2}>
+    <PageSection id="prep" title="Interview prep" description={prep ? `Prepared ${fmtDate(prep.preparedAt)}` : undefined}>
       <div className="flex flex-col gap-6">
         {!prep && (
-          <p className="font-sans text-[13px] normal-case tracking-normal text-text-secondary">
+          <p className="font-sans text-[13px] text-text-secondary">
             Likely questions with STAR answers built from your stories and CV, questions to ask them, and what to brush up on.
           </p>
         )}
         {prep && <PrepView prep={prep} />}
         <div className="flex flex-wrap items-center gap-3">
           {request ? (
-            <Button type="button" size="small" className="uppercase" disabled={busy || runner !== "ready"} onClick={prepare}>
+            <Button type="button" size="small" className="" disabled={busy || runner !== "ready"} onClick={prepare}>
               {busy ? "Preparing…" : prep ? "Prepare again" : "Prepare for the interview"}
             </Button>
           ) : (
-            <span className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
+            <span className="font-sans text-[13px] text-text-tertiary">
               Add the job description in Edit to prepare from it.
             </span>
           )}
-          <span className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
+          <span className="font-sans text-[13px] text-text-tertiary">
             {request && runner === "offline" && <RunnerOffline />}
             {error && <span className="text-red-primary">{error}</span>}
           </span>
         </div>
       </div>
-    </Section>
+    </PageSection>
   );
 }
 
@@ -67,19 +68,19 @@ const STAR = [
 function PrepView({ prep }: { prep: Prep }) {
   return (
     <>
-      <ol className="flex flex-col divide-y divide-dashed divide-stroke-primary/50">
+      <ol className="flex flex-col divide-y divide-stroke-primary/50">
         {prep.questions.map((q, i) => (
           <li key={q.question}>
             <details className="group py-4" open={i === 0}>
               <summary className="flex cursor-pointer list-none items-start gap-3 [&::-webkit-details-marker]:hidden">
                 <span className="text-text-tertiary tabular-nums">{String(i + 1).padStart(2, "0")}</span>
-                <span className="flex-1 font-sans text-[14px] normal-case tracking-normal text-text-primary">{q.question}</span>
+                <span className="flex-1 font-sans text-[14px] text-text-primary">{q.question}</span>
                 <span aria-hidden className="text-text-tertiary transition-transform group-open:rotate-90">
                   ›
                 </span>
               </summary>
               <div className="flex flex-col gap-3 pl-8 pt-2">
-                <p className="font-sans text-[12.5px] normal-case tracking-normal text-text-tertiary">
+                <p className="font-sans text-[12.5px] text-text-tertiary">
                   {q.why} {q.story ? `Built from your story “${q.story}”.` : "Built from your CV. Add a STAR story in Interviews to make it yours."}
                 </p>
                 <dl className="flex flex-col gap-2.5">
@@ -89,7 +90,7 @@ function PrepView({ prep }: { prep: Prep }) {
                         <span aria-hidden>{letter}</span>
                         <span className="sr-only">{field}</span>
                       </dt>
-                      <dd className="font-sans text-[13.5px] normal-case leading-relaxed tracking-normal text-text-secondary">{q.answer[field]}</dd>
+                      <dd className="font-sans text-[13.5px] leading-relaxed text-text-secondary">{q.answer[field]}</dd>
                     </div>
                   ))}
                 </dl>
