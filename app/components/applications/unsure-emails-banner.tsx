@@ -1,4 +1,5 @@
-import { Check, Ellipsis, Trash2 } from "lucide-react";
+import { Delete02Icon, MoreHorizontalIcon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
@@ -9,7 +10,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { fmtDate, statusColor } from "~/components/ui/terminal";
+import { StatusBadge } from "~/components/ui/status-badge";
+import { shortDate } from "~/components/ui/terminal";
 import { EMAIL_CATEGORIES } from "~/lib/email";
 import type { UnsureEmail } from "~/types/unsure-email";
 
@@ -42,34 +44,39 @@ export function UnsureEmailRow({ email }: { email: UnsureEmail }) {
   const submit = (fields: Record<string, string>) => fetcher.submit({ id: email.id, ...fields }, { method: "post" });
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 py-2">
+    <li className="flex flex-wrap items-center justify-between gap-3 py-2 font-sans text-[14px] normal-case tracking-normal">
       <div className="min-w-0 flex-1">
-        <p className="truncate normal-case text-text-primary">{email.subject || "(No subject)"}</p>
-        <p className="truncate normal-case text-text-tertiary">
-          {email.fromName || email.fromAddress} · {fmtDate(email.receivedAt)}
+        <p className="truncate font-medium text-text-primary">{email.subject || "(No subject)"}</p>
+        <p className="truncate text-[12.5px] text-text-tertiary">
+          {email.fromName || email.fromAddress} · {shortDate(email.receivedAt)}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <Button type="button" variant="ghost" size="tiny" className="uppercase" onClick={() => submit({ intent: "not-job" })}>
-          <Trash2 />
+        <Button
+          type="button"
+          variant="ghost"
+          size="small"
+          className="font-sans text-[13px] normal-case tracking-normal"
+          onClick={() => submit({ intent: "not-job" })}
+        >
+          <HugeiconsIcon icon={Delete02Icon} size={15} strokeWidth={1.5} />
           Not about jobs
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" size="icon-sm" aria-label="Mark as job email">
-              <Ellipsis />
+            <Button type="button" variant="ghost" size="icon" aria-label="Mark as job email">
+              <HugeiconsIcon icon={MoreHorizontalIcon} size={16} strokeWidth={1.5} />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-48 whitespace-nowrap font-mono uppercase tracking-[0.04em]">
+          <DropdownMenuContent align="end" className="min-w-52 whitespace-nowrap font-sans text-[13px] normal-case tracking-normal">
             <DropdownMenuLabel>It's about a job: mark as</DropdownMenuLabel>
             {EMAIL_CATEGORIES.filter((c) => c !== "other").map((category) => (
               <DropdownMenuItem key={category} onSelect={() => submit({ intent: "label-email", category })}>
-                <span aria-hidden className="size-[7px] shrink-0" style={{ background: statusColor(category) }} />
-                {category}
+                <StatusBadge status={category} variant="dot" />
               </DropdownMenuItem>
             ))}
             <DropdownMenuItem onSelect={() => submit({ intent: "label-email", category: "other" })}>
-              <Check />
+              <HugeiconsIcon icon={Tick02Icon} size={15} strokeWidth={1.5} />
               Keep, but not a stage
             </DropdownMenuItem>
           </DropdownMenuContent>

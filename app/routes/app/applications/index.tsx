@@ -7,17 +7,16 @@ import { ApplicationsHeader } from "~/components/applications/applications-heade
 import { ApplicationsTable } from "~/components/applications/applications-table";
 import { FromGmail } from "~/components/applications/from-gmail";
 import { LayoutToggle } from "~/components/applications/layout-toggle";
+import { ListSection } from "~/components/applications/list-section";
 import { SavedSection } from "~/components/applications/saved-section";
 import { SearchField } from "~/components/applications/table-toolbar";
 import { StatusFilter } from "~/components/applications/status-filter";
 import { CLOSED_TAB_STATUSES, useApplicationsView } from "~/components/applications/use-applications-view";
 import { selectedView, ViewTabs } from "~/components/applications/view-tabs";
-import { Section } from "~/components/ui/terminal";
 import { useArrivals } from "~/hooks/use-arrivals";
 import { usePersisted } from "~/hooks/use-persisted";
 import { APPLICATION_STATUSES } from "~/lib/status";
 import { applicationsLayout$ } from "~/lib/state/applications-layout";
-import { sidebarView$ } from "~/lib/state/sidebar-view";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
@@ -118,7 +117,6 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
   const selected = selectedView(params);
   const view = useApplicationsView(rows, selected === "closed" ? "closed" : "open");
   const board = usePersisted(() => applicationsLayout$.board.get(), false);
-  const sidebarCollapsed = usePersisted(() => sidebarView$.collapsed.get(), false);
   const isArrival = useArrivals([...rows.map((r) => r.id), ...saved.map((s) => s.id)]);
 
   const { setPage, setStatus } = view;
@@ -147,17 +145,17 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
       <FromGmail suggestions={suggestions} unsure={unsure} accountEmail={loaderData.accountEmail} />
 
       <div className="flex flex-col gap-4">
-        <ViewTabs className={sidebarCollapsed ? undefined : "lg:hidden"} />
+        <ViewTabs />
 
         {selected === "saved" ? (
-          <SavedSection n="02" saved={saved} isArrival={isArrival} />
+          <SavedSection saved={saved} isArrival={isArrival} />
         ) : (
-          <Section
-            n="02"
+          <ListSection
             title={selected === "open" ? "Open applications" : "Closed applications"}
-            hint={
-              <span className="flex flex-wrap items-center gap-3">
-                <SearchField view={view} className="normal-case tracking-normal" />
+            count={view.filteredItems.length}
+            actions={
+              <>
+                <SearchField view={view} />
                 <StatusFilter
                   options={statusOptions}
                   value={view.status}
@@ -166,18 +164,16 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
                     setPage(0);
                   }}
                 />
-                {view.filteredItems.length} matching
                 <LayoutToggle board={board} />
-              </span>
+              </>
             }
-            i={2}
           >
             {board ? (
               <ApplicationsBoard items={view.filteredItems} tab={view.activeTab} />
             ) : (
               <ApplicationsTable view={view} gmail={gmail} isArrival={isArrival} />
             )}
-          </Section>
+          </ListSection>
         )}
       </div>
     </div>

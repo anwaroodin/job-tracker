@@ -59,7 +59,7 @@ export function ApplicationsBoard({ items, tab }: { items: ApplicationRowData[];
               key={status}
               {...dropTarget(status)}
               className={cn(
-                "flex items-center gap-2 border border-dashed border-white/15 px-2.5 py-1.5 transition-colors",
+                "flex items-center gap-2 border border-dashed border-ink/15 px-2.5 py-1.5 transition-colors",
                 over === status && "border-text-secondary bg-fill-tertiary",
               )}
             >
@@ -79,7 +79,7 @@ export function ApplicationsBoard({ items, tab }: { items: ApplicationRowData[];
                 aria-label={status}
                 {...dropTarget(status)}
                 className={cn(
-                  "flex max-h-[calc(100dvh-14rem)] w-64 shrink-0 flex-col border border-dashed border-white/15 p-2 transition-colors",
+                  "flex max-h-[calc(100dvh-14rem)] w-64 shrink-0 flex-col border border-dashed border-ink/15 p-2 transition-colors",
                   over === status && "border-text-secondary bg-fill-tertiary",
                 )}
               >
