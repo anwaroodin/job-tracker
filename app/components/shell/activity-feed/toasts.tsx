@@ -1,4 +1,5 @@
-import { X } from "lucide-react";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
@@ -63,29 +64,29 @@ export function ActivityToasts({ initial }: { initial: GmailStatus }) {
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
-            className="pointer-events-auto w-full max-w-sm border border-stroke-primary bg-bg-grouped-primary font-mono uppercase tracking-[0.04em] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.7)]"
+            className="pointer-events-auto w-full max-w-sm border border-stroke-primary bg-sidebar-active font-sans text-[14px] normal-case tracking-normal shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
           >
-            <div className="flex items-center justify-between gap-3 border-b border-stroke-secondary px-3 py-2">
-              <span className="flex items-center gap-2 text-[11px] tracking-[0.08em] text-text-primary">
-                <span aria-hidden className="size-1.5 rounded-full bg-green-primary" />
+            <div className="flex items-center justify-between gap-3 px-4 pb-1 pt-3">
+              <span className="flex items-center gap-2 font-medium text-text-primary">
+                <span aria-hidden className="size-2 rounded-full bg-green-primary" />
                 {toast.length} {toast.length === 1 ? "update" : "updates"} from Gmail
               </span>
               <button
                 type="button"
                 aria-label="Dismiss"
                 onClick={() => setToast(null)}
-                className="text-text-tertiary transition-colors hover:text-text-primary"
+                className="cursor-pointer p-1 text-text-tertiary transition-colors hover:bg-ink/[0.05] hover:text-text-primary"
               >
-                <X className="size-3.5" />
+                <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={1.5} />
               </button>
             </div>
-            <ul className="p-1">
+            <ul className="px-2 py-1">
               {toast.slice(0, TOAST_ITEMS).map((item) => (
                 <li key={item.id}>
                   <Link
                     to={describeActivity(item).href}
                     onClick={() => setToast(null)}
-                    className="flex px-2.5 py-2 transition-colors hover:bg-fill-secondary"
+                    className="flex min-h-12 px-3 py-2 transition-colors hover:bg-ink/[0.06]"
                   >
                     <ActivityRow item={item} fresh now={Date.now()} />
                   </Link>
@@ -95,9 +96,9 @@ export function ActivityToasts({ initial }: { initial: GmailStatus }) {
             <button
               type="button"
               onClick={openPanel}
-              className="w-full border-t border-stroke-secondary px-3 py-2 text-left text-[10.5px] tracking-[0.1em] text-text-secondary transition-colors hover:text-text-primary"
+              className="w-full cursor-pointer border-t border-stroke-secondary bg-sidebar px-4 py-2.5 text-left text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary"
             >
-              {toast.length > TOAST_ITEMS ? `See all ${toast.length}` : "See all updates"} →
+              {toast.length > TOAST_ITEMS ? `See all ${toast.length}` : "See all notifications"}
             </button>
           </motion.div>
         )}

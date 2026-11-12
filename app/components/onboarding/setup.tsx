@@ -211,7 +211,7 @@ function Done({ connected }: { connected: boolean }) {
             value={id}
             disabled={submitting}
             style={stagger(3 + i * 2)}
-            className="rise group flex cursor-pointer items-baseline gap-3 border-t border-dashed border-white/15 px-1 py-3 text-left uppercase transition-colors hover:bg-text-primary hover:text-text-inverse"
+            className="rise group flex cursor-pointer items-baseline gap-3 border-t border-dashed border-ink/15 px-1 py-3 text-left uppercase transition-colors hover:bg-text-primary hover:text-text-inverse"
           >
             <span className="text-text-tertiary group-hover:text-text-inverse/70">{two(i + 1)}</span>
             <span className="text-text-primary group-hover:text-text-inverse">{LESSONS[id].title}</span>

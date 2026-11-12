@@ -1,8 +1,9 @@
-import { Search } from "lucide-react";
-import { cn } from "~/lib/cn";
+import { ArrowRight01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { MotionConfig } from "motion/react";
-import { type ReactNode, useEffect, useState } from "react";
-import { useLocation } from "react-router";
+import type { ReactNode } from "react";
+import { Link, useLocation } from "react-router";
+import { useShortcutLabel } from "~/hooks/use-shortcut-label";
 import { CommandPalette } from "~/components/shell/command-palette";
 import { commandPalette$ } from "~/lib/state/command-palette";
 import type { GmailStatus } from "~/types/gmail";
@@ -10,6 +11,7 @@ import { Tour } from "~/components/onboarding/tour";
 import { ActivityBell } from "./activity-feed";
 import { ActivityToasts } from "./activity-feed/toasts";
 import { BottomNav } from "./bottom-nav";
+import { NAV } from "./nav";
 import { SidePanel } from "./side-panel";
 import { Sidebar } from "./sidebar";
 import { TailoringTray } from "./tailoring-tray";
@@ -43,31 +45,32 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
   );
 }
 
-function useShortcutLabel() {
-  const [label, setLabel] = useState("Ctrl+K");
-  useEffect(() => {
-    if (/Mac|iPhone|iPad/.test(navigator.platform)) setLabel("⌘K");
-  }, []);
-  return label;
-}
-
 function PathBar({ gmail }: { gmail: GmailStatus }) {
   const { pathname } = useLocation();
   const shortcut = useShortcutLabel();
   const segments = pathname.split("/").filter(Boolean);
-  const short = (s: string) => (s.length > 14 ? `${s.slice(0, 8)}…` : s);
+  const crumbs = segments.map((s, i) => {
+    const to = `/${segments.slice(0, i + 1).join("/")}`;
+    const label = NAV.find((n) => n.to === to)?.label ?? (/^[0-9a-f-]{20,}$/.test(s) ? "Details" : s.charAt(0).toUpperCase() + s.slice(1));
+    return { to, label };
+  });
 
   return (
     <div className="max-lg:sticky max-lg:top-0 max-lg:z-30 max-lg:border-b max-lg:border-stroke-secondary max-lg:bg-bg-primary/95 max-lg:pt-[env(safe-area-inset-top)] max-lg:backdrop-blur-sm">
       <div className="mx-auto flex h-[52px] w-full max-w-[1200px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <nav className="eyebrow flex min-w-0 items-center gap-2.5 overflow-hidden">
-          <span className="shrink-0 max-sm:hidden">job-tracker</span>
-          {segments.map((s, i) => (
-            <span key={i} className="flex min-w-0 items-center gap-2.5">
-              <span className={cn("shrink-0 opacity-50", i === 0 && "max-sm:hidden")}>/</span>
-              <span className={i === segments.length - 1 ? "truncate text-text-primary" : "shrink-0"}>
-                {short(s)}
-              </span>
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[13.5px] text-text-tertiary">
+          {crumbs.map((crumb, i) => (
+            <span key={crumb.to} className="flex min-w-0 items-center gap-1.5">
+              {i > 0 && <HugeiconsIcon icon={ArrowRight01Icon} size={14} strokeWidth={1.5} className="shrink-0" />}
+              {i === crumbs.length - 1 ? (
+                <span aria-current="page" className="truncate font-medium text-text-primary">
+                  {crumb.label}
+                </span>
+              ) : (
+                <Link to={crumb.to} className="shrink-0 transition-colors hover:text-text-primary">
+                  {crumb.label}
+                </Link>
+              )}
             </span>
           ))}
         </nav>
@@ -76,12 +79,12 @@ function PathBar({ gmail }: { gmail: GmailStatus }) {
             type="button"
             onClick={() => commandPalette$.open.set(true)}
             data-tour="search"
-            className="hidden sm:inline-flex items-center gap-2 border border-stroke-secondary bg-fill-secondary px-2.5 py-1 font-mono text-[11px] text-text-tertiary transition-colors hover:border-stroke-primary hover:text-text-primary cursor-pointer"
+            className="hidden h-8 cursor-pointer items-center gap-2 border border-stroke-secondary bg-bg-primary px-2.5 text-[13px] text-text-tertiary transition-colors hover:border-stroke-primary hover:text-text-primary sm:inline-flex lg:hidden"
             title={`Search (${shortcut})`}
           >
-            <Search className="size-3" />
+            <HugeiconsIcon icon={Search01Icon} size={15} strokeWidth={1.5} />
             <span>Search</span>
-            <kbd className="border border-stroke-secondary px-1 text-[9px] text-text-tertiary">{shortcut}</kbd>
+            <kbd className="bg-ink/[0.06] px-1.5 font-sans text-[11.5px] text-text-tertiary">{shortcut}</kbd>
           </button>
           <button
             type="button"
@@ -90,7 +93,7 @@ function PathBar({ gmail }: { gmail: GmailStatus }) {
             title="Search"
             aria-label="Search"
           >
-            <Search className="size-4" />
+            <HugeiconsIcon icon={Search01Icon} size={18} strokeWidth={1.5} />
           </button>
           <ActivityBell initial={gmail} />
         </div>

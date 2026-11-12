@@ -1,27 +1,32 @@
-import { STATUS_COLORS } from "~/components/ui/terminal";
+import { Mail01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CompanyLogo } from "~/components/applications/company-logo";
+import { StatusBadge } from "~/components/ui/status-badge";
 import { describeActivity, type ActivityItem } from "~/lib/activity";
-import { cn } from "~/lib/cn";
 import { fmtAgo } from "~/lib/format/time";
 
 export function ActivityRow({ item, fresh, now }: { item: ActivityItem; fresh: boolean; now: number }) {
   const { tag, title, body } = describeActivity(item);
+  const company = item.company ?? item.detail.company;
   return (
-    <div className="flex min-w-0 flex-1 gap-2.5">
-      <span
-        aria-hidden
-        className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", fresh ? "bg-green-primary" : "bg-transparent")}
-      />
+    <div className="flex min-w-0 flex-1 items-center gap-3 font-sans text-[14px] normal-case tracking-normal">
+      {company ? (
+        <CompanyLogo company={company} className="size-8 text-[13px]" />
+      ) : (
+        <span className="grid size-8 shrink-0 place-items-center bg-ink/[0.05] text-text-secondary">
+          <HugeiconsIcon icon={Mail01Icon} size={17} strokeWidth={1.5} />
+        </span>
+      )}
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline justify-between gap-3 text-[10px] tracking-[0.08em] text-text-tertiary">
-          <span style={{ color: STATUS_COLORS[tag] }}>[{tag}]</span>
-          <span className="shrink-0" suppressHydrationWarning>
-            {fmtAgo(item.createdAt, now)}
-          </span>
+        <p className="truncate font-medium text-text-primary">{title}</p>
+        <p className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-tertiary">
+          <StatusBadge status={tag} variant="dot" className="shrink-0 text-[12.5px]" />
+          {body && <span className="truncate">· {body}</span>}
         </p>
-        <p className="mt-0.5 font-sans text-[13px] normal-case tracking-normal text-text-primary">{title}</p>
-        {body && (
-          <p className="truncate font-sans text-[12px] normal-case tracking-normal text-text-tertiary">{body}</p>
-        )}
+      </div>
+      <div className="flex shrink-0 items-center gap-2 self-start pt-0.5 text-[12.5px] text-text-tertiary">
+        <span suppressHydrationWarning>{fmtAgo(item.createdAt, now)}</span>
+        {fresh && <span aria-label="New" className="size-2 rounded-full bg-green-primary" />}
       </div>
     </div>
   );
