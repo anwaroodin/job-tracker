@@ -16,7 +16,7 @@ export function GettingStarted({ n, gmailConnected }: { n: string; gmailConnecte
           key={id}
           to={`?lesson=${id}`}
           preventScrollReset
-          className="group flex items-baseline gap-3 border-b border-dashed border-white/10 px-1 py-2.5 transition-colors hover:bg-text-primary hover:text-text-inverse"
+          className="group flex items-baseline gap-3 border-b border-dashed border-ink/10 px-1 py-2.5 transition-colors hover:bg-text-primary hover:text-text-inverse"
         >
           <span className={finished(id) ? "text-green-primary group-hover:text-text-inverse" : "text-text-tertiary group-hover:text-text-inverse/70"}>
             [{finished(id) ? "✓" : " "}]

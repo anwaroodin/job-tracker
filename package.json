@@ -19,6 +19,8 @@
     "extension:zip": "node scripts/zip-extension.mjs"
   },
   "dependencies": {
+    "@hugeicons/core-free-icons": "^4.4.0",
+    "@hugeicons/react": "^1.1.10",
     "@legendapp/state": "^2.1.15",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-dropdown-menu": "^2.1.4",

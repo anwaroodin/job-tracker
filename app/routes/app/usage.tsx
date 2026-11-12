@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/usage";
-import { Bar, BarRow, ColumnChart, Leader, Section, fmtDate, pct, stagger } from "~/components/ui/terminal";
+import { Bar, BarRow, ColumnChart, Leader, Section, fmtDate, pct, stagger, PageTitle } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { formatDollars } from "~/lib/settings";
 import { userContext } from "~/server/auth/session.server";
@@ -39,12 +39,11 @@ export default function Usage({ loaderData }: Route.ComponentProps) {
         <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
           <b className="mr-2 font-semibold text-text-primary">[06]</b>Usage
         </p>
-        <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight sm:text-[30px]">
-          <span className="text-text-primary">{formatDollars(m.cost)} spent on Jev this month.</span>
-          <span className="block text-text-tertiary">
-            {m.emails} {m.emails === 1 ? "email" : "emails"} classified.
-          </span>
-        </h1>
+        <PageTitle
+          className="mt-7"
+          title={`${formatDollars(m.cost)} spent on Jev this month.`}
+          sub={`${m.emails} ${m.emails === 1 ? "email" : "emails"} classified.`}
+        />
         <p className="mt-5 max-w-xl font-sans text-[16px] normal-case tracking-normal text-text-secondary">
           {jevOn ? (
             <>

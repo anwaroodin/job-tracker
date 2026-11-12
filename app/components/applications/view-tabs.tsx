@@ -32,7 +32,7 @@ export function ViewTabs({ className }: { className?: string }) {
   const views = useApplicationViews();
   if (!views) return null;
   return (
-    <nav aria-label="Lists" className={cn("flex flex-wrap items-center gap-1.5", className)}>
+    <nav aria-label="Lists" className={cn("flex flex-wrap items-center gap-1 font-sans normal-case tracking-normal", className)}>
       {views.tabs.map((tab) => {
         const on = tab.key === views.selected;
         return (
@@ -44,14 +44,12 @@ export function ViewTabs({ className }: { className?: string }) {
             aria-current={on ? "page" : undefined}
             data-tour={tab.key}
             className={cn(
-              "flex items-center gap-1.5 border px-2.5 py-1 text-[11px] tracking-[0.06em] transition-colors",
-              on
-                ? "border-text-primary bg-text-primary font-semibold text-text-inverse"
-                : "border-stroke-primary bg-fill-secondary text-text-secondary hover:text-text-primary",
+              "flex h-8 items-center gap-2 px-3 text-[13px] font-medium transition-colors",
+              on ? "bg-ink/[0.07] text-text-primary" : "text-text-tertiary hover:bg-ink/[0.04] hover:text-text-primary",
             )}
           >
             {tab.label}
-            <span className={cn("text-[9.5px]", on ? "text-text-inverse/70" : "text-text-tertiary")}>{tab.count}</span>
+            <span className="tabular-nums text-text-tertiary">{tab.count}</span>
           </Link>
         );
       })}

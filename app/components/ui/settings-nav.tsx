@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "~/lib/cn";
 
-export function SettingsNav({ items }: { items: { n: string; href: string; label: string }[] }) {
+export function SettingsNav({ items }: { items: { href: string; label: string }[] }) {
   const [active, setActive] = useState(items[0]?.href.slice(1));
 
   useEffect(() => {
@@ -11,7 +11,6 @@ export function SettingsNav({ items }: { items: { n: string; href: string; label
 
     const io = new IntersectionObserver(
       (entries) => {
-        // pick the topmost visible section
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
@@ -33,11 +32,10 @@ export function SettingsNav({ items }: { items: { n: string; href: string; label
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-3 px-2.5 py-[7px] text-[11.5px] transition-colors duration-150",
-              isActive ? "bg-fill-secondary text-text-primary" : "text-[#c9c9cd] hover:bg-fill-tertiary hover:text-text-primary",
+              "flex h-9 items-center px-3 font-sans text-[14px] normal-case tracking-normal transition-colors",
+              isActive ? "bg-ink/[0.07] font-medium text-text-primary" : "text-text-secondary hover:bg-ink/[0.04] hover:text-text-primary",
             )}
           >
-            <span className="text-text-tertiary">{item.n}</span>
             {item.label}
           </a>
         );

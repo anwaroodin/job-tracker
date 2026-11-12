@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import { cn } from "~/lib/cn";
@@ -6,21 +6,18 @@ import { onboarding$ } from "~/lib/state/onboarding";
 import { LESSON_IDS, LESSONS } from "./lessons";
 import { useLessons } from "./use-lessons";
 
-const CELLS = 16;
-
 export function SidebarLessons({ gmailConnected, collapsed }: { gmailConnected: boolean; collapsed: boolean }) {
   const { finished, count, total, show } = useLessons(gmailConnected);
   if (!show) return null;
   const next = LESSON_IDS.find((id) => !finished(id));
-  const filled = Math.round((count / total) * CELLS);
 
   if (collapsed) {
     return (
       <Link
         to={`?lesson=${next}`}
         preventScrollReset
-        title={`Getting started · ${count}/${total} done`}
-        className="mx-auto mt-6 flex size-8 items-center justify-center font-mono text-[10px] tabular-nums text-text-accent hover:bg-fill-tertiary"
+        title={`Getting started · ${count} of ${total} done`}
+        className="mx-auto mt-5 flex size-9 items-center justify-center text-[11px] font-semibold tabular-nums text-brand hover:bg-ink/[0.05]"
       >
         {count}/{total}
       </Link>
@@ -28,47 +25,46 @@ export function SidebarLessons({ gmailConnected, collapsed }: { gmailConnected: 
   }
 
   return (
-    <section className="mt-7 border-t border-dashed border-white/15 px-2.5 pt-3 font-mono text-[10.5px] uppercase tracking-[0.08em]">
-      <header className="flex items-center justify-between pb-2">
-        <span className="eyebrow !text-[10px]">Getting started</span>
-        <span className="flex items-center gap-2">
-          <span className="tabular-nums text-text-accent">
-            {count}/{total}
-          </span>
-          <button
-            type="button"
-            onClick={() => onboarding$.hidden.set(true)}
-            className="cursor-pointer text-text-tertiary hover:text-text-primary"
-            title="Hide lessons"
-            aria-label="Hide lessons"
-          >
-            <X className="size-3" />
-          </button>
-        </span>
+    <section className="mt-6 border border-stroke-secondary bg-sidebar-active p-3">
+      <header className="flex items-center justify-between">
+        <span className="text-[13.5px] font-semibold text-text-primary">Getting started</span>
+        <button
+          type="button"
+          onClick={() => onboarding$.hidden.set(true)}
+          className="-mr-1 cursor-pointer p-1 text-text-tertiary hover:bg-ink/[0.05] hover:text-text-primary"
+          title="Hide"
+          aria-label="Hide getting started"
+        >
+          <X className="size-3.5" />
+        </button>
       </header>
-      <p aria-hidden className="pb-2 tracking-[0.02em] text-text-tertiary">
-        <span className="text-text-accent">{"█".repeat(filled)}</span>
-        {"░".repeat(CELLS - filled)}
+      <p className="mt-0.5 text-[12px] text-text-tertiary">
+        {count} of {total} done
       </p>
-      <ol className="flex flex-col">
+      <div aria-hidden className="mt-2.5 h-1.5 overflow-hidden bg-ink/[0.08]">
+        <div className="h-full bg-brand transition-[width]" style={{ width: `${(count / total) * 100}%` }} />
+      </div>
+      <ol className="mt-2.5 flex flex-col">
         {LESSON_IDS.map((id) => (
           <li key={id}>
             <Link
               to={`?lesson=${id}`}
               preventScrollReset
               className={cn(
-                "-mx-1 flex items-center gap-2 px-1 py-[5px] transition-colors hover:bg-fill-tertiary hover:text-text-primary",
-                finished(id) ? "text-text-tertiary line-through decoration-white/20" : "text-[#c9c9cd]",
+                "-mx-1.5 flex items-center gap-2 px-1.5 py-1.5 text-[13px] transition-colors hover:bg-ink/[0.05]",
+                finished(id) ? "text-text-tertiary line-through decoration-ink/25" : "text-text-secondary hover:text-text-primary",
               )}
             >
-              <span className={cn("shrink-0 whitespace-pre", finished(id) ? "text-green-primary" : "text-text-tertiary")}>
-                [{finished(id) ? "✓" : " "}]
-              </span>
+              {finished(id) ? (
+                <Check className="size-3.5 shrink-0 text-green-primary" strokeWidth={2.5} />
+              ) : (
+                <span aria-hidden className={cn("size-3.5 shrink-0 rounded-full border", id === next ? "border-brand" : "border-stroke-primary")} />
+              )}
               <span className="truncate">{LESSONS[id].title}</span>
               {id === next && (
                 <motion.span
                   aria-hidden
-                  className="ml-auto size-1.5 shrink-0 rounded-full bg-accent-primary"
+                  className="ml-auto size-1.5 shrink-0 rounded-full bg-brand"
                   animate={{ opacity: [1, 0.25, 1] }}
                   transition={{ duration: 1.6, repeat: Infinity }}
                 />

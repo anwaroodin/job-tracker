@@ -1,6 +1,6 @@
 import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
-import { Section } from "~/components/ui/terminal";
+import { PageSection } from "~/components/ui/page-section";
 import { cn } from "~/lib/cn";
 import { CONFIDENCE_LEVELS, type Classifier, type Settings } from "~/lib/settings";
 import { Setting } from "~/components/settings/setting-row";
@@ -22,7 +22,7 @@ export function ClassificationSection({
   budgetInvalid: boolean;
 }) {
   return (
-    <Section n="02" id="classification" title="Email classification" hint="how emails get a stage" i={1}>
+    <PageSection id="classification" title="Email classification" description="How each email gets a stage.">
       <div className="flex flex-col gap-7">
         <Setting
           label="Classifier"
@@ -106,6 +106,6 @@ export function ClassificationSection({
           )}
         </Setting>
       </div>
-    </Section>
+    </PageSection>
   );
 }

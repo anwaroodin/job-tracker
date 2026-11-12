@@ -4,10 +4,12 @@ import { eventLabel, formatEventAt } from "~/lib/email";
 import { fmtAgo } from "~/lib/format/time";
 import { useArrivals } from "~/hooks/use-arrivals";
 import { motion } from "motion/react";
-import { Section } from "~/components/ui/terminal";
+import { CompanyLogo } from "~/components/applications/company-logo";
+import { ListSection } from "~/components/applications/list-section";
+import { INSET_SEPARATORS } from "~/components/applications/applications-table";
 import { cn } from "~/lib/cn";
 
-export function UpNextSection({ n, next }: { n: string; next: UpNext }) {
+export function UpNextSection({ next }: { next: UpNext }) {
   const total = next.replies.length + next.upcoming.length + next.followUps.length;
   const isArrival = useArrivals([
     ...next.replies.map((r) => `reply-${r.emailId}`),
@@ -15,14 +17,14 @@ export function UpNextSection({ n, next }: { n: string; next: UpNext }) {
     ...next.followUps.map((r) => `follow-up-${r.applicationId}`),
   ]);
   return (
-    <Section n={n} title="Up next" hint={`${total} ${total === 1 ? "thing" : "things"}`} i={1}>
-      <ul className="-mx-3 divide-y divide-dashed divide-stroke-primary/50">
+    <ListSection title="Up next" count={total}>
+      <ul className={cn("flex flex-col", INSET_SEPARATORS)}>
         {next.replies.map((r) => (
           <UpNextRow
             key={`reply-${r.emailId}`}
             arrived={isArrival(`reply-${r.emailId}`)}
             to={`/applications/${r.applicationId}`}
-            when={<span className="text-text-primary group-hover:!text-text-inverse">Reply needed</span>}
+            when="Reply needed"
             company={r.company}
             detail={r.subject}
             note={fmtAgo(r.receivedAt)}
@@ -51,7 +53,7 @@ export function UpNextSection({ n, next }: { n: string; next: UpNext }) {
           />
         ))}
       </ul>
-    </Section>
+    </ListSection>
   );
 }
 
@@ -65,7 +67,7 @@ function UpNextRow({
 }: {
   arrived: boolean;
   to: string;
-  when: React.ReactNode;
+  when: string;
   company: string;
   detail: string;
   note: string;
@@ -78,16 +80,16 @@ function UpNextRow({
       transition={{ duration: 0.3 }}
       className={cn(arrived && "arrive")}
     >
-      <Link
-        to={to}
-        className="group grid grid-cols-[124px_1fr] items-baseline gap-4 px-3 py-2 transition-colors hover:bg-text-primary hover:text-text-inverse sm:grid-cols-[150px_1fr_auto]"
-      >
-        <span className="text-text-tertiary group-hover:!text-text-inverse/60">{when}</span>
-        <span className="min-w-0 truncate">
-          <span className="text-text-primary group-hover:!text-text-inverse">{company}</span>
-          <span className="text-text-tertiary group-hover:!text-text-inverse/60"> / {detail}</span>
-        </span>
-        <span className="hidden text-text-tertiary group-hover:!text-text-inverse/60 sm:block">{note}</span>
+      <Link to={to} className="relative flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-ink/[0.04]">
+        <CompanyLogo company={company} className="size-9 text-[14px]" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-text-primary">{company}</p>
+          <p className="truncate text-[12.5px] text-text-tertiary">{detail}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[13px] font-medium text-accent-primary">{when}</p>
+          <p className="text-[12.5px] text-text-tertiary">{note}</p>
+        </div>
       </Link>
     </motion.li>
   );

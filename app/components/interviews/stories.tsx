@@ -1,5 +1,7 @@
+import { FileImportIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
-import { AddButton, RemoveButton, removeAt, updateAt } from "~/components/cv/entries";
+import { AddButton, Entry, EntryList, removeAt, updateAt } from "~/components/cv/entries";
 import { Field } from "~/components/profile/field";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
@@ -14,34 +16,41 @@ const blank = (): StarStory => ({ id: newId(), title: "", text: "" });
 export function StoryList({ value, onChange }: { value: StarStory[]; onChange: (v: StarStory[]) => void }) {
   const set = (i: number, patch: Partial<StarStory>) => onChange(updateAt(value, i, patch));
   return (
-    <div className="flex flex-col gap-6">
-      {!value.length && (
-        <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
-          Write down the moments you're proudest of: a hard problem, a conflict, a deadline, a failure you learned from. Rough notes are fine: prep turns them into STAR answers and fills what's missing from your CV.
-        </p>
-      )}
-      {value.map((story, i) => (
-        <article key={story.id} className="flex flex-col gap-4 border-b border-stroke-secondary pb-6">
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
+    <div className="flex flex-col gap-3">
+      {value.length === 0 ? (
+        <div className="border border-stroke-secondary px-6 py-10 text-center">
+          <p className="font-medium text-text-primary">No stories yet</p>
+          <p className="mx-auto mt-1 max-w-md text-[13.5px] leading-relaxed text-text-tertiary">
+            Write down a hard problem, a conflict, a tight deadline or a failure you learned from. Rough notes are fine.
+          </p>
+        </div>
+      ) : (
+        <EntryList>
+          {value.map((story, i) => (
+            <Entry
+              key={story.id}
+              heading={story.title || "New story"}
+              sub={story.text.split("\n")[0] || undefined}
+              onRemove={() => onChange(removeAt(value, i))}
+            >
               <Field label="Title">
                 <Input value={story.title} maxLength={200} placeholder="Cut checkout latency in half" onChange={(e) => set(i, { title: e.target.value })} />
               </Field>
-            </div>
-            <RemoveButton label={`Remove ${story.title || "story"}`} onClick={() => onChange(removeAt(value, i))} />
-          </div>
-          <Field label="Story">
-            <Textarea
-              rows={6}
-              maxLength={4000}
-              value={story.text}
-              placeholder="What happened, what you had to do, what you did and how it turned out. Leave gaps: prep fills them from your CV."
-              onChange={(e) => set(i, { text: e.target.value })}
-            />
-          </Field>
-        </article>
-      ))}
-      <AddButton label="Add story" onClick={() => onChange([...value, blank()])} />
+              <Field label="What happened">
+                <Textarea
+                  rows={4}
+                  maxLength={4000}
+                  value={story.text}
+                  placeholder="The situation, what you had to do, what you did and how it turned out. Leave gaps: prep fills them from your CV."
+                  onChange={(e) => set(i, { text: e.target.value })}
+                  className="text-[14px] leading-relaxed [field-sizing:content]"
+                />
+              </Field>
+            </Entry>
+          ))}
+        </EntryList>
+      )}
+      <AddButton label="Story" onClick={() => onChange([...value, blank()])} />
     </div>
   );
 }
@@ -74,11 +83,19 @@ export function DraftStories({ request, onDrafted }: { request: TailorRequest | 
     }
   };
 
-  const note = "font-sans text-[13px] normal-case tracking-normal text-text-tertiary";
+  const note = "text-[13.5px] text-text-tertiary";
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-3">
+    <div className="mb-4 flex flex-wrap items-center gap-3">
       {request ? (
-        <Button type="button" variant="secondary" size="small" className="uppercase" disabled={running || runner !== "ready"} onClick={draft}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="small"
+          className="h-9 gap-2 border-stroke-secondary bg-bg-primary px-3 text-[13.5px] text-text-primary hover:border-stroke-primary hover:bg-bg-primary"
+          disabled={running || runner !== "ready"}
+          onClick={draft}
+        >
+          <HugeiconsIcon icon={FileImportIcon} size={16} strokeWidth={1.5} />
           {running ? "Drafting…" : "Draft stories from my CV"}
         </Button>
       ) : (
@@ -90,7 +107,7 @@ export function DraftStories({ request, onDrafted }: { request: TailorRequest | 
         </span>
       )}
       {request && !error && runner === "ready" && <span className={note}>Drafts land below with gaps marked [like this]. Edit, then save.</span>}
-      {error && <span className="font-sans text-[13px] normal-case tracking-normal text-red-primary">{error}</span>}
+      {error && <span className="text-[13.5px] text-red-primary">{error}</span>}
     </div>
   );
 }

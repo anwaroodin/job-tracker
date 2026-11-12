@@ -1,46 +1,36 @@
 import { ApplicationRowItem } from "~/components/applications/application-row";
+import { ListSection } from "~/components/applications/list-section";
+import { INSET_SEPARATORS } from "~/components/applications/applications-table";
 import { SAVED_APPLICATION_ROW_GRID_COLS } from "~/components/applications/saved-application-row";
-import { Section } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import type { SavedJobData } from "~/types/application";
 
 export function SavedSection({
-  n = "02",
   saved,
   isArrival,
 }: {
-  n?: string;
   saved: SavedJobData[];
   isArrival: (id: string) => boolean;
 }) {
   const savedCount = saved.length;
   return (
-    <Section
-      n={n}
-      id="saved"
-      title="Saved jobs"
-      hint={savedCount > 0 ? `${savedCount} to apply` : undefined}
-      i={1}
-    >
+    <ListSection id="saved" title="Saved jobs" count={savedCount > 0 ? savedCount : undefined}>
       {savedCount === 0 ? (
-        <div className="border border-dashed border-stroke-secondary px-4 py-8 text-center text-text-tertiary">
-          <p className="text-[12px] font-mono">No saved jobs pending.</p>
-          <p className="mt-1 font-sans text-[12px] text-text-tertiary normal-case">
-            Bookmark job postings using the Chrome extension or star them to follow up later.
-          </p>
+        <div className="flex flex-col items-center gap-1 px-4 py-12 text-center font-sans normal-case tracking-normal">
+          <p className="text-[14px] font-medium text-text-primary">No saved jobs</p>
+          <p className="text-[13px] text-text-tertiary">Save postings with the browser extension and they'll wait here until you apply.</p>
         </div>
       ) : (
-        <div className="-mx-1 overflow-x-auto">
-          <div className="w-full min-w-0 sm:min-w-[640px]">
+        <div className="font-sans normal-case tracking-normal">
+          <div className={INSET_SEPARATORS}>
             {/* Header Row (Desktop only) */}
             <div
               className={cn(
-                "hidden sm:grid items-center gap-4 border-b border-dashed border-white/15 px-3 pb-2.5 text-[10.5px] text-text-tertiary",
-                SAVED_APPLICATION_ROW_GRID_COLS
+                "hidden items-center gap-4 border-b border-stroke-secondary px-3 pb-2 text-[12px] font-medium text-text-tertiary sm:grid",
+                SAVED_APPLICATION_ROW_GRID_COLS,
               )}
             >
-              <span>Company</span>
-              <span>Role</span>
+              <span>Job</span>
               <span>Saved</span>
               <span className="text-right">Actions</span>
             </div>
@@ -58,6 +48,6 @@ export function SavedSection({
           </div>
         </div>
       )}
-    </Section>
+    </ListSection>
   );
 }

@@ -5,7 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens — dark only, flat, monochrome.
+ * Design tokens as light-dark(light, dark) pairs. <html data-theme> picks the scheme: light by default,
+ * "dark", or "system" (follows the OS through color-scheme). Flat, monochrome.
  *
  * Surfaces step up in tiny increments (sidebar → page → card → chip); depth
  * comes from 1px hairlines, never shadows or glow. The palette is greys plus
@@ -15,32 +16,63 @@
  *   #0c0c0e  page + wells   #18191d  row hover    #2a2c31  chip hover / bars
  */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  --bg-primary: #0c0c0e;
-  --bg-secondary: #060608;
-  --bg-grouped-primary: #141519;
-  --bg-grouped-secondary: #0c0c0e;
-  --bg-grouped-tertiary: #1e2025;
+  --bg-primary: light-dark(#fafaf8, #0c0c0e);
+  --bg-secondary: light-dark(#f2f0ea, #060608);
+  --bg-grouped-primary: light-dark(#ffffff, #141519);
+  --bg-grouped-secondary: light-dark(#f6f5f1, #0c0c0e);
+  --bg-grouped-tertiary: light-dark(#ece9e0, #1e2025);
 
-  --text-primary: #ececec;
-  --text-secondary: #a6a7ad;
-  --text-tertiary: #86878e;
-  --text-inverse: #0c0c0e;
-  --text-accent: #e8b33c;
+  --text-primary: light-dark(#16171a, #ececec);
+  --text-secondary: light-dark(#3f4147, #a6a7ad);
+  --text-tertiary: light-dark(#5c5e64, #86878e);
+  --text-inverse: light-dark(#fafaf8, #0c0c0e);
+  --text-accent: light-dark(#8a5f14, #e8b33c);
 
-  --fill-primary: #2a2c31;
-  --fill-secondary: #1e2025;
-  --fill-tertiary: #18191d;
+  --fill-primary: light-dark(#d3d0c6, #2a2c31);
+  --fill-secondary: light-dark(#ece9e0, #1e2025);
+  --fill-tertiary: light-dark(#f1efe9, #18191d);
+  --sidebar: light-dark(#f6f5f1, #131417);
+  --sidebar-active: light-dark(#ffffff, #212227);
+  --brand: #e5484d;
 
-  --stroke-primary: rgba(255, 255, 255, 0.11);
-  --stroke-secondary: rgba(255, 255, 255, 0.06);
+  --stroke-primary: light-dark(rgba(21, 22, 24, 0.22), rgba(255, 255, 255, 0.11));
+  --stroke-secondary: light-dark(rgba(21, 22, 24, 0.12), rgba(255, 255, 255, 0.06));
 
   --paper: #ffffff;
   --paper-text: #16171a;
   --paper-muted: #5c5e66;
 
-  --scrim: rgba(6, 6, 8, 0.78);
+  --scrim: light-dark(rgba(21, 22, 24, 0.45), rgba(6, 6, 8, 0.78));
+
+  --ink: light-dark(#16171a, #ffffff);
+  --text-nav: light-dark(#2e3035, #c9c9cd);
+  --primary-hover: light-dark(#34363c, #ffffff);
+
+  --accent-primary: light-dark(#8a5f14, #e8b33c);
+  --accent-secondary: light-dark(#a8771c, #f0cf85);
+  --accent-tertiary: light-dark(rgba(150, 105, 28, 0.26), rgba(232, 179, 60, 0.22));
+  --accent-quaternary: light-dark(rgba(150, 105, 28, 0.12), rgba(232, 179, 60, 0.1));
+  --green-primary: light-dark(#2a7350, #58b68a);
+  --green-tertiary: light-dark(rgba(47, 122, 87, 0.24), rgba(88, 182, 138, 0.22));
+  --green-quaternary: light-dark(rgba(47, 122, 87, 0.11), rgba(88, 182, 138, 0.1));
+  --red-primary: light-dark(#ab3a45, #d1707a);
+  --red-tertiary: light-dark(rgba(177, 65, 76, 0.24), rgba(209, 112, 122, 0.22));
+  --red-quaternary: light-dark(rgba(177, 65, 76, 0.1), rgba(209, 112, 122, 0.1));
+  --orange-primary: light-dark(#8a5f14, #e8b33c);
+  --orange-tertiary: light-dark(rgba(150, 105, 28, 0.26), rgba(232, 179, 60, 0.22));
+  --orange-quaternary: light-dark(rgba(150, 105, 28, 0.12), rgba(232, 179, 60, 0.1));
+
+  --status-saved: light-dark(#85878e, #4a4c53);
+  --status-applied: light-dark(#4c4e55, #d4d4d8);
+  --status-screening: light-dark(#5f6168, #a6a7ad);
+  --status-interview: light-dark(#8a5f14, #e8b33c);
+  --status-assessment: light-dark(#a15c2e, #f0cf85);
+  --status-offer: light-dark(#2a7350, #58b68a);
+  --status-accepted: light-dark(#146b45, #8fd0ae);
+  --status-rejected: light-dark(#ab3a45, #d1707a);
+  --status-ghosted: light-dark(#6b6d74, #86878e);
 
   --bottom-nav: calc(3.5rem + env(safe-area-inset-bottom));
 }
@@ -49,6 +81,14 @@
   :root {
     --bottom-nav: 0px;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+:root[data-theme="system"] {
+  color-scheme: light dark;
 }
 
 @theme {
@@ -70,6 +110,9 @@
   --color-fill-primary: var(--fill-primary);
   --color-fill-secondary: var(--fill-secondary);
   --color-fill-tertiary: var(--fill-tertiary);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-brand: var(--brand);
 
   --color-paper: var(--paper);
   --color-paper-text: var(--paper-text);
@@ -78,23 +121,27 @@
   --color-stroke-secondary: var(--stroke-secondary);
   --color-scrim: var(--scrim);
 
+  --color-ink: var(--ink);
+  --color-text-nav: var(--text-nav);
+  --color-primary-hover: var(--primary-hover);
+
   /* Amber — links and "needs attention" only. */
-  --color-accent-primary: #e8b33c;
-  --color-accent-secondary: #f0cf85;
-  --color-accent-tertiary: rgba(232, 179, 60, 0.22);
-  --color-accent-quaternary: rgba(232, 179, 60, 0.1);
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-tertiary: var(--accent-tertiary);
+  --color-accent-quaternary: var(--accent-quaternary);
 
-  --color-green-primary: #58b68a;
-  --color-green-tertiary: rgba(88, 182, 138, 0.22);
-  --color-green-quaternary: rgba(88, 182, 138, 0.1);
+  --color-green-primary: var(--green-primary);
+  --color-green-tertiary: var(--green-tertiary);
+  --color-green-quaternary: var(--green-quaternary);
 
-  --color-red-primary: #d1707a;
-  --color-red-tertiary: rgba(209, 112, 122, 0.22);
-  --color-red-quaternary: rgba(209, 112, 122, 0.1);
+  --color-red-primary: var(--red-primary);
+  --color-red-tertiary: var(--red-tertiary);
+  --color-red-quaternary: var(--red-quaternary);
 
-  --color-orange-primary: #e8b33c;
-  --color-orange-tertiary: rgba(232, 179, 60, 0.22);
-  --color-orange-quaternary: rgba(232, 179, 60, 0.1);
+  --color-orange-primary: var(--orange-primary);
+  --color-orange-tertiary: var(--orange-tertiary);
+  --color-orange-quaternary: var(--orange-quaternary);
 }
 
 html,
@@ -105,6 +152,18 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme="light"] body {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] body {
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+  }
 }
 
 @media (pointer: fine) {
@@ -142,7 +201,7 @@ html body[data-scroll-locked] {
 }
 
 ::selection {
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
 }
 
 .panel {

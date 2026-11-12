@@ -1,25 +1,21 @@
 import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
-import { Section } from "~/components/ui/terminal";
+import { PageSection } from "~/components/ui/page-section";
 import type { ProfileForm } from "~/types/profile";
 import { Field } from "~/components/profile/field";
 
 export function EligibilitySection({
-  n,
   value,
   onChange,
 }: {
-  n: string;
   value: ProfileForm["eligibility"];
   onChange: (patch: Partial<ProfileForm["eligibility"]>) => void;
 }) {
   return (
-    <Section
-      n={n}
+    <PageSection
       id="eligibility"
       title="Work eligibility"
       description="Right to work, sponsorship, availability and pay."
-      i={4}
     >
       <div className="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
         <div className="flex flex-col gap-4 normal-case">
@@ -64,6 +60,6 @@ export function EligibilitySection({
           </Field>
         </div>
       </div>
-    </Section>
+    </PageSection>
   );
 }

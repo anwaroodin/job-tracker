@@ -9,7 +9,7 @@ import { CompanyLogo } from "~/components/applications/company-logo";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { RichText } from "~/components/ui/rich-text";
 import { StatusBadge } from "~/components/ui/status-badge";
-import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
+import { Leader, Section, fmtDate, stagger, PageTitle } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { parseContacts } from "~/lib/contacts";
 import { hostOf } from "~/lib/format/url";
@@ -53,10 +53,7 @@ export function SavedListing({ job, share }: { job: SavedListingJob; share: Shar
           </p>
           <div className="mt-4 flex items-start gap-4">
             <CompanyLogo company={job.company} logoUrl={job.logoUrl} className="mt-1 size-11 text-[16px]" />
-            <h1 className="max-w-3xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary normal-case sm:text-[30px]">
-              {job.role}
-              <span className="block uppercase text-text-tertiary">{job.company}</span>
-            </h1>
+            <PageTitle title={job.company} sub={job.role} />
           </div>
           <FactChips facts={listingFacts(job)} className="mt-5" />
         </div>

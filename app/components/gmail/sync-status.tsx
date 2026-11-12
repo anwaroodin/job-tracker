@@ -23,87 +23,72 @@ export function SyncStatus({ initial, collapsed }: { initial: GmailStatus; colla
   useRefreshOnNewResults(status);
   useRefreshAroundManualSync(manualSyncRunning);
 
-  return (
-    <div data-tour="sync" className="border-t border-dashed border-white/15 px-2.5 py-3 font-mono text-[10.5px] uppercase tracking-[0.08em]">
-      <div className={cn("min-h-[6.25rem]", collapsed && "lg:hidden")} aria-live="polite">
-        <p className="eyebrow pb-2 !text-[10px]">Gmail sync</p>
-        {syncing ? (
-          <StageList stage={status.stage} count={status.stageCount} />
-        ) : (
-          <IdleSummary status={status} ago={ago} />
-        )}
-      </div>
-      <span
-        title={syncing ? "Syncing Gmail" : ago ? `Gmail synced ${ago}` : "Gmail"}
-        className={cn("hidden text-center", collapsed && "lg:block", dotColour(status, syncing), syncing && "animate-pulse")}
-      >
-        ●
+  const dot = <span aria-hidden className={cn("size-2 shrink-0 rounded-full", dotColour(status, syncing), syncing && "animate-pulse")} />;
+  if (collapsed) {
+    return (
+      <span data-tour="sync" title={syncing ? "Syncing Gmail" : ago ? `Gmail synced ${ago}` : "Gmail"} className="flex h-8 items-center justify-center">
+        {dot}
       </span>
+    );
+  }
+
+  return (
+    <div data-tour="sync" aria-live="polite" className="flex items-start gap-2.5 px-2.5 py-2 text-[12.5px] leading-snug">
+      <span className="flex h-[18px] items-center">{dot}</span>
+      <div className="min-w-0">{syncing ? <Syncing stage={status.stage} count={status.stageCount} /> : <Idle status={status} ago={ago} />}</div>
     </div>
   );
 }
 
-function StageList({ stage, count }: { stage: SyncStage | null; count: number | null }) {
-  const current = Math.max(0, STAGES.findIndex((s) => s.stage === stage));
+function Syncing({ stage, count }: { stage: SyncStage | null; count: number | null }) {
+  const index = Math.max(0, STAGES.findIndex((s) => s.stage === stage));
   return (
-    <ol className="flex flex-col gap-1">
-      {STAGES.map((s, i) => {
-        const done = i < current;
-        const active = i === current;
-        return (
-          <li
-            key={s.stage}
-            className={cn("flex gap-2", done ? "text-text-secondary" : active ? "text-text-accent" : "text-text-tertiary")}
-          >
-            <span className={cn("shrink-0", active && "animate-pulse")}>[{done ? "✓" : active ? "▸" : " "}]</span>
-            <span className="truncate">
-              {s.label}
-              {active && count ? ` ${count}` : ""}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
+    <>
+      <p className="text-text-primary">
+        {STAGES[index].label}
+        {count ? ` ${count}` : ""}…
+      </p>
+      <p className="text-text-tertiary">
+        Step {index + 1} of {STAGES.length}
+      </p>
+    </>
   );
 }
 
-function IdleSummary({ status, ago }: { status: GmailStatus; ago: string | null }) {
+function Idle({ status, ago }: { status: GmailStatus; ago: string | null }) {
   if (!status.connected) {
     return (
-      <Link to="/profile#integrations" className="text-text-tertiary transition-colors hover:text-text-primary">
-        [○] Not connected
+      <Link to="/profile#integrations" className="text-text-secondary transition-colors hover:text-text-primary">
+        Connect Gmail
       </Link>
     );
   }
   if (status.needsReconnect) {
     return (
       <Link to="/profile#integrations" className="text-red-primary transition-colors hover:text-text-primary">
-        [!] Reconnect Gmail
+        Reconnect Gmail
       </Link>
     );
   }
   return (
-    <div className="flex flex-col gap-1">
-      <p className="text-text-secondary">
-        <span className={status.lastError ? "text-red-primary" : "text-green-primary"}>[{status.lastError ? "!" : "●"}]</span>{" "}
-        <span suppressHydrationWarning>
-          {status.lastError ? "Failed, retrying" : ago ? `Synced ${ago}` : "Not synced yet"}
-        </span>
+    <>
+      <p className="text-text-secondary" suppressHydrationWarning>
+        {status.lastError ? "Gmail sync failed, retrying" : ago ? `Gmail synced ${ago}` : "Gmail not synced yet"}
       </p>
       {!!status.lastFetched && !status.lastError && (
-        <p className="pl-[4ch] text-text-tertiary">
+        <p className="text-text-tertiary">
           {status.lastFetched} new · {status.lastLinked ?? 0} matched
         </p>
       )}
-      {status.hasMore && <p className="pl-[4ch] text-text-tertiary">More to fetch</p>}
-    </div>
+      {status.hasMore && <p className="text-text-tertiary">More to fetch</p>}
+    </>
   );
 }
 
 function dotColour(status: GmailStatus, syncing: boolean) {
-  if (syncing) return "text-text-accent";
-  if (!status.connected) return "text-text-tertiary";
-  return status.lastError ? "text-red-primary" : "text-green-primary";
+  if (syncing) return "bg-accent-primary";
+  if (!status.connected) return "bg-text-tertiary";
+  return status.lastError || status.needsReconnect ? "bg-red-primary" : "bg-green-primary";
 }
 
 function useRefreshOnNewResults(status: GmailStatus) {

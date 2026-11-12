@@ -1,24 +1,20 @@
 import { Input } from "~/components/ui/input";
-import { Section } from "~/components/ui/terminal";
+import { PageSection } from "~/components/ui/page-section";
 import type { ProfileForm } from "~/types/profile";
 import { Field, FieldGrid } from "~/components/profile/field";
 
 export function AddressSection({
-  n,
   value,
   onChange,
 }: {
-  n: string;
   value: ProfileForm["personal"]["address"];
   onChange: (patch: Partial<ProfileForm["personal"]["address"]>) => void;
 }) {
   return (
-    <Section
-      n={n}
+    <PageSection
       id="address"
       title="Address"
       description="Used for postal fields on applications."
-      i={2}
     >
       <div className="flex flex-col gap-4">
         <Field label="Address line 1">
@@ -60,6 +56,6 @@ export function AddressSection({
           />
         </Field>
       </div>
-    </Section>
+    </PageSection>
   );
 }

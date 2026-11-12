@@ -1,19 +1,19 @@
-import { data, Link, redirect, useRouteLoaderData } from "react-router";
+import { data, redirect, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/[id]";
 import type { loader as layoutLoader } from "../layout";
 import { ContactList } from "~/components/application-detail/contact-list";
 import { CompanyLogo } from "~/components/applications/company-logo";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { FlagToggle } from "~/components/applications/flag-toggle";
-import { GmailSync } from "~/components/gmail/gmail-sync";
-import { RichText } from "~/components/ui/rich-text";
 import { DeleteApplication } from "~/components/application-detail/delete-application";
 import { EditDetails } from "~/components/application-detail/edit-details";
 import { ShareLink } from "~/components/application-detail/share-link";
 import { SavedListing } from "~/components/application-detail/saved-listing";
 import { StatusPicker } from "~/components/application-detail/status-picker";
 import { BackToSaved } from "~/components/application-detail/back-to-saved";
-import { Leader, Section, fmtDate, stagger } from "~/components/ui/terminal";
+import { stagger, PageTitle } from "~/components/ui/terminal";
+import { PageSection, SANS_PAGE } from "~/components/ui/page-section";
+import { SideBlock } from "~/components/ui/side-block";
 import { cn } from "~/lib/cn";
 import { PREP_STATUSES } from "~/lib/status";
 import { parseContacts } from "~/lib/contacts";
@@ -47,7 +47,9 @@ import { TimelineItem } from "~/components/application-detail/timeline-item";
 import { EmailItem } from "~/components/application-detail/email-item";
 import { UnlinkedEmails } from "~/components/application-detail/unlinked-emails";
 import { useNewOnArrival } from "~/components/application-detail/use-new-on-arrival";
-import { Progress } from "~/components/application-detail/progress";
+import { Journey } from "~/components/application-detail/journey";
+import { CvPanel, DetailsPanel, NotesPanel } from "~/components/application-detail/details-panel";
+import { JobDescription } from "~/components/application-detail/job-description";
 import { FollowUp } from "~/components/application-detail/follow-up";
 import { InterviewPrep } from "~/components/application-detail/interview-prep";
 import { followUpDraft, followUpRecipient, quietDays } from "~/server/services/follow-up/rules";
@@ -195,63 +197,51 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
   );
   const emails = loaderData.emails.filter((e) => !e.dismissedAt);
   const unlinked = loaderData.emails.filter((e) => e.dismissedAt);
-  const reached = new Set<string>([
-    "applied",
-    row.status,
-    ...emails.filter((e) => !e.unsure).map((e) => e.category ?? ""),
-  ]);
-  const source = hostOf(row.url);
+  const latest = emails.at(-1)?.id;
+  const source = hostOf(row.url) || undefined;
   const contacts = parseContacts(row.contactsJson);
   const move = { company: row.company, applications: loaderData.otherApplications };
-  let n = 2;
-  const next = () => String(++n).padStart(2, "0");
 
   return (
-    <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
-      <header className="rise flex flex-col gap-6" style={stagger(0)}>
-        <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-          <Link to="/applications" className="transition-colors hover:text-text-primary">
-            [02] Applications
-          </Link>
-          <span className="mx-2 opacity-50">/</span>
-          {row.company}
-        </p>
-
-        <div className="min-w-0">
-          <div className="flex items-start gap-4">
-            <CompanyLogo company={row.company} logoUrl={row.logoUrl} className="mt-1 size-11 text-[16px]" />
-            <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-              {row.company}
-              <span className="block text-text-tertiary">{row.role}</span>
-            </h1>
+    <div className={`flex flex-col gap-10 ${SANS_PAGE}`}>
+      <header className="rise flex flex-col gap-5" style={stagger(0)}>
+        <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+          <div className="flex min-w-0 items-start gap-4">
+            <CompanyLogo company={row.company} logoUrl={row.logoUrl} className="mt-0.5 size-12 text-[18px]" />
+            <PageTitle className="min-w-0" title={row.company} sub={row.role} />
           </div>
-          <FactChips facts={listingFacts(row)} className="mt-5" />
+          <StatusPicker status={row.status} />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] tracking-[0.1em]">
-            <StatusPicker status={row.status} />
-            <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
-            {!loaderData.emails.some((e) => !e.dismissedAt) && <BackToSaved />}
+        <FactChips facts={listingFacts(row)} />
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-y border-stroke-secondary py-1.5">
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="inline-flex h-8 items-center px-3 text-[13px]">
+              <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
+            </span>
             <EditDetails job={row} />
             <ShareLink {...loaderData.share} />
-            <DeleteApplication company={row.company} role={row.role} />
+            {emails.length === 0 && <BackToSaved />}
           </div>
-          <GmailSync status={gmail} />
+          <DeleteApplication company={row.company} role={row.role} />
         </div>
       </header>
 
-      <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-start">
+      <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-14">
         <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
           {loaderData.followUp && <FollowUp {...loaderData.followUp} />}
-          <Progress status={row.status} reached={reached} />
-          {loaderData.prep && <InterviewPrep n={next()} {...loaderData.prep} />}
+          <Journey status={row.status} appliedAt={row.appliedAt} updatedAt={row.updatedAt} emails={emails} />
+          {loaderData.prep && <InterviewPrep {...loaderData.prep} />}
 
-          <Section
-            n={next()}
+          <PageSection
+            id="timeline"
             title="Timeline"
-            hint={emails.length ? `${emails.length} ${emails.length === 1 ? "email" : "emails"}` : undefined}
-            i={2}
+            description={
+              emails.length
+                ? `${emails.length} ${emails.length === 1 ? "email" : "emails"} from Gmail, oldest first.`
+                : "Emails about this application show up here."
+            }
           >
             <ol className="flex flex-col">
               <TimelineItem
@@ -267,6 +257,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
                   email={e}
                   isNew={isNew(e)}
                   arrived={isArrival(e.id)}
+                  defaultOpen={e.id === latest}
                   href={gmailThreadUrl(accountEmail, e.threadId || e.id)}
                   move={move}
                 />
@@ -274,67 +265,34 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
             </ol>
             {unlinked.length > 0 && <UnlinkedEmails emails={unlinked} />}
             {emails.length === 0 && (
-              <p className="mt-4 font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
+              <p className="mt-4 text-[13.5px] text-text-tertiary">
                 {gmail.connected
                   ? `No emails matched yet. An email is matched when its sender or subject mentions “${row.company}”.`
                   : "Connect Gmail in your profile to pull in emails for this application."}
               </p>
             )}
-          </Section>
+          </PageSection>
         </div>
 
-        {/* Sticky while it's short enough to fit on screen; with people listed it scrolls with the page. */}
         <aside
           className={cn(
-            "flex flex-col gap-12 w-full lg:self-start lg:col-start-2 lg:row-span-2 lg:row-start-1",
-            contacts.length === 0 && "lg:sticky lg:top-16",
+            "flex w-full flex-col gap-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start lg:border-l lg:border-stroke-secondary lg:pl-8",
+            contacts.length === 0 && !row.notes && "lg:sticky lg:top-16",
           )}
         >
-          <Section n={next()} title="Details" i={3}>
-            <Leader label="Location">{row.location || "—"}</Leader>
-            <Leader label="Work type">{row.workType || "—"}</Leader>
-            {row.employmentType && <Leader label="Employment">{row.employmentType}</Leader>}
-            <Leader label="Salary">{row.salary || "—"}</Leader>
-            {row.postedAt && <Leader label="Posted">{fmtDate(row.postedAt)}</Leader>}
-            {row.applicants && <Leader label="Applicants">{row.applicants}</Leader>}
-            {row.category && <Leader label="Level">{row.category}</Leader>}
-            <Leader label="CV">
-              <Link to={`/applications/${row.id}/cv`} className="text-accent-primary transition-colors hover:text-accent-secondary">
-                Tailor ↗
-              </Link>
-            </Leader>
-            <Leader label="Applied">{fmtDate(row.appliedAt)}</Leader>
-            <Leader label="Updated">{fmtDate(row.updatedAt)}</Leader>
-            {source && (
-              <Leader label="Source">
-                <a
-                  href={row.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="normal-case text-accent-primary transition-colors hover:text-accent-secondary"
-                >
-                  {source} ↗
-                </a>
-              </Leader>
-            )}
-            {row.notes && (
-              <p className="mt-4 whitespace-pre-line font-sans text-[13px] normal-case tracking-normal text-text-secondary">
-                {row.notes}
-              </p>
-            )}
-          </Section>
+          <DetailsPanel row={row} />
+          <CvPanel applicationId={row.id} tailored={loaderData.share.hasTailoredCv} />
+          {row.notes && <NotesPanel notes={row.notes} />}
           {contacts.length > 0 && (
-            <Section n={next()} title="People to reach out to" hint={String(contacts.length)} i={4}>
+            <SideBlock title="People to reach out to" aside={contacts.length}>
               <ContactList contacts={contacts} />
-            </Section>
+            </SideBlock>
           )}
         </aside>
 
         {row.description && (
           <div className="lg:col-start-1 lg:row-start-2">
-            <Section n={next()} title="Job description" hint={source || undefined} i={5}>
-              <RichText text={row.description} />
-            </Section>
+            <JobDescription text={row.description} source={source} />
           </div>
         )}
       </div>

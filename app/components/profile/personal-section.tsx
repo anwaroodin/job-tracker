@@ -1,24 +1,20 @@
 import { Input } from "~/components/ui/input";
-import { Section } from "~/components/ui/terminal";
+import { PageSection } from "~/components/ui/page-section";
 import type { ProfileForm } from "~/types/profile";
 import { Field, FieldGrid } from "~/components/profile/field";
 
 export function PersonalSection({
-  n,
   value,
   onChange,
 }: {
-  n: string;
   value: ProfileForm["personal"];
   onChange: (patch: Partial<ProfileForm["personal"]>) => void;
 }) {
   return (
-    <Section
-      n={n}
+    <PageSection
       id="personal"
       title="Personal information"
       description="Your name and how employers reach you."
-      i={1}
     >
       <FieldGrid cols={2}>
         <Field label="First name">
@@ -52,6 +48,6 @@ export function PersonalSection({
           />
         </Field>
       </FieldGrid>
-    </Section>
+    </PageSection>
   );
 }

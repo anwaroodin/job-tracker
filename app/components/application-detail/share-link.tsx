@@ -40,18 +40,18 @@ export function ShareLink({ applicationId, link, hasTailoredCv, variant = "ghost
     }
   };
 
-  const label = "text-[10.5px] tracking-[0.1em] text-text-tertiary";
+  const label = "text-[12.5px] text-text-tertiary";
   return (
     <>
-      <Button type="button" variant={variant} size={size} className="uppercase" onClick={() => setOpen(true)}>
+      <Button type="button" variant={variant} size={size} className="" onClick={() => setOpen(true)}>
         <Link2 />
         Share{link && " · on"}
       </Button>
       <Dialog open={open} onOpenChange={close}>
-        <DialogContent className="w-[calc(100%-2rem)] font-mono uppercase tracking-[0.04em]">
+        <DialogContent className="w-[calc(100%-2rem)]">
           <DialogHeader>
             <DialogTitle className="font-normal">Share link</DialogTitle>
-            <DialogDescription className="font-sans normal-case">
+            <DialogDescription className="font-sans">
               Anyone with the link can view the job description{hasTailoredCv && " and, if you include it, your latest tailored CV"}. Your notes, emails and status stay private.
             </DialogDescription>
           </DialogHeader>
@@ -59,18 +59,18 @@ export function ShareLink({ applicationId, link, hasTailoredCv, variant = "ghost
           {url ? (
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                <Input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className="font-sans normal-case" />
-                <Button type="button" variant="secondary" className="uppercase" onClick={copy}>
+                <Input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className="font-sans " />
+                <Button type="button" variant="secondary" className="" onClick={copy}>
                   {copied ? <Check /> : <Copy />}
                   {copied ? "Copied" : "Copy"}
                 </Button>
               </div>
-              <p className="font-sans text-[12px] normal-case tracking-normal text-text-tertiary">Copy it now: it's only shown once. You can make a new one later, which turns this one off.</p>
+              <p className="font-sans text-[12px] text-text-tertiary">Copy it now: it's only shown once. You can make a new one later, which turns this one off.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               {link && (
-                <p className="font-sans text-[13px] normal-case tracking-normal text-text-secondary">
+                <p className="font-sans text-[13px] text-text-secondary">
                   A link is on until {fmtDate(link.expiresAt)}
                   {hasTailoredCv && (link.includeCv ? ", with your tailored CV" : ", without your CV")}.
                 </p>
@@ -84,7 +84,7 @@ export function ShareLink({ applicationId, link, hasTailoredCv, variant = "ghost
                       type="button"
                       size="tiny"
                       variant={!link && days === d ? "primary" : "secondary"}
-                      className="uppercase"
+                      className=""
                       disabled={busy}
                       onClick={() => (link ? submit({ intent: "update", days: String(d) }) : setDays(d))}
                     >
@@ -105,12 +105,12 @@ export function ShareLink({ applicationId, link, hasTailoredCv, variant = "ghost
 
           <DialogFooter className="gap-2">
             {link && !url && (
-              <Button type="button" variant="destructive" className="uppercase" disabled={busy} onClick={() => submit({ intent: "revoke" })}>
+              <Button type="button" variant="destructive" className="" disabled={busy} onClick={() => submit({ intent: "revoke" })}>
                 Turn off
               </Button>
             )}
             {!url && (
-              <Button type="button" className="uppercase" disabled={busy} onClick={create}>
+              <Button type="button" className="" disabled={busy} onClick={create}>
                 {busy ? "Working…" : link ? "New link" : "Create link"}
               </Button>
             )}

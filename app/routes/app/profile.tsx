@@ -4,7 +4,7 @@ import type { Route } from "./+types/profile";
 import type { loader as layoutLoader } from "./layout";
 import { Button } from "~/components/ui/button";
 import { UnsavedBar } from "~/components/ui/unsaved-bar";
-import { stagger } from "~/components/ui/terminal";
+import { stagger, PageTitle } from "~/components/ui/terminal";
 import { SettingsNav } from "~/components/ui/settings-nav";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
@@ -19,7 +19,8 @@ import { AddressSection } from "~/components/profile/address-section";
 import { LinksSection } from "~/components/profile/links-section";
 import { EligibilitySection } from "~/components/profile/eligibility-section";
 import { IntegrationsSection } from "~/components/profile/integrations-section";
-import { SECTIONS, secN } from "~/components/profile/sections";
+import { SECTIONS } from "~/components/profile/sections";
+import { SANS_PAGE } from "~/components/ui/page-section";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
@@ -78,23 +79,17 @@ export default function ProfilePage({
     <Form
       method="post"
       onSubmit={() => setDirty(false)}
-      className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6"
+      className={`flex flex-col gap-10 ${SANS_PAGE}`}
     >
       <input type="hidden" name="profile" value={JSON.stringify(form)} />
 
-      {/* ── [01] ─────────────────────────────────────────────────── */}
       <header
         className="rise flex flex-wrap items-end justify-between gap-6"
         style={stagger(0)}
       >
         <div>
-          <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <b className="mr-2 font-semibold text-text-primary">[05]</b>Profile
-          </p>
-          <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-            {displayName}
-          </h1>
-          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[13px] normal-case tracking-normal text-text-secondary">
+          <PageTitle title={displayName} />
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] text-text-secondary">
             <span>{loaderData.user.email}</span>
             {p.address.city && <span className="text-text-tertiary">·</span>}
             {p.address.city && (
@@ -107,22 +102,18 @@ export default function ProfilePage({
           </p>
         </div>
         <div className="flex items-center gap-4">
-          {saved && <span className="text-green-primary">Saved</span>}
-          {dirty && !saving && (
-            <span className="text-text-tertiary">Unsaved changes</span>
-          )}
+          {saved && <span className="text-[13.5px] text-green-primary">Saved</span>}
+          {dirty && !saving && <span className="text-[13.5px] text-text-tertiary">Unsaved changes</span>}
           <Button type="submit" size="medium" disabled={saving || !dirty}>
             {saving ? "Saving…" : "Save changes"}
           </Button>
         </div>
       </header>
 
-      {/* ── Nav + sections ───────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[220px_1fr]">
         <aside className="hidden lg:block">
           <SettingsNav
             items={SECTIONS.map((s) => ({
-              n: s.n,
               href: `#${s.id}`,
               label: s.title,
             }))}
@@ -130,15 +121,15 @@ export default function ProfilePage({
         </aside>
 
         <main className="flex flex-col gap-12">
-          <PersonalSection n={secN("personal")} value={p} onChange={(patch) => setP("personal", patch)} />
+          <PersonalSection value={p} onChange={(patch) => setP("personal", patch)} />
 
-          <AddressSection n={secN("address")} value={p.address} onChange={setAddr} />
+          <AddressSection value={p.address} onChange={setAddr} />
 
-          <LinksSection n={secN("links")} value={p} onChange={(patch) => setP("personal", patch)} />
+          <LinksSection value={p} onChange={(patch) => setP("personal", patch)} />
 
-          <EligibilitySection n={secN("eligibility")} value={elig} onChange={(patch) => setP("eligibility", patch)} />
+          <EligibilitySection value={elig} onChange={(patch) => setP("eligibility", patch)} />
 
-          <IntegrationsSection n={secN("integrations")} gmail={gmail} />
+          <IntegrationsSection gmail={gmail} />
         </main>
       </div>
 

@@ -5,10 +5,12 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useRouteLoaderData,
 } from "react-router";
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import { themeFromCookie } from "~/lib/theme";
 
 export const meta: Route.MetaFunction = () => [{ title: "job-tracker" }];
 
@@ -18,14 +20,26 @@ export const links: Route.LinksFunction = () => [
   { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 ];
 
+export function loader({ request }: Route.LoaderArgs) {
+  return { theme: themeFromCookie(request.headers.get("Cookie")) };
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
+  const theme = useRouteLoaderData<typeof loader>("root")?.theme ?? "light";
   return (
-    <html lang="en" style={{ colorScheme: "dark" }}>
+    <html lang="en" data-theme={theme}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="color-scheme" content="dark" />
-        <meta name="theme-color" content="#0c0c0e" />
+        <meta name="color-scheme" content="dark light" />
+        {theme === "system" ? (
+          <>
+            <meta name="theme-color" content="#fafaf8" media="(prefers-color-scheme: light)" />
+            <meta name="theme-color" content="#0c0c0e" media="(prefers-color-scheme: dark)" />
+          </>
+        ) : (
+          <meta name="theme-color" content={theme === "light" ? "#fafaf8" : "#0c0c0e"} />
+        )}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

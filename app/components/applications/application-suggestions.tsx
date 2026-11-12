@@ -1,16 +1,20 @@
-import { Link2, Plus, X } from "lucide-react";
+import { Add01Icon, ArrowUpRight01Icon, Cancel01Icon, Link01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
+import { CompanyLogo } from "~/components/applications/company-logo";
 import { Input } from "~/components/ui/input";
-import { fmtDate, STATUS_COLORS } from "~/components/ui/terminal";
+import { StatusBadge } from "~/components/ui/status-badge";
+import { shortDate } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { gmailThreadUrl } from "~/lib/gmail";
 import { useArrivals } from "~/hooks/use-arrivals";
 import type { Suggestion } from "~/types/suggestion";
 
 const SHOWN_AT_FIRST = 5;
+const SANS = "font-sans text-[13px] normal-case tracking-normal";
 
 export function ApplicationSuggestions({
   suggestions,
@@ -42,7 +46,7 @@ export function ApplicationSuggestions({
         <button
           type="button"
           onClick={() => setShowAll((all) => !all)}
-          className="self-start pt-3 text-[11px] uppercase tracking-[0.08em] text-text-secondary transition-colors hover:text-text-primary"
+          className="cursor-pointer self-start px-4 pb-1 pt-3 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary"
         >
           {showAll ? "Show fewer" : `Show ${hidden} more`}
         </button>
@@ -79,12 +83,39 @@ function SuggestionRow({
       exit={{ opacity: 0, x: 24, transition: { duration: 0.2 } }}
       transition={{ duration: 0.3 }}
       className={cn(
-        "border-b border-stroke-secondary py-3.5 last:border-0",
+        "flex gap-3 border-b border-stroke-secondary px-4 py-4 last:border-0 even:bg-ink/[0.025]",
         arrived && "arrive",
         leaving && "pointer-events-none",
       )}
     >
-      <div className="grid gap-x-3 gap-y-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_300px] md:items-center">
+      <CompanyLogo company={company || suggestion.from} className="size-9 text-[14px]" />
+      <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 items-baseline justify-between gap-4">
+        <p title={suggestion.subject} className="min-w-0 truncate font-medium text-text-primary">
+          {suggestion.subject || "(No subject)"}
+        </p>
+        <span className="shrink-0 text-[13px] tabular-nums text-text-tertiary">{shortDate(suggestion.appliedAt)}</span>
+      </div>
+      <div className="mt-1 flex min-w-0 items-center gap-2 text-[13px] text-text-tertiary">
+        <StatusBadge status={suggestion.category} variant="dot" className="shrink-0 text-[13px]" />
+        <span aria-hidden>·</span>
+        <span className="min-w-0 truncate">
+          From {suggestion.from}
+          {suggestion.emailIds.length > 1 && ` · ${suggestion.emailIds.length} emails`}
+        </span>
+        <span aria-hidden>·</span>
+        <a
+          href={gmailThreadUrl(accountEmail, suggestion.latestThreadId)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex shrink-0 items-center gap-0.5 text-text-secondary underline-offset-4 transition-colors hover:text-text-primary hover:underline"
+        >
+          Open in Gmail
+          <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} strokeWidth={1.5} />
+        </a>
+      </div>
+
+      <div className="mt-3 grid gap-x-3 gap-y-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] md:items-center">
         <SuggestionInput label="Company" value={company} onChange={setCompany} />
         <SuggestionInput label="Role" value={role} onChange={setRole} />
         <div className="flex min-w-0 items-center gap-2 md:justify-end">
@@ -96,9 +127,9 @@ function SuggestionRow({
               disabled={busy}
               title={`Add ${suggestion.emailIds.length === 1 ? "this email" : "these emails"} to ${suggestion.existing.company} / ${suggestion.existing.role}`}
               onClick={() => submit({ intent: "link-suggestion", applicationId: suggestion.existing!.id })}
-              className="min-w-0"
+              className={cn("h-9 min-w-0", SANS)}
             >
-              <Link2 />
+              <HugeiconsIcon icon={Link01Icon} size={15} strokeWidth={1.5} />
               <span className="truncate">Link to {suggestion.existing.company}</span>
             </Button>
           )}
@@ -108,8 +139,9 @@ function SuggestionRow({
             disabled={busy || !!missing}
             title={missing ? `Add the ${missing} to track this application` : undefined}
             onClick={() => submit({ intent: "track", company, role, appliedAt: suggestion.appliedAt })}
+            className={cn("h-9", SANS)}
           >
-            <Plus />
+            <HugeiconsIcon icon={Add01Icon} size={15} strokeWidth={1.5} />
             {busy && intent === "track" ? "Tracking…" : "Track"}
           </Button>
           <Button
@@ -120,38 +152,21 @@ function SuggestionRow({
             title="Not an application I want to track"
             disabled={busy}
             onClick={() => submit({ intent: "dismiss-suggestion" })}
+            className="size-9"
           >
-            <X />
+            <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={1.5} />
           </Button>
         </div>
       </div>
 
-      <div className="mt-2 flex min-w-0 items-baseline gap-3 text-[10.5px] tracking-[0.08em] text-text-tertiary">
-        <p className="min-w-0 flex-1 truncate">
-          <span style={{ color: STATUS_COLORS[suggestion.category] ?? undefined }}>[{suggestion.category}]</span>{" "}
-          {fmtDate(suggestion.appliedAt)} · {suggestion.from}
-          {suggestion.emailIds.length > 1 && ` · ${suggestion.emailIds.length} emails`} ·{" "}
-          <span className="font-sans normal-case tracking-normal">{suggestion.subject}</span>
-        </p>
-        <a
-          href={gmailThreadUrl(accountEmail, suggestion.latestThreadId)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 uppercase text-text-secondary transition-colors hover:text-text-primary"
-        >
-          Open in Gmail ↗
-        </a>
-      </div>
-
       {missing && (
-        <p className="mt-1.5 font-sans text-[12px] normal-case tracking-normal text-accent-primary">
+        <p className="mt-2 text-[13px] text-accent-primary">
           Couldn't find the {missing} in this email. Open it in Gmail and fill {missing.includes(" and ") ? "them" : "it"}{" "}
           in to track.
         </p>
       )}
-      {fetcher.data?.error && (
-        <p className="mt-1.5 font-sans text-[12px] normal-case tracking-normal text-red-primary">{fetcher.data.error}</p>
-      )}
+      {fetcher.data?.error && <p className="mt-2 text-[13px] text-red-primary">{fetcher.data.error}</p>}
+      </div>
     </motion.li>
   );
 }
@@ -159,15 +174,18 @@ function SuggestionRow({
 function SuggestionInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   const empty = !value.trim();
   return (
-    <Input
-      aria-label={label}
-      placeholder={`Add ${label.toLowerCase()}`}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={cn(
-        "h-9",
-        empty && "border-accent-primary/40 placeholder:text-accent-primary/70 hover:border-accent-primary/60",
-      )}
-    />
+    <label className="relative min-w-0">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12.5px] text-text-tertiary">{label}</span>
+      <Input
+        placeholder={`Add ${label.toLowerCase()}`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          label === "Company" ? "pl-[76px]" : "pl-12",
+          "h-9 bg-bg-grouped-primary text-[14px]",
+          empty && "border-accent-primary/40 placeholder:text-accent-primary/70 hover:border-accent-primary/60",
+        )}
+      />
+    </label>
   );
 }

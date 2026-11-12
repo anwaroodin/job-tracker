@@ -1,14 +1,16 @@
 import { useState } from "react";
+import { PageSection, SANS_PAGE } from "~/components/ui/page-section";
+import { SideBlock, SideRow } from "~/components/ui/side-block";
 import { Form, redirect, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/cv";
 import { CV_SECTIONS, CvEditor } from "~/components/cv";
 import { RoleCvs } from "~/components/cv/role-cvs";
-import { TailoredCvGrid } from "~/components/cv/tailored-grid";
+import { TailoredCvList } from "~/components/cv/tailored-grid";
 import { TemplateEditor } from "~/components/cv/template-editor";
 import { PdfButton, TypstPreview } from "~/components/cv/typst-preview";
 import { Button } from "~/components/ui/button";
 import { SettingsNav } from "~/components/ui/settings-nav";
-import { Section, stagger } from "~/components/ui/terminal";
+import { stagger, PageTitle } from "~/components/ui/terminal";
 import { UnsavedBar } from "~/components/ui/unsaved-bar";
 import { cvContent, personFor, typstCv } from "~/lib/cv";
 import { DEFAULT_CV_TEMPLATE } from "~/lib/typst";
@@ -91,24 +93,19 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
     <Form
       method="post"
       onSubmit={() => setDirty(false)}
-      className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6"
+      className={`flex flex-col gap-10 ${SANS_PAGE}`}
     >
       <input type="hidden" name="cv" value={JSON.stringify(cv)} />
 
       <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
         <div>
-          <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <b className="mr-2 font-semibold text-text-primary">[03]</b>CV
-          </p>
-          <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-            Your CV
-          </h1>
-          <p className="mt-3 font-sans text-[13px] normal-case tracking-normal text-text-secondary">
-            Everything you've done, in your own words. Each job's tailored CV is rewritten from this.
-          </p>
+          <PageTitle
+            title="Your CV"
+            sub="Everything you've done, in your own words. Each job's tailored CV is rewritten from this."
+          />
         </div>
         <div className="flex items-center gap-4">
-          {saved && <span className="text-green-primary">Saved</span>}
+          {saved && <span className="text-[13.5px] text-green-primary">Saved</span>}
           {editing && save}
           {editing || styling ? (
             <Button type="button" variant="ghost" size="medium" className="uppercase" onClick={() => setMode(null)} data-tour="done-cv">
@@ -128,32 +125,50 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
       </header>
 
       {!editing && !styling && (
-        <>
-          <Section n="01" id="master-cv" title="CV" description="What every tailored CV is rewritten from." i={1}>
-            <div className="flex flex-wrap items-start gap-6">
-              <TypstPreview template={template} cv={data} width={380} />
-              <PdfButton template={template} cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-12">
+          <aside className="flex flex-col gap-5 lg:sticky lg:top-16 lg:self-start">
+            <div>
+              <h2 className="text-[16px] font-medium text-text-primary">Master CV</h2>
+              <p className="mt-0.5 text-[13.5px] text-text-tertiary">What every tailored CV is rewritten from.</p>
             </div>
-          </Section>
-          <Section n="02" id="tailored" title="Tailored CVs" description="The latest for each job, by job title." i={2}>
-            <TailoredCvGrid person={loaderData.person} template={template} cards={loaderData.tailored} />
-          </Section>
-          <Section n="03" id="roles" title="Tailor to a role" description="No job description needed: just the job title." i={3}>
-            <RoleCvs roles={loaderData.roles} />
-          </Section>
-        </>
+            <TypstPreview template={template} cv={data} width={380} />
+            <PdfButton template={template} cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
+            <SideBlock title="What's in it">
+              <div className="flex flex-col gap-2">
+                <SideRow label="Roles" value={cv.experience.length} />
+                <SideRow label="Education" value={cv.education.length} />
+                <SideRow
+                  label="Projects"
+                  note={cv.projects.some((p) => p.optional) ? `${cv.projects.filter((p) => p.optional).length} in reserve` : undefined}
+                  value={cv.projects.length}
+                />
+                <SideRow label="Skills" value={cv.skills.reduce((n, g) => n + g.items.length, 0)} />
+                <SideRow label="Answers for tailoring" value={cv.confirmed.length} />
+              </div>
+            </SideBlock>
+          </aside>
+
+          <div className="flex min-w-0 flex-col gap-10">
+            <PageSection id="tailored" title="Tailored CVs" description={`The latest for each job${loaderData.tailored.length ? ` · ${loaderData.tailored.length} in total` : ""}.`}>
+              <TailoredCvList cards={loaderData.tailored} />
+            </PageSection>
+            <PageSection id="roles" title="Tailor to a role" description="No job description needed: just the job title.">
+              <RoleCvs roles={loaderData.roles} />
+            </PageSection>
+          </div>
+        </div>
       )}
 
       {styling && (
-        <Section n="01" title="Template" description="Typst. Controls how every CV looks." i={1}>
+        <PageSection id="template" title="Template" description="Controls how every CV looks. Written in Typst.">
           <TemplateEditor saved={loaderData.template} cv={data} />
-        </Section>
+        </PageSection>
       )}
 
       {editing && (
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[220px_1fr] xl:grid-cols-[200px_minmax(0,1fr)_300px]">
           <aside className="hidden lg:block">
-            <SettingsNav items={CV_SECTIONS.map((s) => ({ n: s.n, href: `#${s.id}`, label: s.title }))} />
+            <SettingsNav items={CV_SECTIONS.map((s) => ({ href: `#${s.id}`, label: s.title }))} />
           </aside>
           <main className="flex flex-col gap-12">
             <CvEditor
@@ -165,7 +180,7 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
             />
           </main>
           <aside className="flex flex-col gap-3 lg:col-start-2 xl:sticky xl:top-16 xl:col-start-3 xl:row-start-1 xl:self-start">
-            <p className="text-[11px] tracking-[0.12em] text-text-secondary">Preview</p>
+            <p className="text-[14px] font-medium text-text-primary">Preview</p>
             <TypstPreview template={template} cv={data} width={300} />
           </aside>
         </div>

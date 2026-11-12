@@ -336,7 +336,7 @@ function TableBucket({
       <div className="-mx-1 hidden overflow-x-auto sm:block">
         <div className="min-w-[640px]">
           {table.getHeaderGroups().map((group) => (
-            <div key={group.id} className={cn("grid items-center gap-4 border-b border-dashed border-white/15 px-1 pb-2 text-text-tertiary", GRID_COLS)}>
+            <div key={group.id} className={cn("grid items-center gap-4 border-b border-dashed border-ink/15 px-1 pb-2 text-text-tertiary", GRID_COLS)}>
               {group.headers.map((header) => (
                 <div key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</div>
               ))}

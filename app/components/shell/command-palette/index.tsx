@@ -1,5 +1,6 @@
 import { useSelector } from "@legendapp/state/react";
-import { Search, X } from "lucide-react";
+import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -117,14 +118,10 @@ export function CommandPalette() {
         hideClose
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="top-[18%] max-w-2xl translate-y-0 gap-0 overflow-hidden border border-stroke-primary bg-bg-secondary p-0 font-mono text-[12.5px] shadow-[0_24px_60px_rgba(0,0,0,0.9)]"
+        className="top-[16%] max-w-2xl translate-y-0 gap-0 overflow-hidden border border-stroke-primary bg-sidebar-active p-0 font-sans text-[14px] normal-case tracking-normal shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
         onPointerDown={(e) => {
-          if (
-            (e.target as HTMLElement).tagName !== "BUTTON" &&
-            (e.target as HTMLElement).tagName !== "INPUT"
-          ) {
-            inputRef.current?.focus();
-          }
+          const tag = (e.target as HTMLElement).tagName;
+          if (tag !== "BUTTON" && tag !== "INPUT") inputRef.current?.focus();
         }}
       >
         <DialogTitle id={titleId} className="sr-only">
@@ -134,16 +131,15 @@ export function CommandPalette() {
           Search saved and applied jobs, matched emails, and pages
         </DialogDescription>
 
-        {/* Search bar input */}
-        <div className="flex items-center gap-3 border-b border-stroke-secondary px-4 py-3.5">
-          <Search className="size-4 shrink-0 text-text-tertiary" />
+        <div className="flex items-center gap-3 px-5 pb-3 pt-4">
+          <HugeiconsIcon icon={Search01Icon} size={20} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
           <input
             ref={inputRef}
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search saved & applied jobs, emails, pages…"
-            className="flex-1 bg-transparent font-mono text-[13px] normal-case text-text-primary placeholder:text-text-tertiary focus:outline-none"
+            placeholder="Search jobs, emails and pages"
+            className="flex-1 bg-transparent text-[16px] text-text-primary placeholder:text-text-tertiary focus:outline-none"
           />
           {query && (
             <button
@@ -152,20 +148,15 @@ export function CommandPalette() {
                 setQuery("");
                 inputRef.current?.focus();
               }}
-              className="text-text-tertiary transition-colors hover:text-text-primary cursor-pointer"
-              aria-label="Clear query"
+              className="cursor-pointer p-1 text-text-tertiary transition-colors hover:bg-ink/[0.05] hover:text-text-primary"
+              aria-label="Clear search"
             >
-              <X className="size-3.5" />
+              <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={1.5} />
             </button>
           )}
-          <kbd className="hidden rounded border border-stroke-secondary px-1.5 py-0.5 text-[10px] text-text-tertiary sm:inline-block">
-            ESC
-          </kbd>
         </div>
 
-        {/* Scope filter tabs */}
-        <div className="flex items-center gap-1.5 border-b border-stroke-secondary/60 bg-bg-primary/50 px-4 py-2 text-[11px] uppercase tracking-[0.06em]">
-          <span className="mr-2 text-text-tertiary">Scope:</span>
+        <div className="flex items-center gap-1 border-b border-stroke-secondary px-4 pb-3">
           {(["all", "jobs", "emails", "nav"] as SearchScope[]).map((s) => (
             <button
               key={s}
@@ -175,16 +166,16 @@ export function CommandPalette() {
                 inputRef.current?.focus();
               }}
               className={cn(
-                "px-2 py-0.5 transition-colors cursor-pointer select-none",
+                "h-8 cursor-pointer select-none px-3 text-[13px] font-medium transition-colors",
                 scope === s
-                  ? "bg-text-primary text-text-inverse font-semibold"
-                  : "text-text-tertiary hover:bg-fill-secondary hover:text-text-primary"
+                  ? "bg-ink/[0.07] text-text-primary"
+                  : "text-text-tertiary hover:bg-ink/[0.04] hover:text-text-primary",
               )}
             >
-              {s === "all" ? "All" : s === "jobs" ? "Jobs" : s === "emails" ? "Emails" : "Pages"}
+              {SCOPE_LABELS[s]}
             </button>
           ))}
-          {loading && <span className="ml-auto text-[10px] text-text-tertiary animate-pulse">Searching…</span>}
+          {loading && <span className="ml-auto animate-pulse text-[12.5px] text-text-tertiary">Searching…</span>}
         </div>
 
         <PaletteResults
@@ -199,16 +190,27 @@ export function CommandPalette() {
           activate={activate}
         />
 
-        {/* Footer keyboard shortcuts hint */}
-        <div className="flex items-center justify-between border-t border-stroke-secondary/60 bg-bg-primary/70 px-4 py-2 text-[10.5px] text-text-tertiary">
-          <div className="flex items-center gap-3">
-            <span><kbd className="border border-stroke-secondary px-1">↑↓</kbd> navigate</span>
-            <span><kbd className="border border-stroke-secondary px-1">↵</kbd> select</span>
-            <span><kbd className="border border-stroke-secondary px-1">esc</kbd> close</span>
-          </div>
-          <span>job-tracker search</span>
+        <div className="flex items-center gap-5 border-t border-stroke-secondary bg-sidebar px-5 py-2.5 text-[12.5px] text-text-tertiary">
+          <Hint keys={["↑", "↓"]}>to move</Hint>
+          <Hint keys={["↵"]}>to open</Hint>
+          <Hint keys={["Esc"]}>to close</Hint>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const SCOPE_LABELS: Record<SearchScope, string> = { all: "All", jobs: "Jobs", emails: "Emails", nav: "Pages" };
+
+function Hint({ keys, children }: { keys: string[]; children: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      {keys.map((k) => (
+        <kbd key={k} className="min-w-5 border border-stroke-primary bg-sidebar-active px-1 text-center font-sans text-[11.5px] text-text-secondary">
+          {k}
+        </kbd>
+      ))}
+      {children}
+    </span>
   );
 }

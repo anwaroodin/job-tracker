@@ -31,21 +31,21 @@ export function MoveEmailDialog({
   const sorted = [...applications].sort(
     (a, b) => Number(sameCompany(b)) - Number(sameCompany(a)) || b.appliedAt.localeCompare(a.appliedAt),
   );
-  const fieldClass = "w-full min-w-0 font-mono text-[12.5px] normal-case tracking-normal";
+  const fieldClass = "w-full min-w-0 text-[12.5px]";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] grid-cols-[minmax(0,1fr)] font-mono uppercase tracking-[0.04em]">
+      <DialogContent className="w-[calc(100%-2rem)] grid-cols-[minmax(0,1fr)]">
         <DialogHeader>
           <DialogTitle className="font-normal">Wrong application</DialogTitle>
-          <DialogDescription className="truncate font-sans normal-case">{email.subject || "(no subject)"}</DialogDescription>
+          <DialogDescription className="truncate font-sans">{email.subject || "(no subject)"}</DialogDescription>
         </DialogHeader>
 
         <fetcher.Form method="post" className="flex flex-col gap-2">
           <input type="hidden" name="intent" value="move" />
           <input type="hidden" name="id" value={email.id} />
           <input type="hidden" name="appliedAt" value={email.receivedAt ?? ""} />
-          <p className="text-[11px] tracking-[0.1em] text-text-tertiary">New application</p>
+          <p className="text-[12.5px] text-text-tertiary">New application</p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input name="company" aria-label="Company" placeholder="Company" defaultValue={company} required maxLength={200} className={fieldClass} />
             <Input name="role" aria-label="Role" placeholder="Role" required maxLength={200} autoFocus className={fieldClass} />
@@ -59,14 +59,14 @@ export function MoveEmailDialog({
           <fetcher.Form method="post" className="flex flex-col gap-2">
             <input type="hidden" name="intent" value="move" />
             <input type="hidden" name="id" value={email.id} />
-            <label htmlFor="move-target" className="text-[11px] tracking-[0.1em] text-text-tertiary">
+            <label htmlFor="move-target" className="text-[12.5px] text-text-tertiary">
               Or an existing application
             </label>
             <select
               id="move-target"
               name="applicationId"
               required
-              className="h-9 w-full min-w-0 border border-stroke-primary bg-fill-secondary px-2 font-mono text-[12.5px] normal-case tracking-normal text-text-primary"
+              className="h-9 w-full min-w-0 border border-stroke-primary bg-fill-secondary px-2 text-[12.5px] text-text-primary"
             >
               {sorted.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -81,7 +81,7 @@ export function MoveEmailDialog({
         )}
 
         {fetcher.data?.error && (
-          <p role="alert" className="text-[11px] tracking-[0.08em] text-red-primary">
+          <p role="alert" className="text-[12.5px] text-red-primary">
             {fetcher.data.error}
           </p>
         )}

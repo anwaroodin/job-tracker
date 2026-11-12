@@ -1,5 +1,6 @@
 import { useSelector } from "@legendapp/state/react";
-import { Bell } from "lucide-react";
+import { Notification01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
@@ -54,9 +55,9 @@ export function ActivityBell({ initial }: { initial: GmailStatus }) {
         <button
           type="button"
           aria-label={unseen ? `${unseen} new ${unseen === 1 ? "update" : "updates"}` : "Updates"}
-          className="relative flex size-8 items-center justify-center text-text-tertiary transition-colors hover:bg-white/[0.04] hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary data-[state=open]:bg-white/[0.04] data-[state=open]:text-text-primary"
+          className="relative flex size-9 items-center justify-center text-text-tertiary transition-colors hover:bg-ink/[0.04] hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary data-[state=open]:bg-ink/[0.04] data-[state=open]:text-text-primary"
         >
-          <Bell className="size-4" />
+          <HugeiconsIcon icon={Notification01Icon} size={18} strokeWidth={1.5} />
           <AnimatePresence>
             {unseen > 0 && (
               <motion.span
@@ -75,33 +76,51 @@ export function ActivityBell({ initial }: { initial: GmailStatus }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-[min(28rem,calc(100vw-2rem))] p-0 font-mono uppercase tracking-[0.04em]"
+        className="w-[min(30rem,calc(100vw-2rem))] border-stroke-primary bg-sidebar-active p-0 font-sans text-[14px] normal-case tracking-normal shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
       >
-        <div className="flex items-baseline justify-between px-3 pt-2.5">
-          <span className="eyebrow">What's new</span>
-          {fresh && fresh.size > 0 && <span className="text-[10px] tracking-[0.08em] text-green-primary">{fresh.size} new</span>}
+        <div className="flex items-center justify-between px-5 pb-3 pt-4">
+          <span className="text-[16px] font-medium text-text-primary">Notifications</span>
+          {fresh && fresh.size > 0 && <span className="text-[12.5px] font-medium text-green-primary">{fresh.size} new</span>}
         </div>
         <ActivityTabs items={feed.data?.items ?? []} fresh={fresh} selected={tab} />
-        <div className="max-h-[min(70vh,28rem)] overflow-y-auto p-1">
+        <div className="max-h-[min(70vh,28rem)] overflow-y-auto px-2 py-1">
           {!feed.data || !fresh ? (
-            <p className="px-2.5 py-3 text-[11px] tracking-[0.08em] text-text-tertiary">Loading…</p>
+            <p className="animate-pulse px-3 py-10 text-center text-[13px] text-text-tertiary">Loading…</p>
           ) : inTab(feed.data.items, tab).length === 0 ? (
-            <p className="px-2.5 py-3 font-sans text-[12.5px] normal-case tracking-normal text-text-tertiary">
-              {ACTIVITY_TABS.find((t) => t.id === tab)?.empty}
-            </p>
+            <div className="px-6 py-10 text-center">
+              <p className="font-medium text-text-primary">You're all caught up</p>
+              <p className="mt-1 text-[13px] text-text-tertiary">{ACTIVITY_TABS.find((t) => t.id === tab)?.empty}</p>
+            </div>
           ) : (
-            inTab(feed.data.items, tab).map((item) => (
-              <DropdownMenuItem key={item.id} asChild className="items-start py-2">
-                <Link to={describeActivity(item).href}>
-                  <ActivityRow item={item} fresh={fresh?.has(item.id) ?? false} now={now} />
-                </Link>
-              </DropdownMenuItem>
-            ))
+            <ActivityGroups items={inTab(feed.data.items, tab)} fresh={fresh} now={now} />
           )}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+function ActivityGroups({ items, fresh, now }: { items: ActivityItem[]; fresh: Set<string>; now: number }) {
+  const groups = [
+    { title: "New", items: items.filter((item) => fresh.has(item.id)) },
+    { title: "Earlier", items: items.filter((item) => !fresh.has(item.id)) },
+  ].filter((group) => group.items.length);
+  return groups.map((group) => (
+    <div key={group.title} className="flex flex-col pb-2">
+      <p className="px-3 pb-1.5 pt-2 text-[12px] font-medium text-text-tertiary">{group.title}</p>
+      {group.items.map((item) => (
+        <DropdownMenuItem
+          key={item.id}
+          asChild
+          className="min-h-12 cursor-pointer rounded-none px-3 py-2 focus:bg-ink/[0.06] data-[highlighted]:bg-ink/[0.06]"
+        >
+          <Link to={describeActivity(item).href}>
+            <ActivityRow item={item} fresh={fresh.has(item.id)} now={now} />
+          </Link>
+        </DropdownMenuItem>
+      ))}
+    </div>
+  ));
 }
 
 function ActivityTabs({
@@ -117,7 +136,7 @@ function ActivityTabs({
     <div
       role="tablist"
       aria-label="Filter updates"
-      className="no-scrollbar flex overflow-x-auto border-b border-stroke-secondary px-1.5"
+      className="no-scrollbar flex items-center gap-1 overflow-x-auto border-b border-stroke-secondary px-4 pb-3"
     >
       {ACTIVITY_TABS.map(({ id, label }) => {
         const unread = inTab(items, id).filter((item) => fresh?.has(item.id)).length;
@@ -130,10 +149,8 @@ function ActivityTabs({
             aria-selected={active}
             onClick={() => activityTab$.tab.set(id)}
             className={cn(
-              "-mb-px flex shrink-0 grow items-center justify-center gap-1.5 border-b px-2 pb-2 pt-2.5 text-[10.5px] uppercase tracking-[0.06em] transition-colors",
-              active
-                ? "border-text-primary text-text-primary"
-                : "border-transparent text-text-tertiary hover:text-text-secondary",
+              "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 px-3 text-[13px] font-medium transition-colors",
+              active ? "bg-ink/[0.07] text-text-primary" : "text-text-tertiary hover:bg-ink/[0.04] hover:text-text-primary",
             )}
           >
             {label}

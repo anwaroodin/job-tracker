@@ -8,7 +8,7 @@ export function BackToSaved() {
       type="button"
       variant="ghost"
       size="tiny"
-      className="uppercase"
+      className=""
       disabled={fetcher.state !== "idle"}
       title="Not applied yet: move it back to your saved jobs"
       onClick={() => fetcher.submit({ intent: "unapply" }, { method: "post" })}

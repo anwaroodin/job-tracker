@@ -1,16 +1,17 @@
-import { X } from "lucide-react";
+import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/cn";
 import type { ApplicationsView } from "./use-applications-view";
 
 export function TableToolbar({ view }: { view: ApplicationsView }) {
-  const { tabs, activeTab, setActiveTab, setPage, search, setSearch, searchInputRef, hasActiveFilters, resetAllFilters } =
+  const { tabs, activeTab, setActiveTab, setPage, search, setSearch, hasActiveFilters, resetAllFilters } =
     view;
   return (
     <>
       {/* View Filter Tabs + Search Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dashed border-white/15 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dashed border-ink/15 pb-4">
         {/* Terminal Segment Tabs */}
         <div className="flex flex-wrap items-center gap-1.5">
           {tabs.map((tab) => {
@@ -100,9 +101,12 @@ export function SearchField({ view, className }: { view: ApplicationsView; class
   const { search, setSearch, setPage, searchInputRef } = view;
   return (
     <div className={cn("relative w-full sm:w-64", className)}>
-      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary text-[11px]">
-        &gt;
-      </span>
+      <HugeiconsIcon
+        icon={Search01Icon}
+        size={16}
+        strokeWidth={1.5}
+        className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+      />
       <Input
         ref={searchInputRef}
         value={search}
@@ -116,8 +120,9 @@ export function SearchField({ view, className }: { view: ApplicationsView; class
             searchInputRef.current?.blur();
           }
         }}
-        placeholder="search company, role…"
-        className="h-8 pl-6 pr-8 font-mono text-[11.5px] normal-case tracking-normal"
+        placeholder="Search company or role"
+        aria-label="Search applications"
+        className="h-9 pl-8 pr-8 text-[13.5px]"
       />
       {search ? (
         <button
@@ -126,13 +131,13 @@ export function SearchField({ view, className }: { view: ApplicationsView; class
             setSearch("");
             searchInputRef.current?.focus();
           }}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+          className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-0.5 text-text-tertiary transition-colors hover:text-text-primary"
           aria-label="Clear search"
         >
-          <X className="size-3.5" />
+          <HugeiconsIcon icon={Cancel01Icon} size={15} strokeWidth={1.5} />
         </button>
       ) : (
-        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 border border-stroke-secondary px-1 text-[10px] text-text-tertiary">
+        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 bg-ink/[0.06] px-1.5 font-sans text-[11.5px] text-text-tertiary">
           /
         </kbd>
       )}

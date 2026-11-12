@@ -30,7 +30,7 @@ export function CompanyLogo({ company, logoUrl, className }: { company: string; 
       aria-hidden
       className={cn(
         "relative flex size-5 shrink-0 items-center justify-center overflow-hidden bg-fill-secondary text-[10px] font-medium text-text-secondary",
-        "after:pointer-events-none after:absolute after:inset-0 after:ring-1 after:ring-inset after:ring-white/10",
+        "after:pointer-events-none after:absolute after:inset-0 after:ring-1 after:ring-inset after:ring-ink/10",
         className,
       )}
     >

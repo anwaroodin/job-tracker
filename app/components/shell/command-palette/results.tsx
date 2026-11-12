@@ -1,10 +1,30 @@
-import { ArrowRight, Compass, Mail } from "lucide-react";
-import type { RefObject } from "react";
+import { ArrowRight01Icon, BookOpen01Icon, Mail01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import type { ReactNode, RefObject } from "react";
+import { CompanyLogo } from "~/components/applications/company-logo";
 import { StatusBadge } from "~/components/ui/status-badge";
-import { fmtDate } from "~/components/ui/terminal";
+import { shortDate } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import type { SearchApplicationItem, SearchEmailItem } from "~/types/search";
+import { NAV_ICONS } from "../nav";
 import type { NAV_ITEMS, SelectableItem } from "./items";
+
+function Tile({ icon }: { icon: IconSvgElement }) {
+  return (
+    <span className="grid size-8 shrink-0 place-items-center bg-ink/[0.05] text-text-secondary">
+      <HugeiconsIcon icon={icon} size={17} strokeWidth={1.5} />
+    </span>
+  );
+}
+
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col pb-2">
+      <p className="px-3 pb-1.5 pt-2 text-[12px] font-medium text-text-tertiary">{title}</p>
+      {children}
+    </div>
+  );
+}
 
 export function PaletteResults({
   query,
@@ -27,144 +47,83 @@ export function PaletteResults({
   activeItemRef: RefObject<HTMLDivElement | null>;
   activate: (item: SelectableItem) => void;
 }) {
+  const row = (item: SelectableItem, leading: ReactNode, title: ReactNode, subtitle: ReactNode, trailing: ReactNode) => {
+    const index = allSelectables.findIndex((s) => s.type === item.type && s.item.id === item.item.id);
+    const selected = index === selectedIndex;
+    return (
+      <div
+        key={`${item.type}-${item.item.id}`}
+        ref={selected ? activeItemRef : undefined}
+        role="option"
+        aria-selected={selected}
+        onClick={() => activate(item)}
+        onMouseEnter={() => setSelectedIndex(index)}
+        className={cn("flex min-h-12 cursor-pointer items-center gap-3 px-3 py-2", selected && "bg-ink/[0.06]")}
+      >
+        {leading}
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-text-primary">{title}</p>
+          {subtitle && <p className="truncate text-[12.5px] text-text-tertiary">{subtitle}</p>}
+        </div>
+        <div className="flex shrink-0 items-center gap-3 text-[12.5px] text-text-tertiary">{trailing}</div>
+      </div>
+    );
+  };
+
   return (
-    <div className="max-h-[380px] overflow-y-auto p-2">
+    <div role="listbox" className="max-h-[400px] overflow-y-auto px-2 py-1">
       {allSelectables.length === 0 ? (
-        <div className="py-12 text-center text-text-tertiary">
-          <p>No results found for “{query}”.</p>
-          <p className="mt-1 text-[11px]">Try adjusting your search terms or scope filter.</p>
+        <div className="px-6 py-12 text-center">
+          <p className="font-medium text-text-primary">{query ? `Nothing matches “${query}”` : "Nothing here yet"}</p>
+          <p className="mt-1 text-[13px] text-text-tertiary">Try a company name, a role, or switch to All.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-1">
-          {/* Pages section */}
+        <>
           {filteredNav.length > 0 && (
-            <div className="mb-2">
-              <p className="px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-text-tertiary">
-                Navigation
-              </p>
-              {filteredNav.map((item) => {
-                const itemIndex = allSelectables.findIndex(
-                  (s) => s.type === "nav" && s.item.id === item.id
-                );
-                const isSelected = itemIndex === selectedIndex;
-                return (
-                  <div
-                    key={item.id}
-                    ref={isSelected ? activeItemRef : undefined}
-                    onClick={() => activate({ type: "nav", item })}
-                    onMouseEnter={() => setSelectedIndex(itemIndex)}
-                    className={cn(
-                      "flex cursor-pointer items-center justify-between gap-3 px-2.5 py-2 transition-colors",
-                      isSelected
-                        ? "bg-fill-tertiary text-text-primary ring-1 ring-stroke-primary"
-                        : "text-text-secondary hover:bg-fill-secondary hover:text-text-primary"
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Compass className="size-3.5 shrink-0 text-text-tertiary" />
-                      <span className="font-semibold text-text-primary">{item.label}</span>
-                      <span className="truncate text-[11px] text-text-tertiary">{item.hint}</span>
-                    </div>
-                    <ArrowRight className="size-3 shrink-0 text-text-tertiary" />
-                  </div>
-                );
-              })}
-            </div>
+            <Group title="Pages">
+              {filteredNav.map((item) =>
+                row(
+                  { type: "nav", item },
+                  <Tile icon={NAV_ICONS[item.to] ?? BookOpen01Icon} />,
+                  item.label,
+                  item.hint,
+                  <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={1.5} />,
+                ),
+              )}
+            </Group>
           )}
 
-          {/* Jobs section */}
           {filteredApps.length > 0 && (
-            <div className="mb-2">
-              <p className="px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-text-tertiary">
-                Applications ({filteredApps.length})
-              </p>
-              {filteredApps.map((item) => {
-                const itemIndex = allSelectables.findIndex(
-                  (s) => s.type === "app" && s.item.id === item.id
-                );
-                const isSelected = itemIndex === selectedIndex;
-                return (
-                  <div
-                    key={item.id}
-                    ref={isSelected ? activeItemRef : undefined}
-                    onClick={() => activate({ type: "app", item })}
-                    onMouseEnter={() => setSelectedIndex(itemIndex)}
-                    className={cn(
-                      "flex cursor-pointer items-center justify-between gap-3 px-2.5 py-2 transition-colors",
-                      isSelected
-                        ? "bg-fill-tertiary text-text-primary ring-1 ring-stroke-primary"
-                        : "text-text-secondary hover:bg-fill-secondary hover:text-text-primary"
-                    )}
-                  >
-                    <div className="flex min-w-0 flex-1 items-baseline gap-2">
-                      <span className="font-semibold text-text-primary">{item.company}</span>
-                      <span className="truncate text-text-secondary">/ {item.role}</span>
-                      {item.location && (
-                        <span className="hidden truncate text-[10.5px] text-text-tertiary sm:inline">
-                          · {item.location}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <span className="text-[10px] tabular-nums text-text-tertiary">
-                        {fmtDate(item.appliedAt)}
-                      </span>
-                      <StatusBadge status={item.status} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <Group title="Jobs">
+              {filteredApps.map((item) =>
+                row(
+                  { type: "app", item },
+                  <CompanyLogo company={item.company} className="size-8 text-[13px]" />,
+                  item.company,
+                  [item.role, item.location].filter(Boolean).join(" · "),
+                  <>
+                    <span className="hidden tabular-nums sm:inline">{shortDate(item.appliedAt)}</span>
+                    <StatusBadge status={item.status} variant="dot" className="text-[12.5px]" />
+                  </>,
+                ),
+              )}
+            </Group>
           )}
 
-          {/* Emails section */}
           {filteredEmails.length > 0 && (
-            <div>
-              <p className="px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-text-tertiary">
-                Emails ({filteredEmails.length})
-              </p>
-              {filteredEmails.map((item) => {
-                const itemIndex = allSelectables.findIndex(
-                  (s) => s.type === "email" && s.item.id === item.id
-                );
-                const isSelected = itemIndex === selectedIndex;
-                return (
-                  <div
-                    key={item.id}
-                    ref={isSelected ? activeItemRef : undefined}
-                    onClick={() => activate({ type: "email", item })}
-                    onMouseEnter={() => setSelectedIndex(itemIndex)}
-                    className={cn(
-                      "flex cursor-pointer flex-col gap-1 px-2.5 py-2 transition-colors",
-                      isSelected
-                        ? "bg-fill-tertiary text-text-primary ring-1 ring-stroke-primary"
-                        : "text-text-secondary hover:bg-fill-secondary hover:text-text-primary"
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <Mail className="size-3.5 shrink-0 text-text-tertiary" />
-                        <span className="truncate font-medium text-text-primary">
-                          {item.subject || "(No subject)"}
-                        </span>
-                      </div>
-                      <span className="shrink-0 text-[10px] tabular-nums text-text-tertiary">
-                        {fmtDate(item.receivedAt)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 pl-5.5 text-[11px] text-text-tertiary">
-                      <span className="truncate max-w-[200px]">{item.fromAddress}</span>
-                      <span>·</span>
-                      <span className="font-semibold text-text-secondary truncate">
-                        {item.company} {item.role ? `· ${item.role}` : ""}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <Group title="Emails">
+              {filteredEmails.map((item) =>
+                row(
+                  { type: "email", item },
+                  <Tile icon={Mail01Icon} />,
+                  item.subject || "(No subject)",
+                  [item.company, item.fromAddress].filter(Boolean).join(" · "),
+                  <span className="tabular-nums">{shortDate(item.receivedAt)}</span>,
+                ),
+              )}
+            </Group>
           )}
-        </div>
+        </>
       )}
     </div>
   );

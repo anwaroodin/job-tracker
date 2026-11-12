@@ -1,24 +1,23 @@
 import type { GmailStatus } from "~/types/gmail";
-import { Section } from "~/components/ui/terminal";
+import { PageSection } from "~/components/ui/page-section";
 import { GmailConnectButton, gmailStatusText } from "~/components/gmail/gmail-connect";
+import gmailIcon from "~/assets/gmail.png";
 
-export function IntegrationsSection({ n, gmail }: { n: string; gmail: GmailStatus }) {
+export function IntegrationsSection({ gmail }: { gmail: GmailStatus }) {
   return (
-    <Section
-      n={n}
+    <PageSection
       id="integrations"
       title="Integrations"
       description="Third-party services connected to your account."
-      i={5}
     >
-      <div className="flex items-center justify-between gap-4 border border-stroke-secondary bg-bg-secondary px-4 py-3">
+      <div className="flex items-center justify-between gap-4 border border-stroke-secondary px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex size-8 items-center justify-center bg-bg-primary text-[12px] font-semibold text-text-primary [box-shadow:inset_0_0_0_1px_var(--stroke-secondary)]">
-            G
-          </div>
+          <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden bg-fill-secondary p-1">
+            <img src={gmailIcon} alt="Gmail" className="size-full object-contain" />
+          </span>
           <div>
-            <p className="text-text-primary">Gmail</p>
-            <p className="mt-0.5 font-sans text-[11.5px] normal-case tracking-normal text-text-secondary">
+            <p className="font-medium text-text-primary">Gmail</p>
+            <p className="text-[13px] text-text-tertiary">
               {gmailStatusText(gmail)}
             </p>
           </div>
@@ -28,6 +27,6 @@ export function IntegrationsSection({ n, gmail }: { n: string; gmail: GmailStatu
           broken={!!gmail.lastError}
         />
       </div>
-    </Section>
+    </PageSection>
   );
 }

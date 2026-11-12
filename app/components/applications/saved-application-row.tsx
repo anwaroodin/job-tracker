@@ -4,17 +4,11 @@ import { Button } from "~/components/ui/button";
 import { CompanyLogo } from "~/components/applications/company-logo";
 import { FlagMark } from "~/components/applications/flag-toggle";
 import { TailorLink } from "~/components/applications/tailor-link";
-import { fmtDate } from "~/components/ui/terminal";
+import { shortDate } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import type { SavedJobData } from "~/types/application";
 
-/**
- * Standard grid layout for saved job application rows:
- * Mobile: compact 2-line layout with clean action buttons
- * Desktop: 4-column (Company | Role | Saved Date | Actions)
- */
-export const SAVED_APPLICATION_ROW_GRID_COLS =
-  "grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_90px_250px]";
+export const SAVED_APPLICATION_ROW_GRID_COLS = "sm:grid-cols-[minmax(0,1fr)_80px_auto]";
 
 export interface SavedApplicationRowItemProps {
   job: SavedJobData;
@@ -28,13 +22,6 @@ export interface SavedApplicationRowItemProps {
   actions?: React.ReactNode;
 }
 
-/**
- * Saved job application row variant:
- * - Mobile (<sm): Compact, uncluttered card (~52px)
- *   Top: Company with bookmark mark + Role & Location
- *   Bottom: Saved Date on the left + Action buttons (Open, Apply, Remove) on the right
- * - Desktop (>=sm): 4-column terminal grid (`min-h-[48px] px-3 py-2.5`)
- */
 export function SavedApplicationRowItem({
   job,
   arrived = false,
@@ -73,135 +60,73 @@ export function SavedApplicationRowItem({
     }
   };
 
+  const subtitle = [job.role, job.location].filter(Boolean).join(" · ");
+  const action = "h-7 px-2.5 font-sans text-[12.5px] font-medium normal-case tracking-normal";
+
   return (
     <div
       className={cn(
-        "group relative border-b border-stroke-secondary px-3 py-2 sm:py-2.5 transition-colors last:border-0 hover:bg-text-primary",
-        "flex flex-col gap-1 sm:grid sm:min-h-[48px] sm:items-center sm:gap-4",
+        "group relative flex flex-col gap-2 px-3 py-2 font-sans text-[14px] normal-case tracking-normal transition-colors hover:bg-ink/[0.04] sm:grid sm:min-h-14 sm:items-center sm:gap-4",
         busy && "opacity-50",
         arrived && "arrive",
         gridCols,
-        className
+        className,
       )}
     >
-      {/* Clickable link across Company, Role, Location, and Saved Date */}
-      <Link
-        to={`/applications/${job.id}`}
-        className="group/link min-w-0 sm:col-span-3 sm:grid sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_90px] sm:items-center sm:gap-4 sm:-my-2.5 sm:py-2.5 sm:-ml-3 sm:pl-3 sm:pr-2"
-      >
-        {/* Company Column */}
+      <Link to={`/applications/${job.id}`} className="flex min-w-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary">
+        <CompanyLogo company={job.company} logoUrl={job.logoUrl} className="size-9 text-[14px]" />
         <div className="min-w-0">
-          <div className="flex items-center gap-2 truncate">
-            <CompanyLogo company={job.company} logoUrl={job.logoUrl} />
-            <FlagMark status="saved" />
-            <span
-              title={job.company}
-              className="truncate font-medium text-text-primary text-[13px] group-hover:!text-text-inverse"
-            >
+          <div className="flex min-w-0 items-center gap-2">
+            <span title={job.company} className="truncate font-medium text-text-primary">
               {job.company}
             </span>
+            <FlagMark status="saved" />
           </div>
-          <p
-            title={job.location || undefined}
-            className="mt-0.5 hidden truncate pl-7 text-[10.5px] text-text-tertiary group-hover:!text-text-inverse/60 sm:block"
-          >
-            {job.location || "—"}
+          <p title={subtitle} className="truncate text-[12.5px] text-text-tertiary">
+            {subtitle || "—"}
           </p>
-        </div>
-
-        {/* Role Column */}
-        <div className="min-w-0">
-          <span
-            title={job.role}
-            className="block truncate font-sans text-[12px] sm:text-[12.5px] normal-case tracking-normal text-text-secondary group-hover:!text-text-inverse/85"
-          >
-            {job.role}
-            {job.location && (
-              <span className="text-[10px] text-text-tertiary group-hover:!text-text-inverse/60 sm:hidden">
-                {" "}· {job.location}
-              </span>
-            )}
-          </span>
-        </div>
-
-        {/* Saved Date Column */}
-        <div className="hidden sm:block">
-          <span className="tabular-nums font-mono text-[11px] text-text-tertiary group-hover:!text-text-inverse/70">
-            {job.appliedAt ? fmtDate(job.appliedAt) : "—"}
-          </span>
         </div>
       </Link>
 
-      {/* Action Buttons Column (+ Mobile Date) */}
-      <div className="flex items-center justify-between sm:justify-end gap-2 pt-0.5 sm:pt-0 shrink-0">
-        {/* On mobile, show the Saved Date neatly next to the action buttons */}
-        <span className="tabular-nums font-mono text-[10px] text-text-tertiary group-hover:!text-text-inverse/70 sm:hidden">
-          Saved {job.appliedAt ? fmtDate(job.appliedAt) : "—"}
-        </span>
+      <span className="hidden text-[12.5px] tabular-nums text-text-tertiary sm:block">
+        {job.appliedAt ? shortDate(job.appliedAt) : "—"}
+      </span>
 
-        <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center justify-between gap-2 sm:justify-end">
+        <span className="text-[12.5px] tabular-nums text-text-tertiary sm:hidden">
+          Saved {job.appliedAt ? shortDate(job.appliedAt) : "—"}
+        </span>
+        <div className="flex shrink-0 items-center gap-1">
           {actions ?? (
             <>
-              <TailorLink id={job.id} tailored={job.tailored} className="px-1.5 sm:px-2" />
+              <TailorLink id={job.id} tailored={job.tailored} className="px-2" />
               {job.url && (
-                <Button
-                  asChild
-                  variant="link"
-                  size="tiny"
-                  className="h-6 px-1.5 text-[10px] sm:h-6.5 sm:px-2 sm:text-[10.5px] group-hover:!text-text-inverse"
-                >
+                <Button asChild variant="ghost" size="tiny" className={action}>
                   <a href={job.url} target="_blank" rel="noreferrer">
                     Open ↗
                   </a>
                 </Button>
               )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="tiny"
-                disabled={busy}
-                onClick={handleApply}
-                className="h-6 px-2 text-[10px] sm:h-6.5 sm:px-2 sm:text-[10.5px] border border-stroke-primary sm:border-0 group-hover:!text-text-inverse group-hover:!border-text-inverse/40"
-              >
+              <Button type="button" variant="secondary" size="tiny" disabled={busy} onClick={handleApply} className={action}>
                 {applyLabel}
               </Button>
               {confirmingRemove ? (
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="tiny"
-                    disabled={busy}
-                    onClick={handleRemove}
-                    className="h-6 px-1.5 text-[10px] sm:h-6.5 sm:px-2 sm:text-[10.5px]"
-                  >
+                <>
+                  <Button type="button" variant="destructive" size="tiny" disabled={busy} onClick={handleRemove} className={action}>
                     Confirm
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="tiny"
-                    disabled={busy}
-                    onClick={() => setConfirmingRemove(false)}
-                    className="h-6 px-1.5 text-[10px] sm:h-6.5 sm:px-1.5 sm:text-[10.5px]"
-                  >
+                  <Button type="button" variant="ghost" size="tiny" disabled={busy} onClick={() => setConfirmingRemove(false)} className={action}>
                     Cancel
                   </Button>
-                </div>
+                </>
               ) : (
                 <Button
                   type="button"
                   variant="ghost"
                   size="tiny"
                   disabled={busy}
-                  onClick={() => {
-                    if (confirmRemove) {
-                      setConfirmingRemove(true);
-                    } else {
-                      handleRemove();
-                    }
-                  }}
-                  className="h-6 px-1.5 text-[10px] sm:h-6.5 sm:px-2 sm:text-[10.5px] text-text-tertiary hover:text-red-primary group-hover:!text-text-inverse/70 group-hover:hover:!text-red-primary"
+                  onClick={() => (confirmRemove ? setConfirmingRemove(true) : handleRemove())}
+                  className={cn(action, "text-text-tertiary hover:text-red-primary")}
                 >
                   Remove
                 </Button>

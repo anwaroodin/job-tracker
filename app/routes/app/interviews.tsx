@@ -5,7 +5,12 @@ import { DraftStories, StoryList } from "~/components/interviews/stories";
 import { cvContent } from "~/lib/cv";
 import { Button } from "~/components/ui/button";
 import { StatusBadge } from "~/components/ui/status-badge";
-import { Section, fmtDate, stagger } from "~/components/ui/terminal";
+import { shortDate, stagger, PageTitle } from "~/components/ui/terminal";
+import { PageSection, SANS_PAGE } from "~/components/ui/page-section";
+import { SideBlock } from "~/components/ui/side-block";
+import { CompanyLogo } from "~/components/applications/company-logo";
+import { INSET_SEPARATORS } from "~/components/applications/applications-table";
+import { cn } from "~/lib/cn";
 import { UnsavedBar } from "~/components/ui/unsaved-bar";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
@@ -16,6 +21,13 @@ import { getCv, getStories, saveStories } from "~/server/db/queries/profile.serv
 import { applicationsFor } from "~/server/db/queries/status.server";
 import type { StarStory } from "~/types/cv";
 import { PREP_STATUSES } from "~/lib/status";
+
+const STAR = [
+  ["S", "Situation", "Where you were and what was going on."],
+  ["T", "Task", "What you had to get done, and why it was hard."],
+  ["A", "Action", "What you did yourself. Say “I”, not “we”."],
+  ["R", "Result", "How it turned out, with a number if you have one."],
+] as const;
 
 export async function loader({ context }: Route.LoaderArgs) {
   const user = context.get(userContext);
@@ -50,53 +62,51 @@ export default function InterviewsPage({ loaderData, actionData }: Route.Compone
   );
 
   return (
-    <Form method="post" onSubmit={() => setDirty(false)} className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em]">
+    <Form method="post" onSubmit={() => setDirty(false)} className={`flex flex-col gap-10 ${SANS_PAGE}`}>
       <input type="hidden" name="stories" value={JSON.stringify(stories)} />
 
       <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
         <div>
-          <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <b className="mr-2 font-semibold text-text-primary">[04]</b>Interviews
-          </p>
-          <h1 className="mt-7 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-            Your interviews
-          </h1>
-          <p className="mt-3 font-sans text-[13px] normal-case tracking-normal text-text-secondary">
-            Your STAR stories, told once. Each job's interview prep answers from them.
-          </p>
+          <PageTitle
+            title="Your interviews"
+            sub="Your STAR stories, told once. Each job's interview prep answers from them."
+          />
         </div>
         <div className="flex items-center gap-4">
-          {saved && <span className="text-green-primary">Saved</span>}
+          {saved && <span className="text-[13.5px] text-green-primary">Saved</span>}
           {save}
         </div>
       </header>
 
-      <Section n="01" id="upcoming" title="Coming up" description="Applications in screening, assessment or interview." i={1}>
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
+        <div className="flex min-w-0 flex-col gap-10">
+          <PageSection id="upcoming" title="Coming up" description="Applications in screening, assessment or interview.">
         {loaderData.upcoming.length ? (
-          <ul className="flex flex-col">
+          <ul className={cn("flex flex-col", INSET_SEPARATORS)}>
             {loaderData.upcoming.map((a) => (
-              <li key={a.id}>
-                <Link
-                  to={`/applications/${a.id}#prep`}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-stroke-secondary py-3 first:border-t hover:bg-fill-tertiary"
-                >
-                  <span className="text-text-primary">{a.company}</span>
-                  <span className="min-w-0 flex-1 truncate font-sans normal-case tracking-normal text-text-secondary">{a.role}</span>
-                  <StatusBadge status={a.status} />
-                  <span className="text-text-tertiary tabular-nums">{fmtDate(a.appliedAt)}</span>
-                  <span className="text-text-secondary">Prepare ›</span>
+              <li key={a.id} className="relative">
+                <Link to={`/applications/${a.id}#prep`} className="flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-ink/[0.04]">
+                  <CompanyLogo company={a.company} className="size-9 text-[14px]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-text-primary">{a.company}</span>
+                    <span className="block truncate text-[12.5px] text-text-tertiary">
+                      {a.role} · Applied {shortDate(a.appliedAt)}
+                    </span>
+                  </span>
+                  <StatusBadge status={a.status} variant="dot" className="hidden w-24 shrink-0 text-[12.5px] sm:inline-flex" />
+                  <span className="shrink-0 text-[13px] font-medium text-text-secondary">Prepare</span>
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
+          <p className="border border-stroke-secondary px-6 py-8 text-center text-[13.5px] leading-relaxed text-text-tertiary">
             When an application moves to screening, assessment or interview, it shows here with its prep.
           </p>
         )}
-      </Section>
+      </PageSection>
 
-      <Section n="02" id="stories" title="STAR stories" description="In your own words. Specific beats polished." i={2}>
+      <PageSection id="stories" title="STAR stories" description="In your own words. Specific beats polished.">
         <DraftStories
           request={loaderData.draftRequest}
           onDrafted={(drafts) => {
@@ -111,7 +121,30 @@ export default function InterviewsPage({ loaderData, actionData }: Route.Compone
             setDirty(true);
           }}
         />
-      </Section>
+      </PageSection>
+        </div>
+
+        <aside className="flex flex-col gap-5 lg:sticky lg:top-16 lg:self-start lg:border-l lg:border-stroke-secondary lg:pl-8">
+          <SideBlock title="A good story has">
+            <ol className="flex flex-col gap-3">
+              {STAR.map(([letter, name, hint]) => (
+                <li key={letter} className="flex gap-3">
+                  <span className="grid size-7 shrink-0 place-items-center bg-ink/[0.06] text-[13px] font-medium text-text-primary">{letter}</span>
+                  <span className="min-w-0">
+                    <span className="block text-[13.5px] font-medium text-text-primary">{name}</span>
+                    <span className="block text-[12.5px] leading-relaxed text-text-tertiary">{hint}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </SideBlock>
+          <SideBlock title="How it's used">
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              When a job reaches interview, its prep picks the stories that fit the role and turns them into answers for the questions it's likely to ask.
+            </p>
+          </SideBlock>
+        </aside>
+      </div>
 
       {dirty && <UnsavedBar>{save}</UnsavedBar>}
     </Form>

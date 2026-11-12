@@ -13,7 +13,7 @@ export const Input = forwardRef<
         "flex h-10 w-full border border-stroke-secondary bg-bg-primary px-3.5 font-sans text-[13px]",
         "text-text-primary placeholder:text-text-tertiary transition-colors",
         "hover:border-stroke-primary",
-        "focus-visible:border-white/30 focus-visible:outline-none",
+        "focus-visible:border-ink/30 focus-visible:outline-none",
         "disabled:cursor-not-allowed disabled:opacity-40",
         className,
       )}
