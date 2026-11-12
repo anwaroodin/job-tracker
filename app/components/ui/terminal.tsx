@@ -2,19 +2,19 @@ import { cn } from "~/lib/cn";
 
 /** Greys by default; colour only where the status carries meaning. */
 export const STATUS_COLORS: Record<string, string> = {
-  saved: "#4a4c53",
-  applied: "#d4d4d8",
-  screening: "#a6a7ad",
-  interview: "#e8b33c",
-  assessment: "#f0cf85",
-  offer: "#58b68a",
-  accepted: "#8fd0ae",
-  rejected: "#d1707a",
-  ghosted: "#86878e",
-  withdrawn: "#4a4c53",
+  saved: "var(--status-saved)",
+  applied: "var(--status-applied)",
+  screening: "var(--status-screening)",
+  interview: "var(--status-interview)",
+  assessment: "var(--status-assessment)",
+  offer: "var(--status-offer)",
+  accepted: "var(--status-accepted)",
+  rejected: "var(--status-rejected)",
+  ghosted: "var(--status-ghosted)",
+  withdrawn: "var(--status-saved)",
 };
 export const statusColor = (status: string) => STATUS_COLORS[status] ?? "var(--color-text-tertiary)";
-export const CV_COLORS = ["#ececec", "#86878e", "#4a4c53"];
+export const CV_COLORS = ["var(--text-primary)", "var(--status-ghosted)", "var(--status-saved)"];
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 export const two = (n: number) => String(n).padStart(2, "0");
@@ -22,6 +22,10 @@ export const two = (n: number) => String(n).padStart(2, "0");
 export const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return `${two(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+};
+export const shortDate = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].charAt(0)}${MONTHS[d.getUTCMonth()].slice(1).toLowerCase()}`;
 };
 export const stagger = (i: number) => ({ "--i": i }) as React.CSSProperties;
 export const pct = (n: number, total: number) => (total ? Math.round((n / total) * 100) : 0);
@@ -47,7 +51,7 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className={cn("rise scroll-mt-16 border-t border-dashed border-white/15 pt-5", className)} style={stagger(i)}>
+    <section id={id} className={cn("rise scroll-mt-16 border-t border-dashed border-ink/15 pt-5", className)} style={stagger(i)}>
       <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-[11px] tracking-[0.12em]">
         <h2>
           <b className="mr-2 font-semibold text-text-primary">[{n}]</b>
@@ -63,12 +67,21 @@ export function Section({
   );
 }
 
+export function PageTitle({ title, sub, className }: { title: React.ReactNode; sub?: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex max-w-3xl flex-col gap-2.5", className)}>
+      <h1 className="text-[24px] font-medium leading-[1.2] tracking-tight text-text-primary sm:text-[30px]">{title}</h1>
+      {sub && <p className="text-[14px] normal-case leading-relaxed tracking-normal text-text-secondary sm:text-[15px]">{sub}</p>}
+    </div>
+  );
+}
+
 /** `LABEL ........... value` — dotted leader between the two. */
 export function Leader({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-baseline gap-2.5 py-[7px]">
       <span className="shrink-0 text-text-secondary">{label}</span>
-      <span className="min-w-3 flex-1 -translate-y-[3px] border-b border-dotted border-white/25" />
+      <span className="min-w-3 flex-1 -translate-y-[3px] border-b border-dotted border-ink/25" />
       <span className="min-w-0 text-right text-text-primary [overflow-wrap:anywhere]">{children}</span>
     </div>
   );
@@ -89,7 +102,7 @@ export function Bar({ share, color, cells, extra }: { share: number; color: stri
     <span aria-hidden className="block min-w-0 select-none overflow-hidden whitespace-pre tracking-[-0.05em]">
       <span style={{ color }}>{"█".repeat(filled)}</span>
       {extra && <span style={{ color: extra.color }}>{"█".repeat(added)}</span>}
-      <span className="text-white/[0.1]">{"░".repeat(cells - filled - added)}</span>
+      <span className="text-fill-primary">{"░".repeat(cells - filled - added)}</span>
     </span>
   );
 }
@@ -149,8 +162,8 @@ export function ColumnChart({
   return (
     <div>
       <div
-        className="flex h-36 items-end gap-1.5 border-b border-white/15"
-        style={{ backgroundImage: "repeating-linear-gradient(180deg, transparent 0, transparent calc(25% - 1px), rgba(255,255,255,.06) 25%)" }}
+        className="flex h-36 items-end gap-1.5 border-b border-ink/15"
+        style={{ backgroundImage: "repeating-linear-gradient(180deg, transparent 0, transparent calc(25% - 1px), var(--stroke-secondary) 25%)" }}
       >
         {columns.map((c, i) => {
           const latest = i === columns.length - 1;
@@ -167,7 +180,7 @@ export function ColumnChart({
                 </span>
               )}
               <div
-                className={cn("w-full transition-colors", latest ? "bg-text-primary" : "bg-fill-primary group-hover:bg-white/30")}
+                className={cn("w-full transition-colors", latest ? "bg-text-primary" : "bg-fill-primary group-hover:bg-ink/30")}
                 style={{ height: `${Math.max(2, (c.value / peak) * 100)}%` }}
               />
             </div>

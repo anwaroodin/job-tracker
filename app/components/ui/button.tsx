@@ -14,11 +14,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-text-primary text-text-inverse hover:bg-white",
+        primary: "bg-text-primary text-text-inverse hover:bg-primary-hover",
         secondary:
           "border border-stroke-primary bg-fill-secondary text-text-secondary hover:bg-fill-primary hover:text-text-primary",
         ghost:
-          "bg-transparent text-text-secondary hover:bg-white/5 hover:text-text-primary",
+          "bg-transparent text-text-secondary hover:bg-ink/5 hover:text-text-primary",
         destructive:
           "border border-red-tertiary bg-red-quaternary text-red-primary hover:bg-red-tertiary",
         link: "text-accent-primary hover:text-accent-secondary",
