@@ -8,10 +8,7 @@
 </head>
 <body>
   <header class="header">
-    <div class="brand">
-      <img class="logo" src="../../icons/icon48.png" alt="" />
-      <span class="brand-name">job-tracker</span>
-    </div>
+    <span class="wordmark" role="img" aria-label="j*b">j<b>*</b>b</span>
     <div class="status" role="status">
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText">Connecting</span>
@@ -22,9 +19,8 @@
     <!-- Signed out -->
     <section data-view="signin" hidden>
       <div class="section">
-        <div class="section-head"><b>[00]</b><span>Auth</span></div>
         <div class="notice">
-          <h2>Sign-in required</h2>
+          <h2>Sign in to save jobs</h2>
           <p>Open the dashboard, sign in with Google, then reopen this popup.</p>
           <button class="btn" type="button" data-action="dashboard">Open dashboard</button>
         </div>
@@ -34,7 +30,6 @@
     <!-- Can't reach the dashboard, or can't run on this tab -->
     <section data-view="message" hidden>
       <div class="section">
-        <div class="section-head"><b>[00]</b><span id="messageLabel">Status</span></div>
         <div class="notice">
           <h2 id="messageTitle"></h2>
           <p id="messageBody"></p>
@@ -45,7 +40,7 @@
     <!-- The job on this page -->
     <form data-view="job" hidden id="jobForm" novalidate>
       <div class="section">
-        <div class="section-head"><b>[01]</b><span>Job</span></div>
+        <p class="section-title">This job</p>
         <label class="field">
           <span class="label">Company</span>
           <input class="input" id="company" name="company" maxlength="100" placeholder="Company name" autocomplete="off" required />
@@ -64,7 +59,6 @@
       </div>
 
       <div class="section">
-        <div class="section-head"><b>[02]</b><span>Actions</span></div>
         <button class="btn" type="submit" id="applyBtn">Apply &amp; fill</button>
         <div class="actions">
           <button class="btn secondary" type="button" id="saveBtn">Save job</button>
@@ -77,7 +71,7 @@
 
   <footer class="footer">
     <div class="footer-links">
-      <button class="link accent" type="button" data-action="dashboard" id="dashboardLink">Open dashboard</button>
+      <button class="link" type="button" data-action="dashboard" id="dashboardLink">Open dashboard</button>
       <button class="link" type="button" data-action="options">Settings</button>
     </div>
     <span class="footer-count" id="footerCount"></span>

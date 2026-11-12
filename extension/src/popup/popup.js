@@ -3,7 +3,10 @@ import { AuthError, getProfile, getStats, getTailored, logApplication, lookupApp
 import { detectCategory } from "../lib/cv.js";
 import { extractJob, fillForm, getActiveTab, isScriptable } from "../lib/page.js";
 import { formValues } from "../lib/profile.js";
+import { applyTheme } from "../lib/theme.js";
 import { findTracked, forgetTracked, normaliseUrl, rememberTracked } from "../lib/tracked.js";
+
+applyTheme();
 
 const $ = (id) => document.getElementById(id);
 
@@ -45,8 +48,7 @@ function setStatus(tone, text) {
   $("statusText").textContent = text;
 }
 
-function showMessage(label, title, body) {
-  $("messageLabel").textContent = label;
+function showMessage(title, body) {
   $("messageTitle").textContent = title;
   $("messageBody").textContent = body;
   show("message");
@@ -189,18 +191,18 @@ async function init() {
   } catch (error) {
     if (error instanceof AuthError) return signedOut();
     setStatus("offline", "Offline");
-    return showMessage("Status", "Can't reach the dashboard", "Check your connection and reopen the popup.");
+    return showMessage("Can't reach the dashboard", "Check your connection and reopen the popup.");
   }
 
   state.tab = await getActiveTab();
   if (!isScriptable(state.tab)) {
-    return showMessage("Page", "Open a job page", "Open a job posting or application form, then click the extension again.");
+    return showMessage("Open a job page", "Open a job posting or application form, then click the extension again.");
   }
 
   try {
     state.job = await extractJob(state.tab.id);
   } catch (error) {
-    return showMessage("Page", "Can't read this page", error?.message || "Chrome doesn't allow extensions on this page.");
+    return showMessage("Can't read this page", error?.message || "Chrome doesn't allow extensions on this page.");
   }
 
   const found = await findApplication().catch(() => null);

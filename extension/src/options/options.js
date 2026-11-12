@@ -1,4 +1,10 @@
 import { DEFAULT_ORIGIN, getDashboardOrigin, setDashboardOrigin } from "../config.js";
+import { applyTheme, getTheme, setTheme } from "../lib/theme.js";
+
+applyTheme();
+const theme = document.getElementById("theme");
+getTheme().then((value) => (theme.value = value));
+theme.addEventListener("change", () => setTheme(theme.value));
 
 const saved = document.getElementById("saved");
 const form = document.getElementById("dashboardForm");

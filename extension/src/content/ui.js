@@ -32,6 +32,7 @@
     chevron: "M6 9l6 6 6-6",
     lines: "M4 6h16M4 12h10M4 18h7",
     close: "M6 6l12 12M18 6L6 18",
+    alert: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v4.5M12 16h.01",
   };
 
   const SVG = "http://www.w3.org/2000/svg";
@@ -43,7 +44,7 @@
       "aria-hidden": "true",
       fill: filled ? "currentColor" : "none",
       stroke: "currentColor",
-      "stroke-width": "1.8",
+      "stroke-width": "1.5",
       "stroke-linecap": "round",
       "stroke-linejoin": "round",
     };
@@ -57,48 +58,58 @@
   const CSS = `
     :host { all: initial; }
 
-    /* Tokens (app/app.css). \`all\` doesn't reset custom properties, so they survive the reset above. */
+    /* Tokens (app/app.css) as light-dark pairs; the host's data-theme picks the scheme. \`all\` doesn't reset custom properties. */
+    :host([data-theme="dark"]) { color-scheme: dark; }
+    :host([data-theme="system"]) { color-scheme: light dark; }
     :host {
-      --bg: #0c0c0e; --bg-raised: #141519; --fill: #18191d;
-      --text: #ececec; --text-2: #a6a7ad; --text-3: #6e6f76; --inverse: #0c0c0e;
-      --stroke: rgba(255,255,255,.11); --stroke-2: rgba(255,255,255,.06);
-      --accent: #e8b33c; --green: #58b68a; --red: #d1707a;
-      --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color-scheme: light;
+      --bg: light-dark(#fafaf8, #0c0c0e); --surface: light-dark(#ffffff, #212227);
+      --text: light-dark(#16171a, #ececec); --text-2: light-dark(#3f4147, #a6a7ad); --text-3: light-dark(#5c5e64, #86878e);
+      --inverse: light-dark(#fafaf8, #0c0c0e); --primary-hover: light-dark(#34363c, #ffffff);
+      --stroke: light-dark(rgba(21,22,24,.22), rgba(255,255,255,.11)); --stroke-2: light-dark(rgba(21,22,24,.12), rgba(255,255,255,.06));
+      --hover: light-dark(rgba(22,23,26,.04), rgba(255,255,255,.04)); --active: light-dark(rgba(22,23,26,.07), rgba(255,255,255,.07));
+      --focus: light-dark(rgba(22,23,26,.5), rgba(255,255,255,.5));
+      --brand: #e5484d; --accent: light-dark(#8a5f14, #e8b33c); --green: light-dark(#2a7350, #58b68a); --red: light-dark(#ab3a45, #d1707a);
+      --status-saved: light-dark(#85878e, #4a4c53); --status-applied: light-dark(#4c4e55, #d4d4d8);
+      --status-screening: light-dark(#5f6168, #a6a7ad); --status-interview: light-dark(#8a5f14, #e8b33c);
+      --status-assessment: light-dark(#a15c2e, #f0cf85); --status-offer: light-dark(#2a7350, #58b68a);
+      --status-accepted: light-dark(#146b45, #8fd0ae); --status-rejected: light-dark(#ab3a45, #d1707a);
+      --status-ghosted: light-dark(#6b6d74, #86878e); --status-withdrawn: light-dark(#85878e, #4a4c53);
+      --shadow: 0 24px 64px rgba(0,0,0,.22);
       --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
 
     /* A row of hairline-divided segments: the action bar and the autofill bar. */
     .strip {
-      display: inline-flex; align-items: stretch; height: 32px;
+      display: inline-flex; align-items: stretch; height: 34px;
       background: var(--bg); border: 1px solid var(--stroke); color: var(--text-2);
-      font: 500 10.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase;
-      -webkit-font-smoothing: antialiased;
+      font: 500 13px/1 var(--sans); -webkit-font-smoothing: antialiased;
     }
     .strip > * + * { border-left: 1px solid var(--stroke-2); }
     .strip button, .strip select {
       all: unset; box-sizing: border-box; cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center;
     }
-    .strip button:hover, .strip label:hover { background: var(--fill); color: var(--text); }
-    .strip button:focus-visible, .strip label:focus-within { outline: 1px solid rgba(255,255,255,.5); outline-offset: -1px; }
+    .strip button:hover, .strip label:hover { background: var(--hover); color: var(--text); }
+    .strip button:focus-visible, .strip label:focus-within { outline: 1px solid var(--focus); outline-offset: -1px; }
     .strip [disabled] { opacity: .4; pointer-events: none; }
 
-    .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--text-3); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--text-3); }
     .dot.on { background: var(--green); }
     .dot.empty { background: transparent; box-shadow: inset 0 0 0 1px var(--text-3); }
 
     /* Action bar */
-    .status { display: inline-flex; align-items: center; gap: 7px; padding: 0 8px 0 10px; cursor: pointer; }
-    .status option { background: var(--bg-raised); color: var(--text); text-transform: none; }
+    .status { display: inline-flex; align-items: center; gap: 7px; padding: 0 8px 0 10px; cursor: pointer; color: var(--text); }
+    .status option { background: var(--surface); color: var(--text); }
     /* Fixed widths, so saving (the "Not tracked" option goes away) or relabelling doesn't shift the bar. */
-    .status select { width: 12.5ch; }
-    .strip .icon-btn { width: 32px; }
+    .status select { width: 11ch; }
+    .strip .icon-btn { width: 34px; }
     .strip .text-btn { padding: 0 12px; }
     .strip .icon-btn.active { color: var(--accent); }
-    .icon-btn svg { width: 15px; height: 15px; }
-    .strip .primary { min-width: 18ch; padding: 0 14px; background: var(--text); color: var(--inverse); font-weight: 600; letter-spacing: .08em; }
-    .strip .primary:hover { background: #fff; color: var(--inverse); }
+    .icon-btn svg { width: 16px; height: 16px; }
+    .strip .primary { min-width: 13ch; padding: 0 14px; background: var(--text); color: var(--inverse); }
+    .strip .primary:hover { background: var(--primary-hover); color: var(--inverse); }
 
     /*
      * Popovers under the bar: message and quick view. They open in the top
@@ -109,27 +120,28 @@
     .anchor { position: relative; display: inline-block; text-align: left; }
     .pop {
       position: fixed; inset: auto; margin: 0; padding: 0; overflow: visible;
-      background: var(--bg); color: var(--text); border: 1px solid var(--stroke); box-shadow: 0 16px 48px rgba(0,0,0,.5);
+      background: var(--surface); color: var(--text); border: 1px solid var(--stroke); box-shadow: var(--shadow);
+      font: 13.5px/1.4 var(--sans); -webkit-font-smoothing: antialiased;
     }
     .pop:not(:popover-open) { display: none; }
-    /* Confirmation: [ok] / [error] tag, tone edge, no drop shadow (the dashboard's flat style). */
+    /* Confirmation: an icon in the tone's colour, the text, an optional action and dismiss. */
     .message {
       --tone: var(--text-3);
-      display: flex; align-items: center; gap: 10px; width: max-content; max-width: 360px;
-      margin: 0; padding: 0 4px 0 12px; min-height: 34px; overflow: hidden;
-      font: 500 10.5px/1.45 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text);
-      box-shadow: inset 2px 0 0 var(--tone);
+      display: flex; align-items: center; gap: 10px; width: max-content; max-width: 380px;
+      margin: 0; padding: 0 4px 0 12px; min-height: 38px; overflow: hidden; color: var(--text);
     }
     .message[data-tone="success"] { --tone: var(--green); }
-    .message[data-tone="error"] { --tone: var(--red); border-color: rgba(209,112,122,.22); }
-    .message .tag { flex: none; color: var(--tone); font-weight: 600; }
+    .message[data-tone="error"] { --tone: var(--red); }
+    .message .tone { flex: none; display: grid; color: var(--tone); }
+    .message .tone svg { width: 15px; height: 15px; }
     .message .text { padding: 9px 0; }
-    .message button { all: unset; box-sizing: border-box; cursor: pointer; flex: none; }
-    .message .action { padding: 4px 8px; border: 1px solid var(--stroke); color: var(--text); }
-    .message .action:hover { background: var(--fill); }
-    .message .dismiss { width: 26px; height: 26px; display: grid; place-items: center; color: var(--text-3); font-size: 14px; }
-    .message .dismiss:hover { color: var(--text); }
-    .message button:focus-visible { outline: 1px solid rgba(255,255,255,.5); outline-offset: -1px; }
+    .message button { all: unset; box-sizing: border-box; cursor: pointer; flex: none; font: 500 13px/1 var(--sans); }
+    .message .action { padding: 6px 10px; border: 1px solid var(--stroke-2); color: var(--text); }
+    .message .action:hover { border-color: var(--stroke); }
+    .message .dismiss { width: 28px; height: 28px; display: grid; place-items: center; color: var(--text-3); }
+    .message .dismiss svg { width: 14px; height: 14px; }
+    .message .dismiss:hover { color: var(--text); background: var(--hover); }
+    .message button:focus-visible { outline: 1px solid var(--focus); outline-offset: -1px; }
     /* Countdown hairline for confirmations that close themselves (4s, bar.js SUCCESS_MS). */
     .message[data-tone="success"]::after {
       content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
@@ -145,71 +157,82 @@
       .message.fresh { animation: none; }
       .message[data-tone="success"]::after { animation: none; opacity: 0; }
     }
-    .panel { width: 360px; max-width: calc(100vw - 16px); padding: 2px 16px; color: var(--text); font: 12.5px/1.4 var(--mono); }
+    .panel { width: 360px; max-width: calc(100vw - 16px); padding: 4px 16px; }
 
     /* Quick view, laid out like the popup */
-    .section { border-top: 1px dashed var(--stroke); padding: 14px 0; }
-    .section:first-child { border-top: none; }
-    .section-head { display: flex; gap: 7px; margin-bottom: 11px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
-    .section-head b { color: var(--text); font-weight: 600; }
-    .section-head span, .label { color: var(--text-3); }
-    .label { font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
+    .section { padding: 14px 0; }
+    .section + .section { border-top: 1px solid var(--stroke-2); }
+    .section-title { margin: 0 0 10px; font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .label { font-size: 12.5px; color: var(--text-3); }
     .field { display: flex; flex-direction: column; gap: 6px; }
     .field + .field { margin-top: 12px; }
     input {
-      all: unset; box-sizing: border-box; width: 100%; height: 32px; padding: 0 10px;
-      background: var(--bg); color: var(--text); border: 1px solid var(--stroke-2); font: 12.5px var(--sans);
+      all: unset; box-sizing: border-box; width: 100%; height: 36px; padding: 0 10px;
+      background: var(--bg); color: var(--text); border: 1px solid var(--stroke-2); font: 13.5px var(--sans);
     }
-    input:hover { border-color: var(--stroke); }
-    input:focus { border-color: rgba(255,255,255,.3); }
+    input:hover, input:focus { border-color: var(--stroke); }
+    input::placeholder { color: var(--text-3); }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    .chip { padding: 4px 8px; border: 1px solid var(--stroke); color: var(--text-2); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; }
-    .chip.salary { color: var(--green); border-color: rgba(88,182,138,.22); }
-    .chip.applicants { color: var(--accent); border-color: rgba(232,179,60,.22); }
+    .chip { padding: 4px 8px; background: var(--hover); color: var(--text-2); font-size: 12.5px; }
+    .chip.salary { color: var(--green); }
+    .chip.applicants { color: var(--accent); }
 
     /* Floating fallback (sites without an anchor) and the autofill bar */
     .corner { position: fixed; right: 16px; z-index: 2147483647; display: flex; align-items: flex-start; gap: 6px; }
     .corner.bottom { bottom: 16px; }
     .corner.top { top: 16px; }
+    .floating .strip, .fill-bar { box-shadow: var(--shadow); }
     .strip .pill { gap: 8px; padding: 0 12px; color: var(--text); }
-    .pill .sep, .pill .chev { color: var(--text-3); }
+    .pill .brand { font-weight: 600; letter-spacing: -.02em; }
+    .pill .brand b { color: var(--brand); font-weight: 600; }
+    .pill .sep { color: var(--text-3); }
     .pill .state { color: var(--text-2); }
     .pill svg { width: 12px; height: 12px; transition: transform .12s; }
     .pill[aria-expanded="true"] svg { transform: rotate(180deg); }
 
     /* Floating menu: the job up top, then one action per row */
-    .menu { width: 260px; padding: 0; font: 500 10.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); }
-    .menu-head { display: flex; flex-direction: column; gap: 4px; padding: 12px 12px 10px; border-bottom: 1px dashed var(--stroke); }
-    .menu-head .role { font: 500 13.5px/1.3 var(--sans); letter-spacing: 0; text-transform: none; color: var(--text); }
-    .menu-head .company { font: 400 12px/1.3 var(--sans); letter-spacing: 0; text-transform: none; color: var(--text-2); }
+    .menu { width: 270px; padding: 0; color: var(--text-2); }
+    .menu-head { display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 10px; border-bottom: 1px solid var(--stroke-2); }
+    .menu-head .role { font-size: 14px; font-weight: 500; color: var(--text); }
+    .menu-head .company { font-size: 12.5px; color: var(--text-3); }
     .menu-head .field + .field { margin-top: 8px; }
-    .menu-items { display: flex; flex-direction: column; padding: 4px 0; }
+    .menu-items { display: flex; flex-direction: column; padding: 4px; }
     .menu-items > button, .menu-items > .status {
       all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px;
-      height: 30px; padding: 0 12px;
+      height: 32px; padding: 0 8px; font-size: 13px;
     }
-    .menu-items > button:hover, .menu-items > .status:hover { background: var(--fill); color: var(--text); }
-    .menu-items > button:focus-visible, .menu-items > .status:focus-within { outline: 1px solid rgba(255,255,255,.5); outline-offset: -1px; }
+    .menu-items > button:hover, .menu-items > .status:hover { background: var(--hover); color: var(--text); }
+    .menu-items > button:focus-visible, .menu-items > .status:focus-within { outline: 1px solid var(--focus); outline-offset: -1px; }
     .menu-items > button[disabled] { opacity: .4; pointer-events: none; }
     .menu-items > .status select { all: unset; flex: 1; cursor: pointer; }
-    .menu-items > .status .dot { margin: 0 3.5px; }
-    .menu-items svg { width: 13px; height: 13px; flex: none; }
+    .menu-items > .status .dot { margin: 0 4px; }
+    .menu-items svg { width: 15px; height: 15px; flex: none; }
     .menu-items .grow { flex: 1; }
     .menu-items .trail { color: var(--text-3); }
     .menu-items .active { color: var(--accent); }
     .menu-items .muted { color: var(--text-3); }
-    .fill-bar { max-width: min(520px, calc(100vw - 32px)); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+    .fill-bar { max-width: min(520px, calc(100vw - 32px)); }
     .fill-bar > span { display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; white-space: nowrap; }
     .fill-bar .title { color: var(--text); }
-    .fill-bar .job {
-      display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-      font: 12px/30px var(--sans); text-transform: none; letter-spacing: 0;
-    }
+    .fill-bar .job { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 400; line-height: 32px; color: var(--text-3); }
     .fill-bar .count { color: var(--green); font-variant-numeric: tabular-nums; }
     .fill-bar button { padding: 0 12px; color: var(--text); }
+    .fill-bar svg { width: 14px; height: 14px; }
   `;
 
   let sheet = null;
+
+  const THEMES = ["light", "dark", "system"];
+  const hosts = [];
+  let theme = "light";
+  const setTheme = (value) => {
+    theme = THEMES.includes(value) ? value : "light";
+    for (const host of hosts) host.dataset.theme = theme;
+  };
+  chrome.storage.sync.get("theme").then(({ theme: value }) => setTheme(value), () => {});
+  chrome.storage.sync.onChanged.addListener((changes) => {
+    if (changes.theme) setTheme(changes.theme.newValue);
+  });
 
   /**
    * Creates a host element with a closed shadow root using the shared sheet.
@@ -221,6 +244,8 @@
       sheet.replaceSync(CSS);
     }
     const host = document.createElement(tag);
+    host.dataset.theme = theme;
+    hosts.push(host);
     const shadow = host.attachShadow({ mode: "closed" });
     shadow.adoptedStyleSheets = [sheet];
     const root = document.createElement("div");

@@ -22,16 +22,16 @@
   const { h, icon, shadowHost, send } = JT.ui;
 
   const STATUSES = {
-    saved: { label: "Saved", color: "#6e6f76" },
-    applied: { label: "Applied", color: "#d4d4d8" },
-    screening: { label: "Screening", color: "#a6a7ad" },
-    interview: { label: "Interview", color: "#e8b33c" },
-    assessment: { label: "Assessment", color: "#f0cf85" },
-    offer: { label: "Offer", color: "#58b68a" },
-    accepted: { label: "Accepted", color: "#8fd0ae" },
-    rejected: { label: "Rejected", color: "#d1707a" },
-    ghosted: { label: "Ghosted", color: "#6e6f76" },
-    withdrawn: { label: "Withdrawn", color: "#4a4c53" },
+    saved: { label: "Saved", color: "var(--status-saved)" },
+    applied: { label: "Applied", color: "var(--status-applied)" },
+    screening: { label: "Screening", color: "var(--status-screening)" },
+    interview: { label: "Interview", color: "var(--status-interview)" },
+    assessment: { label: "Assessment", color: "var(--status-assessment)" },
+    offer: { label: "Offer", color: "var(--status-offer)" },
+    accepted: { label: "Accepted", color: "var(--status-accepted)" },
+    rejected: { label: "Rejected", color: "var(--status-rejected)" },
+    ghosted: { label: "Ghosted", color: "var(--status-ghosted)" },
+    withdrawn: { label: "Withdrawn", color: "var(--status-withdrawn)" },
   };
   const COPIED_MS = 1500;
 
@@ -298,17 +298,15 @@
     );
   }
 
-  const section = (n, title, ...children) =>
-    h("div", { class: "section" },
-      h("div", { class: "section-head" }, h("b", {}, `[${n}]`), h("span", {}, title)),
-      ...children);
+  const section = (title, ...children) =>
+    h("div", { class: "section" }, h("p", { class: "section-title" }, title), ...children);
 
-  /** Quick view, laid out like the popup: [01] Target, [02] Details. */
+  /** Quick view, laid out like the popup: the job, then the facts read from the page. */
   function quickView() {
     const facts = JT.quickFacts(state.job);
     return h("div", { class: "pop panel" },
-      section("01", "Target", textField("role", "Role"), textField("company", "Company")),
-      facts.length > 0 && section("02", "Details",
+      section("This job", textField("role", "Role"), textField("company", "Company")),
+      facts.length > 0 && section("Details",
         h("div", { class: "chips" }, ...facts.map((fact) => h("span", { class: `chip ${fact.key}` }, fact.text)))),
     );
   }
@@ -332,8 +330,8 @@
   }
 
   /**
-   * `[ok] Saved and bookmarked.` under the bar. The bar re-renders from
-   * scratch, so the entrance and countdown animations are offset by the
+   * A confirmation or error under the bar. The bar re-renders from scratch,
+   * so the entrance and countdown animations are offset by the
    * message's age instead of restarting on every render.
    */
   function messageView(message) {
@@ -343,7 +341,7 @@
       "data-tone": message.tone,
       role: message.tone === "error" ? "alert" : "status",
     },
-      h("span", { class: "tag" }, message.tone === "error" ? "[error]" : "[ok]"),
+      h("span", { class: "tone" }, icon(message.tone === "error" ? "alert" : "check")),
       h("span", { class: "text" }, message.text),
       message.action && h("button", {
         class: "action",
@@ -357,7 +355,7 @@
         "aria-label": "Dismiss",
         "data-focus": "message-dismiss",
         onclick: () => setMessage(),
-      }, "×"));
+      }, icon("close")));
     if (message.tone === "success") el.style.setProperty("--elapsed", `-${age}ms`);
     return el;
   }
@@ -424,12 +422,12 @@
           type: "button",
           "data-focus": "menu",
           "aria-expanded": String(state.open),
-          "aria-label": state.open ? "Close job-tracker menu" : "Open job-tracker menu",
+          "aria-label": state.open ? "Close j*b menu" : "Open j*b menu",
           onclick: () => {
             state.open = !state.open;
             render();
           },
-        }, dot, "JT", h("span", { class: "sep" }, "·"), h("span", { class: "state" }, status?.label ?? "Not tracked"), icon("chevron")),
+        }, dot, h("span", { class: "brand" }, "j", h("b", {}, "*"), "b"), h("span", { class: "sep" }, "·"), h("span", { class: "state" }, status?.label ?? "Not tracked"), icon("chevron")),
         applyButton()),
       state.message && messageView(state.message),
       state.open && menuView(),
