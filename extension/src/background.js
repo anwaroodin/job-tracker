@@ -21,9 +21,8 @@
  *   fill:progress { filled }                    (relayed to the tab's top frame)
  *   open         { page: "dashboard" | "application" | "tailor" | "options", applicationId? }
  * Failures resolve to { error }: "signed_out" when the session is gone,
- * "not_configured" while no dashboard address is set (see config.js).
  */
-import { NotConfiguredError, dashboardUrl, getDashboardOrigin, tailorUrl } from "./config.js";
+import { dashboardUrl, getDashboardOrigin, tailorUrl } from "./config.js";
 import { AuthError, getProfile, getTailored, logApplication, lookupApplication, removeSavedApplication, updateApplication } from "./lib/api.js";
 import { detectCategory, detectCvType } from "./lib/cv.js";
 import { formValues } from "./lib/profile.js";
@@ -137,7 +136,7 @@ async function checkJob({ job }) {
     const { application } = await lookupApplication({ ...job, url: normaliseUrl(job.url) });
     return { ...suggested, application: application && summary(application) };
   } catch (error) {
-    if (error instanceof AuthError || error instanceof NotConfiguredError) throw error;
+    if (error instanceof AuthError) throw error;
     // Offline: fall back to what this device tracked. A listing is its own
     // job, so another job on the same site doesn't count.
     const local = await findTracked(job, { sameHost: false });
@@ -275,13 +274,13 @@ async function relayProgress({ filled }, tab) {
   return {};
 }
 
-/** Opens the dashboard (or one application on it), or the options page while no dashboard is set. */
+/** Opens the dashboard (or one application on it), or the options page. */
 async function openPage({ page, applicationId }, tab) {
-  const origin = await getDashboardOrigin();
-  if (!origin || page === "options") {
+  if (page === "options") {
     await chrome.runtime.openOptionsPage();
     return {};
   }
+  const origin = await getDashboardOrigin();
   const id = (page === "application" || page === "tailor") && /^[\w-]+$/.test(applicationId ?? "") ? applicationId : undefined;
   const url = page === "tailor" && id ? tailorUrl(origin, id) : dashboardUrl(origin, id);
   await chrome.tabs.create({ url, openerTabId: tab.id, index: tab.index + 1 });
@@ -291,7 +290,6 @@ async function openPage({ page, applicationId }, tab) {
 /** The error code a content script gets back for a failed request. */
 function errorCode(error) {
   if (error instanceof AuthError) return "signed_out";
-  if (error instanceof NotConfiguredError) return "not_configured";
   return error.message;
 }
 

@@ -10,10 +10,9 @@
   if (!JT?.bar || JT.started) return;
   JT.started = true;
 
-  // Nothing to do on the dashboard itself. Its address is the user's own
-  // (config.js), so the manifest can't exclude it; this checks at runtime.
-  const { dashboardOrigin } = await chrome.storage.sync.get("dashboardOrigin");
-  if (dashboardOrigin && location.origin === dashboardOrigin) return;
+  // Nothing to do on the dashboard itself: the hosted one or the options page's override (config.js).
+  const { dashboardOrigin = "https://job-tracker.anwars.workers.dev" } = await chrome.storage.sync.get("dashboardOrigin");
+  if (location.origin === dashboardOrigin) return;
 
   JT.autofill.start();
   if (window !== window.top) return;

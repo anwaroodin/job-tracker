@@ -8,6 +8,7 @@
  * allow credentials.
  */
 import { getSession } from "~/server/auth/session.server";
+import { EXTENSION_VERSION } from "./download.server";
 
 const EXTENSION_ORIGIN = /^(chrome|moz)-extension:\/\//;
 
@@ -18,6 +19,8 @@ function corsHeaders(request: Request): HeadersInit {
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "content-type",
+    "Access-Control-Expose-Headers": "X-Extension-Latest",
+    "X-Extension-Latest": EXTENSION_VERSION,
     Vary: "Origin",
   };
 }

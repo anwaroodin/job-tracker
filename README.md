@@ -167,7 +167,9 @@ npm run deploy    # Build and deploy to Cloudflare Workers
 
 ### 6. Load the Browser Extension
 
-Load the `extension/` folder unpacked from `chrome://extensions`, click its icon and enter your dashboard's address (your Worker's URL), then sign in on the dashboard. See [extension/README.md](./extension/README.md) for details.
+Load the `extension/` folder unpacked from `chrome://extensions` and sign in on the dashboard. The extension talks to `https://job-tracker.anwars.workers.dev` (`DEFAULT_ORIGIN` in `extension/src/config.js`); its options page can point it at another dashboard, like `localhost:5173`, for development. See [extension/README.md](./extension/README.md) for details.
+
+Users download it from the dashboard's `/extension` page, which also walks through installing and connecting it. `npm run deploy` publishes the current `extension/` there (`npm run extension:publish` does it on its own; add `-- --local` for the dev bucket). Every `/api/ext/*` response names the latest version in an `X-Extension-Latest` header, and an older extension opens `/extension` once per new version.
 
 ### 7. Tailor with Claude (optional)
 
@@ -181,7 +183,7 @@ It only accepts requests from `http://localhost:5173` and from `JOB_TRACKER_URL`
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `JOB_TRACKER_URL` | none | Your deployed dashboard's address, so it can use the runner too |
+| `JOB_TRACKER_URL` | none | Your deployed dashboard's address, so it can use the runner too. Separate several with commas |
 | `RUNNER_MODEL` | `opus` | Model used when the page doesn't pick one |
 | `RUNNER_PORT` | `4317` | Port to listen on |
 | `RUNNER_ANTIGRAVITY` | on when `agy` is installed | Set to `0` to run every step on Claude |

@@ -1,18 +1,12 @@
 /**
- * The job-tracker dashboard the extension talks to. It isn't built in: each
- * user points the extension at their own deployment, from the popup's first
- * run or the options page, and the origin is kept in chrome.storage.sync.
+ * The job-tracker dashboard the extension talks to: the hosted one, unless the
+ * options page points it somewhere else for development. The override is
+ * kept in chrome.storage.sync.
  */
 
-const STORAGE_KEY = "dashboardOrigin";
+export const DEFAULT_ORIGIN = "https://job-tracker.anwars.workers.dev";
 
-/** Thrown when the dashboard hasn't been set yet, so callers can ask for it. */
-export class NotConfiguredError extends Error {
-  constructor() {
-    super("Dashboard address not set");
-    this.name = "NotConfiguredError";
-  }
-}
+const STORAGE_KEY = "dashboardOrigin";
 
 /**
  * Plain http is only for a dashboard running on this machine (`npm run dev`).
@@ -40,21 +34,18 @@ export function dashboardOriginFrom(input) {
   }
 }
 
-/** The configured dashboard origin, or null. */
+/** The dashboard origin: the saved override, or the hosted dashboard. */
 export async function getDashboardOrigin() {
   const { [STORAGE_KEY]: origin } = await chrome.storage.sync.get(STORAGE_KEY);
-  return dashboardOriginFrom(origin);
+  return dashboardOriginFrom(origin) ?? DEFAULT_ORIGIN;
 }
 
-/** The configured dashboard origin; throws NotConfiguredError when there isn't one. */
-export async function requireDashboardOrigin() {
-  const origin = await getDashboardOrigin();
-  if (!origin) throw new NotConfiguredError();
-  return origin;
-}
-
-/** Saves a dashboard address; returns its origin, or null when it isn't valid. */
+/** Saves a dashboard address, or clears the override when it's empty; returns the origin now used, or null when it isn't valid. */
 export async function setDashboardOrigin(input) {
+  if (!String(input ?? "").trim()) {
+    await chrome.storage.sync.remove(STORAGE_KEY);
+    return DEFAULT_ORIGIN;
+  }
   const origin = dashboardOriginFrom(input);
   if (origin) await chrome.storage.sync.set({ [STORAGE_KEY]: origin });
   return origin;

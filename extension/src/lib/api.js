@@ -1,9 +1,9 @@
 /**
  * Client for the dashboard's /api/ext/* endpoints. Requests carry the
  * dashboard's session cookie, so the user signs in once on the web app.
- * Each request throws NotConfiguredError while no dashboard is set.
  */
-import { requireDashboardOrigin } from "../config.js";
+import { getDashboardOrigin } from "../config.js";
+import { promptUpdate } from "./update.js";
 
 /** Thrown on a 401 so callers can switch to the sign-in prompt. */
 export class AuthError extends Error {
@@ -14,11 +14,12 @@ export class AuthError extends Error {
 }
 
 async function request(path, init = {}) {
-  const res = await fetch(`${await requireDashboardOrigin()}${path}`, {
+  const res = await fetch(`${await getDashboardOrigin()}${path}`, {
     ...init,
     credentials: "include",
     headers: { "content-type": "application/json", ...init.headers },
   });
+  promptUpdate(res).catch(() => {});
   if (res.status === 401) throw new AuthError();
   if (!res.ok) {
     // The API answers errors with { error: "<code>" }; surface it rather than a bare status.

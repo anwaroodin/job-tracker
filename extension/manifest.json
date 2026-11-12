@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "job-tracker",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Capture job details, autofill applications and track them in job-tracker.",
   "minimum_chrome_version": "116",
   "permissions": ["activeTab", "scripting", "storage"],

@@ -6,7 +6,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "typecheck": "wrangler types && react-router typegen && tsc -b",
-    "deploy": "npm run build && npm run db:migrate:remote && wrangler deploy",
+    "deploy": "npm run build && npm run db:migrate:remote && wrangler deploy && npm run extension:publish",
     "preview": "npm run build && vite preview",
     "cf-typegen": "wrangler types",
     "postinstall": "wrangler types",
@@ -16,7 +16,8 @@
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "runner": "node --env-file-if-exists=.env scripts/claude-runner.mjs",
-    "extension:zip": "node scripts/zip-extension.mjs"
+    "extension:zip": "node scripts/zip-extension.mjs",
+    "extension:publish": "node scripts/zip-extension.mjs --publish"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.4.0",

@@ -6,10 +6,11 @@ A Chrome extension that captures a job's details, fills the application form fro
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and pick this `extension/` folder.
-3. Click the extension's icon and enter your dashboard's address (for example `https://job-tracker.<subdomain>.workers.dev`, or `localhost:5173` for `npm run dev`).
-4. Sign in on the dashboard in the same Chrome profile. The extension uses that session; there is no separate login.
+3. Sign in on the dashboard in the same Chrome profile. The extension uses that session; there is no separate login.
 
-To share the extension, run `npm run extension:zip` from the repo root. It writes `dist/job-tracker-extension-<version>.zip`; the recipient unzips it and loads that folder with **Load unpacked** as above.
+To share the extension, run `npm run extension:zip` from the repo root. It writes `dist/job-tracker-extension-<version>.zip`; the recipient unzips it and loads that folder with **Load unpacked** as above. `npm run extension:publish` (also run by `npm run deploy`) does the same and uploads the zip, so users can download it from the dashboard's `/extension` page.
+
+Every dashboard API response carries the latest version in an `X-Extension-Latest` header. When it's newer than the installed one, `src/lib/update.js` opens the dashboard's `/extension` page, once per version, so there's no separate update check.
 
 There's no build step. The popup and service worker are ES modules; content scripts are classic scripts that share `globalThis.__jobTracker` and load in the order listed in `manifest.json`.
 
@@ -17,9 +18,9 @@ After changing the extension, click reload on `chrome://extensions` and refresh 
 
 ### The dashboard address
 
-The extension doesn't have a dashboard built in: each user points it at their own deployment. The address is asked for on first use and can be changed under **Settings** in the popup (or **Extension options** on `chrome://extensions`). Only the origin is kept, in `chrome.storage.sync`, and it must be `https://`, apart from `localhost` and `127.0.0.1` over plain http for development. `src/config.js` owns reading and checking it; nothing else hardcodes an address.
+The extension talks to the hosted dashboard, `https://job-tracker.anwars.workers.dev` (`DEFAULT_ORIGIN` in `src/config.js`). For development, **Settings** in the popup (or **Extension options** on `chrome://extensions`) can point it at another dashboard, like `localhost:5173` for `npm run dev`; leaving the field empty goes back to the hosted one. Only the origin is kept, in `chrome.storage.sync`, and it must be `https://`, apart from `localhost` and `127.0.0.1` over plain http. `src/config.js` owns reading and checking it.
 
-The bar stays off the dashboard itself: `main.js` compares the page's origin with the configured one.
+The bar stays off the dashboard itself: `main.js` compares the page's origin with the one in use. As a classic script it can't import `config.js`, so it repeats the hosted address.
 
 ## Usage
 
@@ -121,11 +122,10 @@ extension/
     ├── lib/                 ES modules for the popup and service worker
     │   ├── api.js           /api/ext/* client
     │   ├── cv.js            CV variant and category detection
-    │   ├── dashboard-form.js The dashboard address form (popup setup and options page)
     │   ├── page.js          Lets the popup inject the content library
     │   ├── profile.js       Profile → form values
     │   └── tracked.js       Recently tracked applications
-    ├── options/             Options page: the dashboard address
+    ├── options/             Options page: a development dashboard address
     └── popup/
 ```
 
