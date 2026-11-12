@@ -7,23 +7,15 @@ import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { analyticsFor } from "~/server/services/overview/analytics.server";
 import { upNext } from "~/server/services/overview/up-next.server";
-import {
-  Bar,
-  BarRow,
-  CV_COLORS,
-  ColumnChart,
-  Leader,
-  Section,
-  statusColor,
-  fmtDate,
-  pct,
-  stagger,
-  two,
-} from "~/components/ui/terminal";
-import { StatusBadge } from "~/components/ui/status-badge";
+import { CV_COLORS, ColumnChart, pct, shortDate, stagger } from "~/components/ui/terminal";
+import { CompanyLogo } from "~/components/applications/company-logo";
+import { ListSection } from "~/components/applications/list-section";
+import { INSET_SEPARATORS } from "~/components/applications/applications-table";
+import { SideBlock, SideRow } from "~/components/ui/side-block";
 import { cn } from "~/lib/cn";
-import { StackedStatusBar } from "~/components/overview/stacked-status-bar";
-import { Stat, TickerDivider } from "~/components/overview/stat-ticker";
+import { StatusBadge } from "~/components/ui/status-badge";
+import { Pipeline } from "~/components/overview/pipeline";
+import { Figures, Verdict } from "~/components/overview/summary";
 import { UpNextSection } from "~/components/overview/up-next";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -38,198 +30,90 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
   const a = loaderData.analytics;
   const gmailConnected = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!.gmail.connected;
   const t = a.totals;
-  const delta = t.weekly - t.previousWeekly;
   const peak = Math.max(1, ...a.weekly.map((w) => w.count));
-  const funnelMax = Math.max(1, a.funnel[0]?.count ?? 0);
-  const statusMax = Math.max(1, ...a.byStatus.map((s) => s.count));
-  const companyMax = Math.max(1, ...a.topCompanies.map((c) => c.count));
-  const last =
-    t.total === 0 ? "NOTHING TRACKED YET" : t.streakDays === 0 ? "LAST ONE TODAY" : `LAST ONE ${t.streakDays}D AGO`;
   const upNextTotal = loaderData.next.replies.length + loaderData.next.upcoming.length + loaderData.next.followUps.length;
-  // Sections are numbered in page order; Up next only appears when something's waiting.
-  let section = 1;
-  const next = () => two(++section);
 
   return (
-    <div className="flex flex-col gap-10 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
+    <div className="flex flex-col gap-10 font-sans text-[14px] normal-case tracking-normal">
       <header className="rise" style={stagger(0)}>
-        <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-          <b className="mr-2 font-semibold text-text-primary">[01]</b>Overview
-        </p>
-
-        <h1 className="mt-5 max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight sm:text-[30px]">
-          <span className="text-text-primary">{t.total} applications tracked.</span>
-          <span className="block text-text-tertiary">{last}.</span>
-        </h1>
-
-        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-dashed border-white/15 py-3 text-[11px] tracking-[0.06em]">
-          <Stat label="Active">
-            <span className="font-semibold text-text-primary">{t.active}</span>
-          </Stat>
-          <TickerDivider />
-          <Stat label="Offers">
-            <span className={cn("font-semibold", t.offers ? "text-green-primary" : "text-text-primary")}>{t.offers}</span>
-          </Stat>
-          <TickerDivider />
-          <Stat label="Response">
-            <span className="font-semibold text-text-primary">{t.responseRate}%</span>
-          </Stat>
-          <TickerDivider />
-          <Stat label="7d Trend">
-            <span className="font-semibold text-text-primary">{t.weekly}</span>
-            <span
-              className={cn(
-                "text-[10px]",
-                delta > 0 ? "text-green-primary" : delta < 0 ? "text-red-primary" : "text-text-tertiary",
-              )}
-            >
-              ({delta > 0 ? "▲" : delta < 0 ? "▼" : "•"} {Math.abs(delta)})
-            </span>
-          </Stat>
-          <TickerDivider />
-          <Stat label="Rejected">
-            <span className="font-semibold text-text-primary">{t.rejected}</span>
-          </Stat>
-          <TickerDivider />
-          <Stat label="Up next">
-            {upNextTotal === 0 ? (
-              <span className="flex items-center gap-1.5 text-text-tertiary">
-                <span className="size-1.5 rounded-full bg-green-primary/80" />
-                all clear
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 text-accent-primary">
-                <span className="size-1.5 animate-pulse rounded-full bg-accent-primary" />
-                {upNextTotal} {upNextTotal === 1 ? "item" : "items"}
-              </span>
-            )}
-          </Stat>
-        </div>
+        <Verdict totals={t} />
       </header>
 
       <GettingStarted n="00" gmailConnected={gmailConnected} />
 
-      {upNextTotal > 0 && <UpNextSection n={next()} next={loaderData.next} />}
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
+        <div className="flex min-w-0 flex-col gap-10">
+          {upNextTotal > 0 && <UpNextSection next={loaderData.next} />}
 
-      <div className="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-2">
-        <Section n={next()} title="Funnel" hint="stage → stage" i={1}>
-          {a.funnel.map((f, i) => (
-            <BarRow
-              key={f.stage}
-              label={f.stage}
-              value={f.count}
-              share={(f.count / funnelMax) * 100}
-              color={i === a.funnel.length - 1 ? "var(--color-green-primary)" : "#ececec"}
-              note={i === 0 ? "100%" : `${pct(f.count, funnelMax)}%`}
-              cells={34}
-            />
-          ))}
-        </Section>
-
-        <Section
-          n={next()}
-          title="Status"
-          hint={`${a.byStatus.filter((s) => s.count > 0).length} active stages`}
-          i={2}
-        >
-          <div className="mb-4 border-b border-dashed border-white/10 pb-3">
-            <StackedStatusBar byStatus={a.byStatus} cells={34} />
-          </div>
-          {a.byStatus
-            .filter((s) => s.count > 0)
-            .map((s) => (
-              <BarRow
-                key={s.status}
-                label={s.status}
-                value={s.count}
-                share={(s.count / statusMax) * 100}
-                color={statusColor(s.status)}
-                note={`${pct(s.count, t.total)}%`}
-                cells={34}
-              />
-            ))}
-        </Section>
-      </div>
-
-      {/* minmax(0, …): plain fr columns can't shrink below their content, and the glyph bars would push past the page. */}
-      <div className="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <Section n={next()} title="Volume" hint={`12 weeks · peak ${peak}`} i={3}>
-          <ColumnChart
-            peak={peak}
-            columns={a.weekly.map((w) => ({
-              key: w.weekStart,
-              label: w.weekLabel,
-              value: w.count,
-              display: String(w.count),
-            }))}
-          />
-        </Section>
-
-        <div className="flex flex-col gap-10">
-          <Section n={next()} title="Top companies" hint="most applied" i={4}>
-            {a.topCompanies.slice(0, 4).map((c, i) => (
-              <Leader key={c.company} label={`${two(i + 1)}  ${c.company}`}>
-                {/* inline-flex: Bar is a block, and would otherwise push the count onto its own line. */}
-                <span className="inline-flex items-baseline gap-3">
-                  <span className="hidden text-text-tertiary sm:inline">
-                    <Bar share={(c.count / companyMax) * 100} color="var(--color-text-tertiary)" cells={10} />
-                  </span>
-                  {two(c.count)}
-                </span>
-              </Leader>
-            ))}
-          </Section>
-
-          <Section n={next()} title="CV split" hint="which CV went out" i={5}>
-            {a.byCv.map((c, i) => (
-              <BarRow
-                key={c.cvType}
-                label={c.cvType}
-                value={c.count}
-                share={pct(c.count, t.total)}
-                color={CV_COLORS[i % CV_COLORS.length]}
-                note={`${pct(c.count, t.total)}%`}
-                cells={34}
-              />
-            ))}
-          </Section>
-        </div>
-      </div>
-
-      <Section
-        n={next()}
-        title="Recent applications"
-        hint={
-          <Link to="/applications" className="text-accent-primary transition-colors hover:text-accent-secondary">
-            View all ({t.total}) →
-          </Link>
-        }
-        i={6}
-      >
-        <ul className="-mx-3 divide-y divide-dashed divide-stroke-primary/50">
-          {a.recent.slice(0, 6).map((r) => (
-            <li key={r.id}>
-              <Link
-                to={`/applications/${r.id}`}
-                className="group grid grid-cols-[96px_1fr_auto] items-baseline gap-4 px-3 py-2 transition-colors hover:bg-text-primary hover:text-text-inverse"
-              >
-                <span className="text-text-tertiary group-hover:!text-text-inverse/60 text-[11px]">
-                  {fmtDate(r.appliedAt)}
-                </span>
-                <span className="min-w-0 truncate">
-                  <span className="text-text-primary group-hover:!text-text-inverse font-medium">
-                    {r.company}
-                  </span>
-                  <span className="text-text-tertiary group-hover:!text-text-inverse/60">
-                    {" "}/ {r.role}
-                  </span>
-                </span>
-                <StatusBadge status={r.status} className="group-hover:!text-text-inverse" />
+          <ListSection
+            title="Recent"
+            actions={
+              <Link to="/applications" className="text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary">
+                See all {t.total}
               </Link>
-            </li>
-          ))}
-        </ul>
-      </Section>
+            }
+          >
+            <ul className={cn("flex flex-col", INSET_SEPARATORS)}>
+              {a.recent.slice(0, 6).map((r) => (
+                <li key={r.id} className="relative">
+                  <Link to={`/applications/${r.id}`} className="flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-ink/[0.04]">
+                    <CompanyLogo company={r.company} className="size-9 text-[14px]" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-text-primary">{r.company}</p>
+                      <p className="truncate text-[12.5px] text-text-tertiary">{r.role}</p>
+                    </div>
+                    <span className="hidden text-[12.5px] tabular-nums text-text-tertiary sm:block">{shortDate(r.appliedAt)}</span>
+                    <StatusBadge status={r.status} variant="dot" className="w-24 shrink-0 text-[12.5px]" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </ListSection>
+
+          <ListSection title="Volume" count={<span>12 weeks · peak {peak}</span>}>
+            <ColumnChart
+              peak={peak}
+              columns={a.weekly.map((w) => ({ key: w.weekStart, label: w.weekLabel, value: w.count, display: String(w.count) }))}
+            />
+          </ListSection>
+        </div>
+
+        <aside className="flex flex-col gap-5 lg:border-l lg:border-stroke-secondary lg:pl-8">
+          <Figures totals={t} />
+          {t.total > 0 && <Pipeline analytics={a} />}
+
+          {a.topCompanies.length > 0 && (
+            <SideBlock title="Top companies">
+              <div className="flex flex-col gap-2">
+                {a.topCompanies.slice(0, 4).map((c) => (
+                  <SideRow key={c.company} lead={<CompanyLogo company={c.company} className="size-6 text-[11px]" />} label={c.company} value={c.count} />
+                ))}
+              </div>
+            </SideBlock>
+          )}
+
+          {a.byCv.length > 0 && (
+            <SideBlock title="CV split">
+              <div className="flex h-2 w-full gap-[2px]">
+                {a.byCv.map((c, i) => (
+                  <span key={c.cvType} className="h-full min-w-[2px]" style={{ flexGrow: c.count, background: CV_COLORS[i % CV_COLORS.length] }} />
+                ))}
+              </div>
+              <div className="flex flex-col gap-2">
+                {a.byCv.map((c, i) => (
+                  <SideRow
+                    key={c.cvType}
+                    lead={<span aria-hidden className="size-2 rounded-full" style={{ background: CV_COLORS[i % CV_COLORS.length] }} />}
+                    label={<span className="capitalize">{c.cvType}</span>}
+                    note={`${pct(c.count, t.total)}%`}
+                    value={c.count}
+                  />
+                ))}
+              </div>
+            </SideBlock>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
