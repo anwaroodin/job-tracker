@@ -7,7 +7,7 @@ import { EditsView } from "~/components/tailored-cv/edits";
 import { ScoreView } from "~/components/tailored-cv/score";
 import { TailorPanel } from "~/components/tailored-cv/tailor-panel";
 import { Button } from "~/components/ui/button";
-import { Section, fmtDate, stagger } from "~/components/ui/terminal";
+import { Section, fmtDate, stagger, PageTitle } from "~/components/ui/terminal";
 import { cvContent, personFor, typstCv } from "~/lib/cv";
 import { DEFAULT_CV_TEMPLATE } from "~/lib/typst";
 import { userContext } from "~/server/auth/session.server";
@@ -66,10 +66,7 @@ export default function RoleCvPage({ loaderData }: Route.ComponentProps) {
             <span className="mx-2 opacity-50">/</span>
             Role
           </p>
-          <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-            CV for a role
-            <span className="block text-text-tertiary">{role.title}</span>
-          </h1>
+          <PageTitle title="CV for a role" sub={role.title} />
         </div>
         <Form method="post">
           <Button type="submit" name="intent" value="delete" variant="ghost" size="medium" className="uppercase">

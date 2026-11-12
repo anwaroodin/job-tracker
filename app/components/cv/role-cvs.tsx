@@ -43,7 +43,7 @@ export function RoleCvs({ roles }: { roles: RoleCvRow[] }) {
             <li key={role.id}>
               <Link to={`/cv/roles/${role.id}`} className="group flex items-baseline gap-2.5 py-[7px]">
                 <span className="shrink-0 text-text-secondary group-hover:text-accent-primary">{role.title}</span>
-                <span className="min-w-3 flex-1 -translate-y-[3px] border-b border-dotted border-white/25" />
+                <span className="min-w-3 flex-1 -translate-y-[3px] border-b border-dotted border-ink/25" />
                 <span className="text-right text-text-tertiary">{role.version ? `v${role.version} · ${fmtDate(role.updatedAt)}` : "Not tailored yet"}</span>
               </Link>
             </li>

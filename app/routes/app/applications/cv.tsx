@@ -11,7 +11,7 @@ import { ScoreView } from "~/components/tailored-cv/score";
 import { JobDescriptionPanel } from "~/components/tailored-cv/job-description-panel";
 import { TailorPanel } from "~/components/tailored-cv/tailor-panel";
 import { Button } from "~/components/ui/button";
-import { Section, fmtDate, stagger } from "~/components/ui/terminal";
+import { Section, fmtDate, stagger, PageTitle } from "~/components/ui/terminal";
 import { cvContent, personFor, typstCv } from "~/lib/cv";
 import { DEFAULT_CV_TEMPLATE } from "~/lib/typst";
 import { userContext } from "~/server/auth/session.server";
@@ -110,10 +110,7 @@ export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
           CV
         </p>
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <h1 className="max-w-2xl text-[24px] font-light leading-[1.25] tracking-tight text-text-primary sm:text-[30px]">
-            Tailored CV
-            <span className="block text-text-tertiary">{application.role}</span>
-          </h1>
+          <PageTitle title="Tailored CV" sub={application.role} />
           {application.description && (
             <div className="lg:hidden">
               <JobDescriptionPanel description={application.description} />
