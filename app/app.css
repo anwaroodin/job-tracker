@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens as light-dark(light, dark) pairs. <html data-theme> picks the scheme: dark by default,
- * "light", or "system" (follows the OS through color-scheme). Flat, monochrome.
+ * Design tokens as light-dark(light, dark) pairs. <html data-theme> picks the scheme: light by default,
+ * "dark", or "system" (follows the OS through color-scheme). Flat, monochrome.
  *
  * Surfaces step up in tiny increments (sidebar → page → card → chip); depth
  * comes from 1px hairlines, never shadows or glow. The palette is greys plus
@@ -16,7 +16,7 @@
  *   #0c0c0e  page + wells   #18191d  row hover    #2a2c31  chip hover / bars
  */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
   --bg-primary: light-dark(#fafaf8, #0c0c0e);
   --bg-secondary: light-dark(#f2f0ea, #060608);
@@ -83,8 +83,8 @@
   }
 }
 
-:root[data-theme="light"] {
-  color-scheme: light;
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 :root[data-theme="system"] {

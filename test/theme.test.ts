@@ -8,8 +8,8 @@ describe("themeFromCookie", () => {
   });
 
   it("falls back to dark for missing, unknown or look-alike cookies", () => {
-    expect(themeFromCookie(null)).toBe("dark");
-    expect(themeFromCookie("theme=purple")).toBe("dark");
-    expect(themeFromCookie("mytheme=light")).toBe("dark");
+    expect(themeFromCookie(null)).toBe("light");
+    expect(themeFromCookie("theme=purple")).toBe("light");
+    expect(themeFromCookie("mytheme=dark")).toBe("light");
   });
 });

@@ -12,7 +12,7 @@ const OPTIONS: { value: Theme; label: string }[] = [
 ];
 
 export function ThemeSetting() {
-  const saved = useRouteLoaderData<typeof rootLoader>("root")?.theme ?? "dark";
+  const saved = useRouteLoaderData<typeof rootLoader>("root")?.theme ?? "light";
   const [theme, setTheme] = useState<Theme>(saved);
   const revalidator = useRevalidator();
 

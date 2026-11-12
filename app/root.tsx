@@ -25,7 +25,7 @@ export function loader({ request }: Route.LoaderArgs) {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const theme = useRouteLoaderData<typeof loader>("root")?.theme ?? "dark";
+  const theme = useRouteLoaderData<typeof loader>("root")?.theme ?? "light";
   return (
     <html lang="en" data-theme={theme}>
       <head>
