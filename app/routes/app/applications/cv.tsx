@@ -2,7 +2,7 @@ import { useState } from "react";
 import { data, Link } from "react-router";
 import type { Route } from "./+types/cv";
 import type { SidePanelHandle } from "~/components/shell/side-panel";
-import { PdfButton, TypstPreview } from "~/components/cv/typst-preview";
+import { CvPreview, PdfButton } from "~/components/cv/cv-preview";
 import { CoverLetterDocument } from "~/components/tailored-cv/document";
 import { TailoredCvEditor } from "~/components/tailored-cv/editor";
 import { EditsView } from "~/components/tailored-cv/edits";
@@ -12,8 +12,7 @@ import { JobDescriptionPanel } from "~/components/tailored-cv/job-description-pa
 import { TailorPanel } from "~/components/tailored-cv/tailor-panel";
 import { Button } from "~/components/ui/button";
 import { Section, fmtDate, stagger, PageTitle } from "~/components/ui/terminal";
-import { cvContent, personFor, typstCv } from "~/lib/cv";
-import { DEFAULT_CV_TEMPLATE } from "~/lib/typst";
+import { cvContent, personFor, pdfCv } from "~/lib/cv";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { cleanResearch, researchRequest, storedResearch } from "~/server/cv/research";
@@ -24,7 +23,7 @@ import { evidenceText, impliedTerms, scoreBefore } from "~/server/cv/tailoring/q
 import { getDb } from "~/server/db/client.server";
 import { jsonField } from "~/server/form.server";
 import { getApplication, saveResearch } from "~/server/db/queries/applications.server";
-import { getCv, getCvTemplate, getProfile } from "~/server/db/queries/profile.server";
+import { getCv, getProfile } from "~/server/db/queries/profile.server";
 import { insertTailoredCv, latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
 import type { AtsScore } from "~/types/cv";
 
@@ -37,12 +36,11 @@ export async function loader({ context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [row, cv, profile, tailored, template] = await Promise.all([
+  const [row, cv, profile, tailored] = await Promise.all([
     getApplication(db, user.id, params.id),
     getCv(db, user.id),
     getProfile(db, user.id),
     latestTailoredCv(db, user.id, params.id),
-    getCvTemplate(db, user.id),
   ]);
   if (!row) throw data("Not found", { status: 404 });
 
@@ -60,7 +58,6 @@ export async function loader({ context, params }: Route.LoaderArgs) {
     score,
     person: personFor(profile.personal, user),
     tailored,
-    template,
   };
 }
 
@@ -93,7 +90,6 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
 export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
   const { application, canTailor, researchRequest, research, hasCv, hasDescription, score, person, tailored } = loaderData;
-  const template = loaderData.template ?? DEFAULT_CV_TEMPLATE;
   const [editing, setEditing] = useState(false);
   return (
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
@@ -168,9 +164,9 @@ export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
           <Section n="05" title="CV" hint={<Button type="button" variant="link" size="tiny" className="h-auto px-0 uppercase" onClick={() => setEditing(true)}>Edit</Button>} i={4}>
             <div className="flex flex-col gap-3">
               <div className="self-end">
-                <PdfButton template={template} cv={typstCv(person, tailored.cv)} filename={`${person.name || "CV"} - ${application.company} CV.pdf`} />
+                <PdfButton cv={pdfCv(person, tailored.cv)} filename={`${person.name || "CV"} - ${application.company} CV.pdf`} />
               </div>
-              <TypstPreview template={template} cv={typstCv(person, tailored.cv)} />
+              <CvPreview cv={pdfCv(person, tailored.cv)} filename={`${person.name || "CV"} - ${application.company} CV.pdf`} />
             </div>
           </Section>
           {tailored.cv.coverLetter.paragraphs.length > 0 && (

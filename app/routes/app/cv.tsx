@@ -6,14 +6,12 @@ import type { Route } from "./+types/cv";
 import { CV_SECTIONS, CvEditor } from "~/components/cv";
 import { RoleCvs } from "~/components/cv/role-cvs";
 import { TailoredCvList } from "~/components/cv/tailored-grid";
-import { TemplateEditor } from "~/components/cv/template-editor";
-import { PdfButton, TypstPreview } from "~/components/cv/typst-preview";
+import { CvPreview, PdfButton } from "~/components/cv/cv-preview";
 import { Button } from "~/components/ui/button";
 import { SettingsNav } from "~/components/ui/settings-nav";
 import { stagger, PageTitle } from "~/components/ui/terminal";
 import { UnsavedBar } from "~/components/ui/unsaved-bar";
-import { cvContent, personFor, typstCv } from "~/lib/cv";
-import { DEFAULT_CV_TEMPLATE } from "~/lib/typst";
+import { cvContent, personFor, pdfCv } from "~/lib/cv";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { cleanCv } from "~/server/cv/clean";
@@ -21,25 +19,22 @@ import { importCv, MAX_PDF_BYTES, pdfText } from "~/server/cv/import.server";
 import { MAX_TITLE_CHARS } from "~/server/cv/tailoring/role";
 import { getDb } from "~/server/db/client.server";
 import { jsonField } from "~/server/form.server";
-import { getCv, getCvTemplate, getProfile, saveCv, saveCvTemplate } from "~/server/db/queries/profile.server";
+import { getCv, getProfile, saveCv } from "~/server/db/queries/profile.server";
 import { createRoleCv, listRoleCvs } from "~/server/db/queries/role-cv.server";
 import { tailoredCvCards } from "~/server/db/queries/tailored-cv.server";
 import type { Cv } from "~/types/cv";
-
-const MAX_TEMPLATE_CHARS = 50_000;
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [cv, profile, tailored, template, roles] = await Promise.all([
+  const [cv, profile, tailored, roles] = await Promise.all([
     getCv(db, user.id),
     getProfile(db, user.id),
     tailoredCvCards(db, user.id),
-    getCvTemplate(db, user.id),
     listRoleCvs(db, user.id),
   ]);
-  return { cv, person: personFor(profile.personal, user), tailored, template, roles };
+  return { cv, person: personFor(profile.personal, user), tailored, roles };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -60,11 +55,6 @@ export async function action({ request, context }: Route.ActionArgs) {
     if (title) throw redirect(`/cv/roles/${await createRoleCv(db, user.id, title)}`);
     return { ok: true };
   }
-  if (form.get("intent") === "template") {
-    const template = String(form.get("template") ?? "").slice(0, MAX_TEMPLATE_CHARS);
-    await saveCvTemplate(db, user.id, template.trim() ? template : null);
-    return { ok: true };
-  }
   await saveCv(db, user.id, cleanCv(jsonField(form, "cv", "{}")));
   return { ok: true };
 }
@@ -77,11 +67,9 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
   const saved = actionData && "ok" in actionData && nav.state === "idle" && !dirty;
   const [params, setParams] = useSearchParams();
   const editing = params.has("edit");
-  const styling = params.has("template");
-  const setMode = (mode: "edit" | "template" | null) =>
+  const setMode = (mode: "edit" | null) =>
     setParams(mode ? { [mode]: "" } : {}, { replace: true, preventScrollReset: true });
-  const template = loaderData.template ?? DEFAULT_CV_TEMPLATE;
-  const data = typstCv(loaderData.person, cvContent(cv));
+  const data = pdfCv(loaderData.person, cvContent(cv));
 
   const save = (
     <Button type="submit" size="medium" disabled={saving || !dirty}>
@@ -107,32 +95,27 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
         <div className="flex items-center gap-4">
           {saved && <span className="text-[13.5px] text-green-primary">Saved</span>}
           {editing && save}
-          {editing || styling ? (
+          {editing ? (
             <Button type="button" variant="ghost" size="medium" className="uppercase" onClick={() => setMode(null)} data-tour="done-cv">
               Done
             </Button>
           ) : (
-            <>
-              <Button type="button" variant="ghost" size="medium" className="uppercase" onClick={() => setMode("template")}>
-                Edit template
-              </Button>
-              <Button type="button" size="medium" className="uppercase" onClick={() => setMode("edit")} data-tour="edit-cv">
-                Edit CV
-              </Button>
-            </>
+            <Button type="button" size="medium" className="uppercase" onClick={() => setMode("edit")} data-tour="edit-cv">
+              Edit CV
+            </Button>
           )}
         </div>
       </header>
 
-      {!editing && !styling && (
+      {!editing && (
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-12">
           <aside className="flex flex-col gap-5 lg:sticky lg:top-16 lg:self-start">
             <div>
               <h2 className="text-[16px] font-medium text-text-primary">Master CV</h2>
               <p className="mt-0.5 text-[13.5px] text-text-tertiary">What every tailored CV is rewritten from.</p>
             </div>
-            <TypstPreview template={template} cv={data} width={380} />
-            <PdfButton template={template} cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
+            <CvPreview cv={data} width={380} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
+            <PdfButton cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
             <SideBlock title="What's in it">
               <div className="flex flex-col gap-2">
                 <SideRow label="Roles" value={cv.experience.length} />
@@ -159,12 +142,6 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
         </div>
       )}
 
-      {styling && (
-        <PageSection id="template" title="Template" description="Controls how every CV looks. Written in Typst.">
-          <TemplateEditor saved={loaderData.template} cv={data} />
-        </PageSection>
-      )}
-
       {editing && (
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[220px_1fr] xl:grid-cols-[200px_minmax(0,1fr)_300px]">
           <aside className="hidden lg:block">
@@ -181,7 +158,7 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
           </main>
           <aside className="flex flex-col gap-3 lg:col-start-2 xl:sticky xl:top-16 xl:col-start-3 xl:row-start-1 xl:self-start">
             <p className="text-[14px] font-medium text-text-primary">Preview</p>
-            <TypstPreview template={template} cv={data} width={300} />
+            <CvPreview cv={data} width={300} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
           </aside>
         </div>
       )}
