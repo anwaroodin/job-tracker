@@ -34,6 +34,7 @@ export const profile = sqliteTable("profile", {
   cvJson: text("cv_json"),
   cvUpdatedAt: text("cv_updated_at"),
   cvTemplate: text("cv_template"),
+  cvAtsJson: text("cv_ats_json"),
   storiesJson: text("stories_json"),
   updatedAt: text("updated_at").notNull(),
 });

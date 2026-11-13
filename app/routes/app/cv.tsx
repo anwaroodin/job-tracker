@@ -6,12 +6,14 @@ import type { Route } from "./+types/cv";
 import { CV_SECTIONS, CvEditor } from "~/components/cv";
 import { RoleCvs } from "~/components/cv/role-cvs";
 import { TailoredCvList } from "~/components/cv/tailored-grid";
+import { AtsChecks } from "~/components/cv/ats-checks";
 import { CvPreview, PdfButton } from "~/components/cv/cv-preview";
 import { DesignPicker } from "~/components/cv/design-picker";
 import { Button } from "~/components/ui/button";
 import { SettingsNav } from "~/components/ui/settings-nav";
 import { stagger, PageTitle } from "~/components/ui/terminal";
 import { UnsavedBar } from "~/components/ui/unsaved-bar";
+import { parseSavedAts } from "~/lib/ats";
 import { cvContent, personFor, pdfCv } from "~/lib/cv";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
@@ -20,7 +22,7 @@ import { importCv, MAX_PDF_BYTES, pdfText } from "~/server/cv/import.server";
 import { MAX_TITLE_CHARS } from "~/server/cv/tailoring/role";
 import { getDb } from "~/server/db/client.server";
 import { jsonField } from "~/server/form.server";
-import { getCv, getCvDesign, getProfile, saveCv, saveCvDesign } from "~/server/db/queries/profile.server";
+import { getCv, getCvAts, getCvDesign, getProfile, saveCv, saveCvAts, saveCvDesign } from "~/server/db/queries/profile.server";
 import { createRoleCv, listRoleCvs } from "~/server/db/queries/role-cv.server";
 import { tailoredCvCards } from "~/server/db/queries/tailored-cv.server";
 import { cvDesign, type Cv } from "~/types/cv";
@@ -29,14 +31,15 @@ export async function loader({ context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [cv, profile, tailored, roles, design] = await Promise.all([
+  const [cv, profile, tailored, roles, ats, design] = await Promise.all([
     getCv(db, user.id),
     getProfile(db, user.id),
     tailoredCvCards(db, user.id),
     listRoleCvs(db, user.id),
+    getCvAts(db, user.id),
     getCvDesign(db, user.id),
   ]);
-  return { cv, person: personFor(profile.personal, user), tailored, roles, design };
+  return { cv, person: personFor(profile.personal, user), tailored, roles, ats, design };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -55,6 +58,11 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (form.get("intent") === "design") {
     await saveCvDesign(db, user.id, cvDesign(form.get("design")));
     return { design: true };
+  }
+  if (form.get("intent") === "save-ats") {
+    const saved = parseSavedAts(jsonField(form, "ats", "null"));
+    if (saved) await saveCvAts(db, user.id, saved);
+    return { ats: !!saved };
   }
   if (form.get("intent") === "role") {
     const title = String(form.get("title") ?? "").trim().slice(0, MAX_TITLE_CHARS);
@@ -79,6 +87,7 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
   const design = cvDesign(designFetcher.formData?.get("design") ?? loaderData.design);
   const chooseDesign = (value: string) => designFetcher.submit({ intent: "design", design: value }, { method: "post" });
   const data = pdfCv(loaderData.person, cvContent(cv), design);
+  const savedData = pdfCv(loaderData.person, cvContent(loaderData.cv), design);
 
   const save = (
     <Button type="submit" size="medium" disabled={saving || !dirty}>
@@ -126,6 +135,7 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
             <CvPreview cv={data} width={380} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
             <PdfButton cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
             <DesignPicker value={design} onChange={chooseDesign} />
+            <AtsChecks cv={savedData} saved={loaderData.ats} />
             <SideBlock title="What's in it">
               <div className="flex flex-col gap-2">
                 <SideRow label="Roles" value={cv.experience.length} />
@@ -169,6 +179,9 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
           <aside className="flex flex-col gap-3 lg:col-start-2 xl:sticky xl:top-16 xl:col-start-3 xl:row-start-1 xl:self-start">
             <p className="text-[14px] font-medium text-text-primary">Preview</p>
             <CvPreview cv={data} width={300} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
+            <div className="mt-3">
+              <AtsChecks cv={savedData} saved={loaderData.ats} stale={dirty} />
+            </div>
           </aside>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "../client.server";
 import { profile } from "../schema";
+import { parseSavedAts, type SavedAts } from "~/lib/ats";
 import { EMPTY_CV } from "~/lib/cv";
 import { cleanCv } from "../../cv/clean";
 import { cvDesign, type Cv, type CvDesign } from "~/types/cv";
@@ -136,6 +137,20 @@ function saveProfileField(db: Db, userId: string, field: Partial<typeof profile.
 
 export function saveCvDesign(db: Db, userId: string, design: CvDesign) {
   return saveProfileField(db, userId, { cvTemplate: design });
+}
+
+export async function getCvAts(db: Db, userId: string): Promise<SavedAts | null> {
+  const [row] = await db.select({ json: profile.cvAtsJson }).from(profile).where(eq(profile.userId, userId)).limit(1);
+  if (!row?.json) return null;
+  try {
+    return parseSavedAts(JSON.parse(row.json));
+  } catch {
+    return null;
+  }
+}
+
+export function saveCvAts(db: Db, userId: string, ats: SavedAts) {
+  return saveProfileField(db, userId, { cvAtsJson: JSON.stringify(ats) });
 }
 
 export async function getStories(db: Db, userId: string) {
