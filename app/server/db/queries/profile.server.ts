@@ -121,19 +121,6 @@ export function saveCv(db: Db, userId: string, cv: Cv) {
     .onConflictDoUpdate({ target: profile.userId, set });
 }
 
-export async function getCvTemplate(db: Db, userId: string) {
-  const [row] = await db.select({ template: profile.cvTemplate }).from(profile).where(eq(profile.userId, userId)).limit(1);
-  return row?.template ?? null;
-}
-
-export function saveCvTemplate(db: Db, userId: string, template: string | null) {
-  const set = { cvTemplate: template, updatedAt: nowIso() };
-  return db
-    .insert(profile)
-    .values({ userId, ...set })
-    .onConflictDoUpdate({ target: profile.userId, set });
-}
-
 export async function getStories(db: Db, userId: string) {
   const [row] = await db.select({ json: profile.storiesJson }).from(profile).where(eq(profile.userId, userId)).limit(1);
   return row?.json ?? null;

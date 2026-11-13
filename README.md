@@ -37,7 +37,7 @@ Connect Gmail (read-only) and job-tracker syncs application emails in the backgr
 
 Keep one master CV and get a version tailored to each job:
 
-- **CV:** import a PDF or paste your CV, edit it, and preview it rendered with [Typst](https://typst.app) from a template you can change. The PDF is compiled on the Worker.
+- **CV:** import a PDF or paste your CV, edit it, and preview it as a PDF built in your browser with [pdfme](https://pdfme.com).
 - **Questions, not guesses:** skills a job asks for that your CV shows in other words or clearly implies are assumed (and listed so you can undo them). Only specific skills with nothing in your CV pointing to them are asked about, at most six, before rewriting. A yes (with an optional detail) counts as evidence; a no keeps it out. Answers are saved on your CV, so each one is asked once.
 - **Reserve projects:** keep projects off your CV but on file. Tailoring brings one in when it shows what a job asks for better than the projects you show, and treats it as real evidence of your skills.
 - **Tailoring:** a pipeline ported from [Resume-Matcher](https://github.com/srbhr/Resume-Matcher) (Apache-2.0) extracts the job's keywords, plans which skills to target, and asks Claude for targeted edits. Each edit is checked in code against your CV before it's applied, so titles, companies, dates and skills you don't have can't be invented. It also writes a cover letter.
@@ -59,7 +59,7 @@ Keep one master CV and get a version tailored to each job:
 - **Sessions:** Cloudflare KV (read on every request; D1 keeps a copy)
 - **Authentication:** [Better Auth](https://better-auth.com/) + Google OAuth
 - **Styling:** Tailwind CSS v4 & Radix UI primitives
-- **CV rendering:** [Typst](https://typst.app) compiled on the Worker with [typst-wasm](https://www.npmjs.com/package/typst-wasm); PDF import with [unpdf](https://github.com/unjs/unpdf)
+- **CV rendering:** [pdfme](https://pdfme.com), in the browser (on the Worker only for share links); PDF import with [unpdf](https://github.com/unjs/unpdf)
 - **Tailoring:** [Claude Code](https://claude.com/claude-code) through a local runner
 
 ## Project Structure
@@ -87,7 +87,7 @@ job-tracker/
 │       ├── services/           Business rules: status transitions, applications, timeline, overview, search
 │       ├── email/              Classification, retention (privacy rules), details, suggestions
 │       ├── gmail/              Gmail API client, payload mapping, sync/ (the sync pipeline)
-│       ├── cv/                 CV import and Typst rendering; tailoring/ (the tailoring pipeline and its prompts)
+│       ├── cv/                 CV import and the share-link PDF; tailoring/ (the tailoring pipeline and its prompts)
 │       ├── jev/                TypeSafe Jev questions (optional AI classification)
 │       ├── storage/            R2 helpers (CV uploads, upcoming)
 │       └── extension/          Extension API HTTP helpers and input validation
@@ -196,7 +196,7 @@ If Google's [Antigravity](https://antigravity.google) CLI (`agy`) is installed, 
 - [ ] Support CV upload/download via R2 signed URLs
 - [x] Gmail integration for automatic follow-up tracking
 - [x] Browser extension companion app interacting with the Workers API
-- [x] Master CV with Typst rendering, and a tailored CV and cover letter per job
+- [x] Master CV with PDF rendering, and a tailored CV and cover letter per job
 - [ ] Data importer for legacy JSON job tracking formats
 
 ## Contributing

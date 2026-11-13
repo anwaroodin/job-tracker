@@ -187,16 +187,6 @@ export interface PdfCv {
   certifications: string[];
 }
 
-export interface TypstCv {
-  author: Person;
-  summary: string;
-  summaryBold: string[];
-  experience: { title: string; company: string; location: string; url: string; start: string; end: string | null; bullets: string[]; bold: string[][] }[];
-  projects: { name: string; url: string; subtitle: string; details: string; bullets: string[]; bold: string[][] }[];
-  education: { institution: string; qualification: string; location: string; start: string; end: string | null; details: string[] }[];
-  skills: { label: string; items: string[] }[];
-  certifications: string[];
-}
 
 export interface JobKeywords {
   company: string;

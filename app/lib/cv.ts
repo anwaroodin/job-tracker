@@ -1,4 +1,4 @@
-import type { Cv, CvBullet, CvContent, CvDesign, Person, PdfCv, TypstCv } from "~/types/cv";
+import type { Cv, CvBullet, CvContent, CvDesign, Person, PdfCv } from "~/types/cv";
 import type { ProfileForm } from "~/types/profile";
 
 export const EMPTY_CV: Cv = {
@@ -40,37 +40,6 @@ export const contactLine = (person: Person) =>
   [person.phone, person.location, person.email, person.linkedin, person.github, person.website].filter(Boolean).join(" · ");
 
 export const shownProjects = (cv: Pick<CvContent, "projects">) => cv.projects.filter((p) => !p.optional);
-
-export function typstCv(person: Person, cv: CvContent): TypstCv {
-  const texts = (bullets: CvBullet[]) => bullets.map((b) => b.text);
-  const bold = (bullets: CvBullet[]) => bullets.map((b) => b.bold ?? []);
-  return {
-    author: person,
-    summary: cv.summary,
-    summaryBold: cv.summaryBold ?? [],
-    experience: cv.experience.map(({ title, company, location, url, start, end, bullets }) => ({
-      title,
-      company,
-      location,
-      url: bareUrl(url),
-      start,
-      end,
-      bullets: texts(bullets),
-      bold: bold(bullets),
-    })),
-    projects: shownProjects(cv).map(({ name, url, subtitle, details, bullets }) => ({ name, url: bareUrl(url), subtitle, details, bullets: texts(bullets), bold: bold(bullets) })),
-    education: cv.education.map(({ institution, qualification, location, start, end, details }) => ({
-      institution,
-      qualification,
-      location,
-      start,
-      end,
-      details,
-    })),
-    skills: cv.skills.map(({ label, items }) => ({ label, items })),
-    certifications: cv.certifications,
-  };
-}
 
 export function pdfCv(person: Person, cv: CvContent, design: CvDesign = "classic"): PdfCv {
   const texts = (bullets: CvBullet[]) => bullets.map((b) => b.text);

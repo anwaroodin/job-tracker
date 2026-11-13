@@ -11,7 +11,7 @@ import { verifyEmphasis } from "~/server/cv/tailoring/emphasis";
 import { confirmedForPrompt, gapsRequest, skillGaps, sortGaps, withAnswers } from "~/server/cv/tailoring/questions";
 import { alignWithMaster, matchFullStops, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
 import { applyDiffs, chooseProjects, resumeView, verifyDiffResult } from "~/server/cv/tailoring/resume";
-import { typstCv } from "~/lib/cv";
+import { pdfCv } from "~/lib/cv";
 import type { CvContent, ResumeChange, SkillTarget } from "~/types/cv";
 
 const CV: CvContent = {
@@ -107,7 +107,7 @@ describe("reserve projects", () => {
   const withReserve: CvContent = { ...CV, projects: [...CV.projects, reserve] };
 
   it("are left off the master CV render", () => {
-    expect(typstCv(PERSON, withReserve).projects.map((p) => p.name)).toEqual(["Plant Diary"]);
+    expect(pdfCv(PERSON, withReserve).projects.map((p) => p.name)).toEqual(["Plant Diary"]);
   });
 
   it("can be chosen by the skill plan, ignoring indices that don't exist", () => {
