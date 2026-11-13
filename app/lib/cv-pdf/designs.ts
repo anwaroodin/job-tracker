@@ -53,6 +53,67 @@ const CLASSIC: Design = {
   bullet: { indent: 8.71, x: 1.79, rise: 3.39, r: 1.38 },
 };
 
-export const DESIGNS: Record<CvDesign, Design> = { classic: CLASSIC };
+const SLATE = "#20262E";
+
+const RED = "#DC2626";
+
+const ONYX: Design = {
+  page: LETTER,
+  margin: 14,
+  pageTop: 10.66,
+  pageBottom: 12,
+  color: "#000000",
+  underline: { grey: 0, width: 0.5 },
+  links: "inline",
+  plainSkillLabels: true,
+  fonts: { body: "IBM Plex Serif", bold: "IBM Plex Serif Bold", italic: "IBM Plex Serif", boldItalic: "IBM Plex Serif Bold" },
+  body: 9,
+  line: 12.15,
+  name: { font: "IBM Plex Serif SemiBold", pt: 19.5, baseline: 31.99, lineHeight: 1, align: "left" },
+  contact: {
+    pt: 9,
+    gap: 16.21,
+    align: "left",
+    order: ["email", "phone", "location", "website", "linkedin", "github"],
+    icons: { color: RED, gap: 4 / 6, itemGap: 3, rise: 3.38, row: 12.9 },
+  },
+  headerRule: { gap: 15.2, pt: 1, color: RED },
+  heading: { font: "IBM Plex Serif SemiBold", pt: 13, gap: 34.19, afterRule: 27.12 },
+  entries: "rows",
+  dash: " – ",
+  gap: { firstEntry: 15.33, nextEntry: 21.01, subtitle: 12.65, firstBullet: 12.65, bullet: 17.01, detail: 17.01, skill: 16.15 },
+  bullet: { indent: 10.33, x: 7.13, rise: 2.74, r: 1.06 },
+};
+
+const PERSIAN: Design = {
+  page: A4,
+  margin: 28,
+  pageTop: 28,
+  pageBottom: 28,
+  color: SLATE,
+  underline: null,
+  links: "aside",
+  fonts: { body: "Inter", bold: "Inter Bold", italic: "Inter", boldItalic: "Inter Bold" },
+  body: 9.5,
+  line: 12.88,
+  name: { font: "Montserrat SemiBold", pt: 22.4, baseline: 40.61, lineHeight: 1, align: "center", upper: true, spacing: 0.9075 },
+  contact: {
+    pt: 8.3,
+    gap: 18.2,
+    align: "center",
+    order: ["phone", "email", "website", "location", "github", "linkedin"],
+    icons: { color: SLATE, gap: 2, itemGap: 15, rise: 4.8, row: 12 },
+  },
+  headerRule: { gap: 23.8, pt: 1, color: SLATE },
+  heading: { font: "Montserrat SemiBold", pt: 9.7, gap: 19.76, afterRule: 16.79, upper: true, spacing: 0.5445 },
+  headingRule: { gap: 3.47, pt: 0.5, color: SLATE },
+  entries: "rows",
+  skills: { columns: 3, gap: 38, keywords: 12.64 },
+  dash: " – ",
+  gap: { firstEntry: 12.41, nextEntry: 16.62, subtitle: 13.5, firstBullet: 13.5, bullet: 18.03, detail: 18.03, skill: 13.5 },
+  bullet: { indent: 12.2, x: 6.87, rise: 2.76, r: 1.49 },
+};
+
+export const DESIGNS: Record<CvDesign, Design> = { classic: CLASSIC, onyx: ONYX, persian: PERSIAN };
 
 export const designFonts = (design: Design) => [design.fonts.body, design.fonts.bold, design.fonts.italic, design.fonts.boldItalic, design.name.font, design.heading.font];

@@ -169,7 +169,11 @@ export interface TailoredCvCard {
   cv: CvContent;
 }
 
-export const CV_DESIGNS = [{ value: "classic", label: "Classic" }] as const;
+export const CV_DESIGNS = [
+  { value: "classic", label: "Classic" },
+  { value: "onyx", label: "Onyx" },
+  { value: "persian", label: "Persian" },
+] as const;
 
 export type CvDesign = (typeof CV_DESIGNS)[number]["value"];
 
