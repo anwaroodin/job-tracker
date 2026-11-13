@@ -51,7 +51,7 @@ describe("share links", () => {
     const cv = { summary: "Hi", experience: [], education: [], projects: [], skills: [], certifications: [], changes: [], flags: [], coverLetter: { paragraphs: [] } } as unknown as TailoredCv;
     await insertTailoredCv(db, USER_ID, "app", 1, cv);
     const token = await createShareLink(db, USER_ID, "app", 7, true);
-    expect((await sharedApplication(db, token))?.cv?.typst.summary).toBe("Hi");
+    expect((await sharedApplication(db, token))?.cv?.summary).toBe("Hi");
     await updateShareLink(db, USER_ID, "app", new Date().toISOString(), { includeCv: false });
     expect((await sharedApplication(db, token))?.cv).toBeNull();
   });

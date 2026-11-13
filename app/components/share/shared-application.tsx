@@ -17,9 +17,7 @@ interface SharedJob {
   description: string;
 }
 
-const pageCount = (n: number) => `${n} ${n === 1 ? "page" : "pages"}`;
-
-export function SharedApplication({ job, expiresAt, pages, pdfHref }: { job: SharedJob; expiresAt: string; pages: string[] | null; pdfHref: string }) {
+export function SharedApplication({ job, expiresAt, hasCv, pdfHref }: { job: SharedJob; expiresAt: string; hasCv: boolean; pdfHref: string }) {
   const [view, setView] = useState<"job" | "cv">("job");
   const source = hostOf(job.url);
   const facts = [
@@ -35,9 +33,9 @@ export function SharedApplication({ job, expiresAt, pages, pdfHref }: { job: Sha
           <PageTitle className="mt-4" title={job.company} sub={job.role} />
           <FactChips facts={facts} className="mt-4" />
         </div>
-        {pages && (
+        {hasCv && (
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-[11px] tracking-[0.1em] text-text-tertiary">Includes a tailored CV{pages.length > 0 && ` · ${pageCount(pages.length)}`}</span>
+            <span className="text-[11px] tracking-[0.1em] text-text-tertiary">Includes a tailored CV</span>
             <Button asChild size="small">
               <a href={pdfHref} target="_blank" rel="noreferrer">
                 <Download />
@@ -48,7 +46,7 @@ export function SharedApplication({ job, expiresAt, pages, pdfHref }: { job: Sha
         )}
       </header>
 
-      {pages && (
+      {hasCv && (
         <div className="lg:hidden">
           <Segmented
             label="Show"
@@ -62,7 +60,7 @@ export function SharedApplication({ job, expiresAt, pages, pdfHref }: { job: Sha
         </div>
       )}
 
-      <div className={pages ? "grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start" : "max-w-3xl"}>
+      <div className={hasCv ? "grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start" : "max-w-3xl"}>
         <Section
           n="01"
           title="Job description"
@@ -83,20 +81,14 @@ export function SharedApplication({ job, expiresAt, pages, pdfHref }: { job: Sha
           )}
         </Section>
 
-        {pages && (
+        {hasCv && (
           <Section
             n="02"
             title="Tailored CV"
-            hint={pages.length > 0 ? pageCount(pages.length) : undefined}
             i={2}
             className={cn("lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:pr-1", view === "job" && "hidden lg:block")}
           >
-            <div className="flex flex-col gap-3">
-              {pages.map((page, i) => (
-                <img key={i} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(page)}`} alt={`CV page ${i + 1}`} className="block w-full border border-stroke-secondary bg-paper" />
-              ))}
-              {!pages.length && <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">The CV couldn't be shown here. Try downloading it.</p>}
-            </div>
+            <iframe src={pdfHref} title="Tailored CV" className="block h-[80dvh] w-full border border-stroke-secondary bg-paper" />
           </Section>
         )}
       </div>
