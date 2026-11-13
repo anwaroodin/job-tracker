@@ -44,6 +44,7 @@ export const shownProjects = (cv: Pick<CvContent, "projects">) => cv.projects.fi
 export function pdfCv(person: Person, cv: CvContent, design: CvDesign = "classic"): PdfCv {
   const texts = (bullets: CvBullet[]) => bullets.map((b) => b.text);
   const bold = (bullets: CvBullet[]) => bullets.map((b) => b.bold ?? []);
+  const certifications = cv.certifications.length ? [{ label: "Certifications", items: cv.certifications }] : [];
   return {
     design,
     author: person,
@@ -68,7 +69,6 @@ export function pdfCv(person: Person, cv: CvContent, design: CvDesign = "classic
       end,
       details,
     })),
-    skills: cv.skills.map(({ label, items }) => ({ label, items })),
-    certifications: cv.certifications,
+    skills: [...cv.skills.map(({ label, items }) => ({ label, items })), ...certifications],
   };
 }
