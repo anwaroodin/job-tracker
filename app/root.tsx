@@ -9,12 +9,14 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
-import "./app.css";
-import { themeFromCookie } from "~/lib/theme";
+import { NotFound } from "~/components/shell/not-found";
+import appCss from "./app.css?url";
+import { COLOR_SCHEMES, THEME_FROM_COOKIE_SCRIPT, themeFromCookie } from "~/lib/theme";
 
 export const meta: Route.MetaFunction = () => [{ title: "job-tracker" }];
 
 export const links: Route.LinksFunction = () => [
+  { rel: "stylesheet", href: appCss },
   { rel: "stylesheet", href: "/webfonts.css" },
   { rel: "manifest", href: "/manifest.webmanifest" },
   { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
@@ -27,11 +29,12 @@ export function loader({ request }: Route.LoaderArgs) {
 export function Layout({ children }: { children: React.ReactNode }) {
   const theme = useRouteLoaderData<typeof loader>("root")?.theme ?? "light";
   return (
-    <html lang="en" data-theme={theme}>
+    <html lang="en" data-theme={theme} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_FROM_COOKIE_SCRIPT }} />
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="color-scheme" content="dark light" />
+        <meta name="color-scheme" content={COLOR_SCHEMES[theme]} />
         {theme === "system" ? (
           <>
             <meta name="theme-color" content="#fafaf8" media="(prefers-color-scheme: light)" />
@@ -66,11 +69,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
-    details =
-      error.status === 404
-        ? "The requested page could not be found."
-        : error.statusText || details;
+    if (error.status === 404) return <NotFound />;
+    message = "Error";
+    details = error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;
