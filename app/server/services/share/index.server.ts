@@ -1,6 +1,6 @@
 import type { Db } from "~/server/db/client.server";
 import { getApplication } from "~/server/db/queries/applications.server";
-import { getProfile } from "~/server/db/queries/profile.server";
+import { getCvDesign, getProfile } from "~/server/db/queries/profile.server";
 import { liveShareLink, putShareLink } from "~/server/db/queries/share-links.server";
 import { latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
 import { personFor, pdfCv } from "~/lib/cv";
@@ -34,16 +34,17 @@ export async function sharedApplication(db: Db, token: string) {
   if (!TOKEN_PATTERN.test(token)) return null;
   const link = await liveShareLink(db, await sha256(token), new Date().toISOString());
   if (!link) return null;
-  const [row, tailored, profile] = await Promise.all([
+  const [row, tailored, profile, design] = await Promise.all([
     getApplication(db, link.userId, link.applicationId),
     link.includeCv ? latestTailoredCv(db, link.userId, link.applicationId) : null,
     link.includeCv ? getProfile(db, link.userId) : null,
+    link.includeCv ? getCvDesign(db, link.userId) : undefined,
   ]);
   if (!row) return null;
   const { company, role, location, workType, url, description } = row;
   return {
     job: { company, role, location, workType, url, description },
     expiresAt: link.expiresAt,
-    cv: tailored && profile ? pdfCv(personFor(profile.personal, link.account), tailored.cv) : null,
+    cv: tailored && profile ? pdfCv(personFor(profile.personal, link.account), tailored.cv, design) : null,
   };
 }

@@ -16,7 +16,7 @@ import { atsScore } from "~/server/cv/tailoring/keywords";
 import { evidenceText, impliedTerms, scoreBefore } from "~/server/cv/tailoring/questions";
 import { getDb } from "~/server/db/client.server";
 import { jsonField } from "~/server/form.server";
-import { getCv, getProfile } from "~/server/db/queries/profile.server";
+import { getCv, getCvDesign, getProfile } from "~/server/db/queries/profile.server";
 import { deleteRoleCv, getRoleCv, saveRoleCv } from "~/server/db/queries/role-cv.server";
 import type { AtsScore } from "~/types/cv";
 
@@ -24,11 +24,11 @@ export async function loader({ context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [role, cv, profile] = await Promise.all([getRoleCv(db, user.id, params.id), getCv(db, user.id), getProfile(db, user.id)]);
+  const [role, cv, profile, design] = await Promise.all([getRoleCv(db, user.id, params.id), getCv(db, user.id), getProfile(db, user.id), getCvDesign(db, user.id)]);
   if (!role) throw data("Not found", { status: 404 });
   const hasCv = cv.experience.length > 0 || cv.summaries.length > 0;
   const score: { before: AtsScore; after?: AtsScore } | null = role.cv?.score ?? (role.keywords ? { before: scoreBefore(cvContent(cv), cv.confirmed, role.keywords) } : null);
-  return { role, hasCv, score, person: personFor(profile.personal, user) };
+  return { role, hasCv, score, person: personFor(profile.personal, user), design };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -51,7 +51,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 }
 
 export default function RoleCvPage({ loaderData }: Route.ComponentProps) {
-  const { role, hasCv, score, person } = loaderData;
+  const { role, hasCv, score, person, design } = loaderData;
   const [editing, setEditing] = useState(false);
   return (
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
@@ -109,9 +109,9 @@ export default function RoleCvPage({ loaderData }: Route.ComponentProps) {
         <Section n="04" title="CV" hint={<Button type="button" variant="link" size="tiny" className="h-auto px-0 uppercase" onClick={() => setEditing(true)}>Edit</Button>} i={4}>
           <div className="flex flex-col gap-3">
             <div className="self-end">
-              <PdfButton cv={pdfCv(person, role.cv)} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} />
+              <PdfButton cv={pdfCv(person, role.cv, design)} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} />
             </div>
-            <CvPreview cv={pdfCv(person, role.cv)} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} />
+            <CvPreview cv={pdfCv(person, role.cv, design)} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} />
           </div>
         </Section>
       )}

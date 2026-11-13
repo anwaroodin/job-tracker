@@ -23,7 +23,7 @@ import { evidenceText, impliedTerms, scoreBefore } from "~/server/cv/tailoring/q
 import { getDb } from "~/server/db/client.server";
 import { jsonField } from "~/server/form.server";
 import { getApplication, saveResearch } from "~/server/db/queries/applications.server";
-import { getCv, getProfile } from "~/server/db/queries/profile.server";
+import { getCv, getCvDesign, getProfile } from "~/server/db/queries/profile.server";
 import { insertTailoredCv, latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
 import type { AtsScore } from "~/types/cv";
 
@@ -36,11 +36,12 @@ export async function loader({ context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [row, cv, profile, tailored] = await Promise.all([
+  const [row, cv, profile, tailored, design] = await Promise.all([
     getApplication(db, user.id, params.id),
     getCv(db, user.id),
     getProfile(db, user.id),
     latestTailoredCv(db, user.id, params.id),
+    getCvDesign(db, user.id),
   ]);
   if (!row) throw data("Not found", { status: 404 });
 
@@ -57,6 +58,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
     hasDescription: !!row.description,
     score,
     person: personFor(profile.personal, user),
+    design,
     tailored,
   };
 }
@@ -89,7 +91,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 }
 
 export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
-  const { application, canTailor, researchRequest, research, hasCv, hasDescription, score, person, tailored } = loaderData;
+  const { application, canTailor, researchRequest, research, hasCv, hasDescription, score, person, design, tailored } = loaderData;
   const [editing, setEditing] = useState(false);
   return (
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
@@ -164,9 +166,9 @@ export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
           <Section n="05" title="CV" hint={<Button type="button" variant="link" size="tiny" className="h-auto px-0 uppercase" onClick={() => setEditing(true)}>Edit</Button>} i={4}>
             <div className="flex flex-col gap-3">
               <div className="self-end">
-                <PdfButton cv={pdfCv(person, tailored.cv)} filename={`${person.name || "CV"} - ${application.company} CV.pdf`} />
+                <PdfButton cv={pdfCv(person, tailored.cv, design)} filename={`${person.name || "CV"} - ${application.company} CV.pdf`} />
               </div>
-              <CvPreview cv={pdfCv(person, tailored.cv)} filename={`${person.name || "CV"} - ${application.company} CV.pdf`} />
+              <CvPreview cv={pdfCv(person, tailored.cv, design)} filename={`${person.name || "CV"} - ${application.company} CV.pdf`} />
             </div>
           </Section>
           {tailored.cv.coverLetter.paragraphs.length > 0 && (

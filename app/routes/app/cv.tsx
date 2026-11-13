@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { PageSection, SANS_PAGE } from "~/components/ui/page-section";
 import { SideBlock, SideRow } from "~/components/ui/side-block";
-import { Form, redirect, useNavigation, useSearchParams } from "react-router";
+import { Form, redirect, useFetcher, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/cv";
 import { CV_SECTIONS, CvEditor } from "~/components/cv";
 import { RoleCvs } from "~/components/cv/role-cvs";
 import { TailoredCvList } from "~/components/cv/tailored-grid";
 import { CvPreview, PdfButton } from "~/components/cv/cv-preview";
+import { DesignPicker } from "~/components/cv/design-picker";
 import { Button } from "~/components/ui/button";
 import { SettingsNav } from "~/components/ui/settings-nav";
 import { stagger, PageTitle } from "~/components/ui/terminal";
@@ -19,22 +20,23 @@ import { importCv, MAX_PDF_BYTES, pdfText } from "~/server/cv/import.server";
 import { MAX_TITLE_CHARS } from "~/server/cv/tailoring/role";
 import { getDb } from "~/server/db/client.server";
 import { jsonField } from "~/server/form.server";
-import { getCv, getProfile, saveCv } from "~/server/db/queries/profile.server";
+import { getCv, getCvDesign, getProfile, saveCv, saveCvDesign } from "~/server/db/queries/profile.server";
 import { createRoleCv, listRoleCvs } from "~/server/db/queries/role-cv.server";
 import { tailoredCvCards } from "~/server/db/queries/tailored-cv.server";
-import type { Cv } from "~/types/cv";
+import { cvDesign, type Cv } from "~/types/cv";
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [cv, profile, tailored, roles] = await Promise.all([
+  const [cv, profile, tailored, roles, design] = await Promise.all([
     getCv(db, user.id),
     getProfile(db, user.id),
     tailoredCvCards(db, user.id),
     listRoleCvs(db, user.id),
+    getCvDesign(db, user.id),
   ]);
-  return { cv, person: personFor(profile.personal, user), tailored, roles };
+  return { cv, person: personFor(profile.personal, user), tailored, roles, design };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -49,6 +51,10 @@ export async function action({ request, context }: Route.ActionArgs) {
     }
     const text = file instanceof File && file.size ? await pdfText(file).catch(() => "") : String(form.get("text") ?? "");
     return { imported: await importCv(env, db, user.id, text) };
+  }
+  if (form.get("intent") === "design") {
+    await saveCvDesign(db, user.id, cvDesign(form.get("design")));
+    return { design: true };
   }
   if (form.get("intent") === "role") {
     const title = String(form.get("title") ?? "").trim().slice(0, MAX_TITLE_CHARS);
@@ -69,7 +75,10 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
   const editing = params.has("edit");
   const setMode = (mode: "edit" | null) =>
     setParams(mode ? { [mode]: "" } : {}, { replace: true, preventScrollReset: true });
-  const data = pdfCv(loaderData.person, cvContent(cv));
+  const designFetcher = useFetcher();
+  const design = cvDesign(designFetcher.formData?.get("design") ?? loaderData.design);
+  const chooseDesign = (value: string) => designFetcher.submit({ intent: "design", design: value }, { method: "post" });
+  const data = pdfCv(loaderData.person, cvContent(cv), design);
 
   const save = (
     <Button type="submit" size="medium" disabled={saving || !dirty}>
@@ -116,6 +125,7 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
             </div>
             <CvPreview cv={data} width={380} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
             <PdfButton cv={data} filename={`${loaderData.person.name || "CV"} - CV.pdf`} />
+            <DesignPicker value={design} onChange={chooseDesign} />
             <SideBlock title="What's in it">
               <div className="flex flex-col gap-2">
                 <SideRow label="Roles" value={cv.experience.length} />

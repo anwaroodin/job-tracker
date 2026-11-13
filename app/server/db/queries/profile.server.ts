@@ -3,7 +3,7 @@ import type { Db } from "../client.server";
 import { profile } from "../schema";
 import { EMPTY_CV } from "~/lib/cv";
 import { cleanCv } from "../../cv/clean";
-import type { Cv } from "~/types/cv";
+import { cvDesign, type Cv, type CvDesign } from "~/types/cv";
 import type { ProfileForm } from "~/types/profile";
 
 const nowIso = () => new Date().toISOString();
@@ -119,6 +119,23 @@ export function saveCv(db: Db, userId: string, cv: Cv) {
     .insert(profile)
     .values({ userId, ...set })
     .onConflictDoUpdate({ target: profile.userId, set });
+}
+
+export async function getCvDesign(db: Db, userId: string) {
+  const [row] = await db.select({ design: profile.cvTemplate }).from(profile).where(eq(profile.userId, userId)).limit(1);
+  return cvDesign(row?.design);
+}
+
+function saveProfileField(db: Db, userId: string, field: Partial<typeof profile.$inferInsert>) {
+  const set = { ...field, updatedAt: nowIso() };
+  return db
+    .insert(profile)
+    .values({ userId, ...set })
+    .onConflictDoUpdate({ target: profile.userId, set });
+}
+
+export function saveCvDesign(db: Db, userId: string, design: CvDesign) {
+  return saveProfileField(db, userId, { cvTemplate: design });
 }
 
 export async function getStories(db: Db, userId: string) {
