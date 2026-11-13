@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { data, Form, Link, redirect } from "react-router";
 import type { Route } from "./+types/role-cv";
-import { PdfButton, TypstPreview } from "~/components/cv/typst-preview";
+import { CvPreview, PdfButton } from "~/components/cv/cv-preview";
 import { TailoredCvEditor } from "~/components/tailored-cv/editor";
 import { EditsView } from "~/components/tailored-cv/edits";
 import { ScoreView } from "~/components/tailored-cv/score";
 import { TailorPanel } from "~/components/tailored-cv/tailor-panel";
 import { Button } from "~/components/ui/button";
 import { Section, fmtDate, stagger, PageTitle } from "~/components/ui/terminal";
-import { cvContent, personFor, typstCv } from "~/lib/cv";
-import { DEFAULT_CV_TEMPLATE } from "~/lib/typst";
+import { cvContent, personFor, pdfCv } from "~/lib/cv";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { applyEdits } from "~/server/cv/tailored";
@@ -17,7 +16,7 @@ import { atsScore } from "~/server/cv/tailoring/keywords";
 import { evidenceText, impliedTerms, scoreBefore } from "~/server/cv/tailoring/questions";
 import { getDb } from "~/server/db/client.server";
 import { jsonField } from "~/server/form.server";
-import { getCv, getCvTemplate, getProfile } from "~/server/db/queries/profile.server";
+import { getCv, getCvDesign, getProfile } from "~/server/db/queries/profile.server";
 import { deleteRoleCv, getRoleCv, saveRoleCv } from "~/server/db/queries/role-cv.server";
 import type { AtsScore } from "~/types/cv";
 
@@ -25,11 +24,11 @@ export async function loader({ context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [role, cv, profile, template] = await Promise.all([getRoleCv(db, user.id, params.id), getCv(db, user.id), getProfile(db, user.id), getCvTemplate(db, user.id)]);
+  const [role, cv, profile, design] = await Promise.all([getRoleCv(db, user.id, params.id), getCv(db, user.id), getProfile(db, user.id), getCvDesign(db, user.id)]);
   if (!role) throw data("Not found", { status: 404 });
   const hasCv = cv.experience.length > 0 || cv.summaries.length > 0;
   const score: { before: AtsScore; after?: AtsScore } | null = role.cv?.score ?? (role.keywords ? { before: scoreBefore(cvContent(cv), cv.confirmed, role.keywords) } : null);
-  return { role, hasCv, score, person: personFor(profile.personal, user), template };
+  return { role, hasCv, score, person: personFor(profile.personal, user), design };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -52,8 +51,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 }
 
 export default function RoleCvPage({ loaderData }: Route.ComponentProps) {
-  const { role, hasCv, score, person } = loaderData;
-  const template = loaderData.template ?? DEFAULT_CV_TEMPLATE;
+  const { role, hasCv, score, person, design } = loaderData;
   const [editing, setEditing] = useState(false);
   return (
     <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
@@ -111,9 +109,9 @@ export default function RoleCvPage({ loaderData }: Route.ComponentProps) {
         <Section n="04" title="CV" hint={<Button type="button" variant="link" size="tiny" className="h-auto px-0 uppercase" onClick={() => setEditing(true)}>Edit</Button>} i={4}>
           <div className="flex flex-col gap-3">
             <div className="self-end">
-              <PdfButton template={template} cv={typstCv(person, role.cv)} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} />
+              <PdfButton cv={pdfCv(person, role.cv, design)} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} />
             </div>
-            <TypstPreview template={template} cv={typstCv(person, role.cv)} />
+            <CvPreview cv={pdfCv(person, role.cv, design)} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} />
           </div>
         </Section>
       )}

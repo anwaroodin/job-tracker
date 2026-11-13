@@ -16,7 +16,7 @@ const AGY_MODEL = process.env.ANTIGRAVITY_MODEL || "gemini-3.8-flash";
 const AGY_LEVEL = { low: "low", medium: "medium", high: "high", xhigh: "high", max: "high" };
 const run = promisify(execFile);
 const ANTIGRAVITY = process.env.RUNNER_ANTIGRAVITY !== "0" && (await run("which", ["agy"]).then(() => true, () => false));
-const ORIGINS = new Set(["http://localhost:5173", process.env.JOB_TRACKER_URL?.replace(/\/$/, "")].filter(Boolean));
+const ORIGINS = new Set(["http://localhost:5173", ...(process.env.JOB_TRACKER_URL ?? "").split(",").map((u) => u.trim().replace(/\/$/, ""))].filter(Boolean));
 
 let busy = false;
 

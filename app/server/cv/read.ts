@@ -6,6 +6,7 @@ import {
   hasDateRange,
   headingSection,
   projectFields,
+  SKILL_LABEL,
   splitSkills,
   withoutDates,
   type Block,
@@ -16,6 +17,7 @@ import {
 
 const MAX_HEADING_WORDS = 5;
 const MIN_SUMMARY_CHARS = 60;
+const MAX_QUALIFICATION_WORDS = 6;
 const CONTACT = /@|\||linkedin|github|\+?\d[\d ()-]{7,}/i;
 
 interface Entry {
@@ -60,7 +62,7 @@ function entriesOf(section: Section, lines: CvLine[]): Entry[] {
       section === "projects" && !startsLowercase(line.text) && (/\)$/.test(line.text) || (!!next && parenthesised(next.text)));
     const startsEntry = entry?.bullets.length
       ? dated || titleBeforeDates || projectStart
-      : dated && !!entry?.header.some(hasDateRange);
+      : (dated || titleBeforeDates) && !!entry?.header.some(hasDateRange);
     if (!entry || startsEntry) {
       entries.push({ header: [line.text], bullets: [] });
     } else if (!entry.bullets.length) {
@@ -99,20 +101,36 @@ function experience(entry: Entry, unclear: ReadCv["unclear"], index: number) {
   return { ...job, title: strip(others[0] ?? ""), company: datedText };
 }
 
+const isNote = (line: string) => line.endsWith(".") && line.split(" ").length > MAX_QUALIFICATION_WORDS;
+
 function education(entry: Entry) {
   const dated = entry.header.find(hasDateRange) ?? entry.header[0] ?? "";
   const others = entry.header.filter((line) => line !== dated);
   const { start, end } = findDates(dated);
-  const { name, location } = splitPlace(withoutDates(dated));
+  const place = withoutDates(dated);
+  const rest = place ? others : others.slice(1);
+  const { name, location } = splitPlace(place || (others[0] ?? ""));
   return {
     id: newId(),
     institution: name,
     location,
-    qualification: others.join(" ").trim(),
+    qualification: rest.filter((line) => !isNote(line)).join(" ").trim(),
     start,
     end,
-    details: entry.bullets,
+    details: [...rest.filter(isNote), ...entry.bullets],
   };
+}
+
+function joinWrapped(lines: CvLine[]) {
+  const texts: string[] = [];
+  for (const line of lines) {
+    const prev = texts.at(-1);
+    const wraps =
+      prev !== undefined && !SKILL_LABEL.test(line.text) && (prev.endsWith(",") || (!line.bullet && startsLowercase(line.text)));
+    if (wraps) texts[texts.length - 1] = `${prev} ${line.text}`;
+    else texts.push(line.text);
+  }
+  return texts;
 }
 
 export function readCv(lines: CvLine[]): ReadCv | null {
@@ -133,13 +151,13 @@ export function readCv(lines: CvLine[]): ReadCv | null {
     } else if (section === "projects") {
       for (const entry of entriesOf(section, body)) cv.projects.push({ id: newId(), ...projectFields(entry.header), bullets: bulletsOf(entry.bullets) });
     } else if (section === "skills") {
-      body.forEach((line, i) => {
-        const group = cv.skills.at(-1);
-        const continues = group && !/^[\w &/]{1,30}:/.test(line.text) && body[i - 1]?.text.trimEnd().endsWith(",");
-        const { label: own, items } = splitSkills(line.text);
-        if (continues) group.items = [...new Set([...group.items, ...items])];
-        else cv.skills.push({ id: newId(), label: own === "Skills" ? label : own, items });
-      });
+      for (const text of joinWrapped(body)) {
+        const { label: own, items } = splitSkills(text);
+        const name = own === "Skills" ? label : own;
+        const group = cv.skills.find((g) => g.label === name);
+        if (group) group.items = [...new Set([...group.items, ...items])];
+        else cv.skills.push({ id: newId(), label: name, items });
+      }
     } else if (section === "certifications") {
       cv.certifications.push(...body.map((l) => l.text));
     }

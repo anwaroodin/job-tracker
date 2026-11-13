@@ -184,16 +184,18 @@ function contextKind(kind: LineKind, section: Section | null, inEntry: boolean):
   return kind;
 }
 
-const SKILL_LABEL = /^([\w &/]{1,30}):\s*/;
+export const SKILL_LABEL = /^([\w &/-]{1,30}):\s*/;
+const MAX_SKILL_WORDS = 5;
 
 export function splitSkills(text: string): SkillLine {
   const label = SKILL_LABEL.exec(text)?.[1].trim() ?? "Skills";
-  const items = text
+  const parts = text
     .replace(SKILL_LABEL, "")
     .split(/\s*[,;|•·]\s*|\s{2,}/)
     .map((s) => s.replace(/\.$/, "").trim())
-    .filter((s) => s.length > 0 && s.length <= 60);
-  return { label, items: [...new Set(items)] };
+    .filter(Boolean);
+  if (label !== "Skills" && parts.some((p) => p.split(" ").length > MAX_SKILL_WORDS)) return { label: "Skills", items: [label] };
+  return { label, items: [...new Set(parts.filter((s) => s.length <= 60))] };
 }
 
 const PARENTHESISED = /^\((.*)\)$/;

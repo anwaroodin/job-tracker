@@ -169,7 +169,18 @@ export interface TailoredCvCard {
   cv: CvContent;
 }
 
-export interface TypstCv {
+export const CV_DESIGNS = [
+  { value: "classic", label: "Classic" },
+  { value: "onyx", label: "Onyx" },
+  { value: "persian", label: "Persian" },
+] as const;
+
+export type CvDesign = (typeof CV_DESIGNS)[number]["value"];
+
+export const cvDesign = (value: unknown): CvDesign => CV_DESIGNS.find((d) => d.value === value)?.value ?? "classic";
+
+export interface PdfCv {
+  design: CvDesign;
   author: Person;
   summary: string;
   summaryBold: string[];
@@ -177,7 +188,6 @@ export interface TypstCv {
   projects: { name: string; url: string; subtitle: string; details: string; bullets: string[]; bold: string[][] }[];
   education: { institution: string; qualification: string; location: string; start: string; end: string | null; details: string[] }[];
   skills: { label: string; items: string[] }[];
-  certifications: string[];
 }
 
 export interface JobKeywords {

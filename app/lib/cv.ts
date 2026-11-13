@@ -1,4 +1,4 @@
-import type { Cv, CvBullet, CvContent, Person, TypstCv } from "~/types/cv";
+import type { Cv, CvBullet, CvContent, CvDesign, Person, PdfCv } from "~/types/cv";
 import type { ProfileForm } from "~/types/profile";
 
 export const EMPTY_CV: Cv = {
@@ -41,10 +41,12 @@ export const contactLine = (person: Person) =>
 
 export const shownProjects = (cv: Pick<CvContent, "projects">) => cv.projects.filter((p) => !p.optional);
 
-export function typstCv(person: Person, cv: CvContent): TypstCv {
+export function pdfCv(person: Person, cv: CvContent, design: CvDesign = "classic"): PdfCv {
   const texts = (bullets: CvBullet[]) => bullets.map((b) => b.text);
   const bold = (bullets: CvBullet[]) => bullets.map((b) => b.bold ?? []);
+  const certifications = cv.certifications.length ? [{ label: "Certifications", items: cv.certifications }] : [];
   return {
+    design,
     author: person,
     summary: cv.summary,
     summaryBold: cv.summaryBold ?? [],
@@ -67,7 +69,6 @@ export function typstCv(person: Person, cv: CvContent): TypstCv {
       end,
       details,
     })),
-    skills: cv.skills.map(({ label, items }) => ({ label, items })),
-    certifications: cv.certifications,
+    skills: [...cv.skills.map(({ label, items }) => ({ label, items })), ...certifications],
   };
 }
