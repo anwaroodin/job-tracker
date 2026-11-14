@@ -1,114 +1,56 @@
 <div align="center">
-  <img src="./public/favicon.png" alt="job-tracker logo" width="120" />
-  <h1>job-tracker</h1>
-  <p>A personal job-application tracker built on React Router 8 and deployed to Cloudflare Workers.</p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./images/logo-dark.svg" />
+    <img src="./images/logo-light.svg" alt="j*b" width="220" />
+  </picture>
+
+  <p><strong>Track every application, read your inbox for you, and tailor your CV to each job.</strong></p>
+
+  <p>
+    <img src="https://img.shields.io/badge/React_Router-8-CA4245?logo=reactrouter&logoColor=white" alt="React Router 8" />
+    <img src="https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white" alt="Cloudflare Workers" />
+    <img src="https://img.shields.io/badge/Drizzle-D1-C5F74F?logo=drizzle&logoColor=black" alt="Drizzle + D1" />
+    <img src="https://img.shields.io/badge/Claude_Code-tailoring-D97757?logo=claude&logoColor=white" alt="Claude Code" />
+  </p>
+
+  <p>
+    <a href="#features">Features</a> ·
+    <a href="#quick-start">Quick start</a> ·
+    <a href="#tailoring-with-claude">Tailoring</a> ·
+    <a href="./docs/ARCHITECTURE.md">Architecture</a> ·
+    <a href="./extension/README.md">Extension</a>
+  </p>
+
+  <img src="./images/overview.png" alt="j*b overview page" width="900" />
 </div>
 
----
+## Features
 
-## Overview
-
-**job-tracker** is a blazingly fast, highly-customizable personal CRM for tracking your job applications, CV files, and upcoming interviews. It utilizes a modern edge-based tech stack, keeping everything serverless and instantly responsive.
+- **Browser extension.** Save a job from any listing in one click, and autofill application forms from your profile and CV.
+- **Gmail sync.** Read-only. Emails are sorted into applied, screening, interview, assessment, offer and rejected, and statuses update themselves. Interview times, deadlines and meeting links land in *Up next*.
+- **Private by default.** Only job-related email is kept. Anything else is reduced to its Gmail id and date.
+- **Master CV.** Import a PDF or paste text, edit it, and pick from three PDF designs, all checked against how ATS parsers read them.
+- **Tailored CVs and cover letters.** Claude proposes edits for each job and code checks every one against your CV, so titles, dates and skills can't be invented. Before rewriting it asks you about skills it can't find, at most six.
+- **Analytics.** Funnel, response rate, weekly volume and top companies, all on one overview page.
 
 <div align="center">
-  <img src="./images/overview.png" alt="dashboard-overview" width="600" />
-  <p>Overview Page</p>
+  <img src="./images/applications.png" alt="Applications list" width="440" />
+  <img src="./images/application.png" alt="Application with its journey and email timeline" width="440" />
+  <br />
+  <img src="./images/cv.png" alt="Master CV with a live PDF preview" width="440" />
 </div>
 
-The core of the experience revolves around the **companion browser extension** which acts as your personal job hunting assistant:
+## Quick start
 
-- **Auto-Fill:** Instantly populates complex application forms with your saved profile and CV data.
-- **One-Click Save:** Automatically detects and saves job descriptions, titles, and company names while you browse.
-- **Email Tracking:** Integrates with your inbox to automatically classify application-related emails, track interview stages, and update application statuses.
-- **Timelines & Analytics:** Creates detailed chronologies of your interactions with companies and provides rich analytics on your application conversion rates.
-
-### Gmail integration
-
-Connect Gmail (read-only) and job-tracker syncs application emails in the background:
-
-- **Classification:** each email is labelled as applied, screening, interview, assessment, offer, rejected or other, and application statuses follow along. Uses built-in keyword rules by default, or [TypeSafe's Jev model](https://docs.typesafe.ai) when an API key is set. Low-confidence answers are marked *unsure* and don't change a status until you confirm them.
-- **Corrections:** re-label, confirm or unlink any email from an application's timeline.
-- **Dates, links and replies (Jev):** pulls out interview times and deadlines, adds a button to join the meeting or open the assessment, and flags emails waiting on your reply. These show on the timeline and in the overview's *Up next*.
-- **Untracked applications:** confirmation emails for jobs you haven't added are suggested on the Applications page, with the company and role filled in where they can be found.
-- **Usage & settings:** a usage page tracks Jev spend against an optional monthly budget, and a settings page controls the classifier, confidence threshold and syncing.
-- **Privacy:** only job-related email is kept. Once an email is known not to be about jobs, its subject, sender and snippet are deleted, and only its Gmail id, thread and date remain so it isn't downloaded again. Emails Jev isn't sure about are kept and listed on the Applications page until you mark them as not about jobs (which deletes them) or give them a category. Emails in the same thread as a job email are kept, and a removed email is fetched again if a job email later joins its thread or the classifier changes.
-
-### CV and tailoring
-
-Keep one master CV and get a version tailored to each job:
-
-- **CV:** import a PDF or paste your CV, edit it, and preview it as a PDF built in your browser with [pdfme](https://pdfme.com).
-- **Questions, not guesses:** skills a job asks for that your CV shows in other words or clearly implies are assumed (and listed so you can undo them). Only specific skills with nothing in your CV pointing to them are asked about, at most six, before rewriting. A yes (with an optional detail) counts as evidence; a no keeps it out. Answers are saved on your CV, so each one is asked once.
-- **Reserve projects:** keep projects off your CV but on file. Tailoring brings one in when it shows what a job asks for better than the projects you show, and treats it as real evidence of your skills.
-- **Tailoring:** a pipeline ported from [Resume-Matcher](https://github.com/srbhr/Resume-Matcher) (Apache-2.0) extracts the job's keywords, plans which skills to target, and asks Claude for targeted edits. Each edit is checked in code against your CV before it's applied, so titles, companies, dates and skills you don't have can't be invented. It also writes a cover letter.
-- **Match score:** keyword match, skills coverage and section completeness, before and after tailoring, with every change shown word by word.
-- **Company research:** Claude searches the web for what the company values and looks for. Tailoring uses it to choose which of your experience to emphasise (never to copy the company's wording), and the cover letter uses it too.
-- **Runs on your Claude subscription:** a small local runner calls Claude Code on your machine, so tailoring uses your own Claude plan rather than an API key. The page shows how much of your 5-hour and weekly limits each run uses.
-
-<div align="center">
-  <img src="./images/extension.png" alt="browser-extension" />
-  <p>Browser Extension</p>
-</div>
-
-## Tech Stack
-
-- **Framework:** [React Router 8](https://reactrouter.com/) (Framework Mode)
-- **Deployment:** [Cloudflare Workers](https://workers.cloudflare.com/)
-- **Database:** Cloudflare D1 (SQLite) via [Drizzle ORM](https://orm.drizzle.team/)
-- **Storage:** Cloudflare R2 (CV PDFs)
-- **Sessions:** Cloudflare KV (read on every request; D1 keeps a copy)
-- **Authentication:** [Better Auth](https://better-auth.com/) + Google OAuth
-- **Styling:** Tailwind CSS v4 & Radix UI primitives
-- **CV rendering:** [pdfme](https://pdfme.com), in the browser (on the Worker only for share links); PDF import with [unpdf](https://github.com/unjs/unpdf)
-- **Tailoring:** [Claude Code](https://claude.com/claude-code) through a local runner
-
-## Project Structure
-
-```text
-job-tracker/
-├── app/
-│   ├── app.css                 Tailwind v4 @theme configuration
-│   ├── root.tsx                Root layout & font loading
-│   ├── routes.ts               Route table mapping (the only one)
-│   ├── routes/                 Route modules only: loader, action and page
-│   │   ├── api/                Auth splat, extension API, activity, search, Gmail status
-│   │   ├── auth/               Login & logout
-│   │   └── app/                Authed shell (layout resolves the user once per request) and its pages
-│   ├── components/             All components, grouped by feature
-│   │   ├── ui/                 Generic building blocks (Button, Input, terminal blocks, StatusBadge)
-│   │   ├── shell/              Sidebar, activity feed, command palette
-│   │   └── gmail/ overview/ applications/ application-detail/ profile/ settings/
-│   ├── hooks/                  Generic React hooks
-│   ├── types/                  Types shared by the server and the UI
-│   ├── lib/                    Client-safe helpers, constants and client state
-│   └── server/                 Server-only code (never imported by components)
-│       ├── auth/               Better Auth config, sessions (KV)
-│       ├── db/                 Drizzle client, schema/ (one file per table), queries/ (the only place SQL lives)
-│       ├── services/           Business rules: status transitions, applications, timeline, overview, search
-│       ├── email/              Classification, retention (privacy rules), details, suggestions
-│       ├── gmail/              Gmail API client, payload mapping, sync/ (the sync pipeline)
-│       ├── cv/                 CV import and the share-link PDF; tailoring/ (the tailoring pipeline and its prompts)
-│       ├── jev/                TypeSafe Jev questions (optional AI classification)
-│       ├── storage/            R2 helpers (CV uploads, upcoming)
-│       └── extension/          Extension API HTTP helpers and input validation
-├── test/                       Vitest suite (npm test), runs against the real migrations
-├── extension/                  Chrome extension (see extension/README.md)
-├── scripts/                    The local Claude runner (claude-runner.mjs) and the extension packager (zip-extension.mjs)
-├── workers/
-│   └── app.ts                  Cloudflare Worker entry point
-├── migrations/                 Drizzle SQL migrations
-└── docs/                       Architecture, development and refactor notes
-```
-
-## Local Setup
+You need Node 22+, a Cloudflare account and a Google OAuth client.
 
 ```bash
-git clone https://github.com/yourusername/job-tracker.git
+git clone https://github.com/anwaroodin/job-tracker.git
 cd job-tracker
 npm install
 ```
 
-### 1. Create Cloudflare Resources (Once per environment)
+**1. Create the Cloudflare resources** and paste their IDs over the `REPLACE_WITH_*` placeholders in `wrangler.jsonc`:
 
 ```bash
 npx wrangler d1 create job-tracker-db
@@ -116,89 +58,62 @@ npx wrangler kv namespace create SESSIONS
 npx wrangler r2 bucket create job-tracker-cvs
 ```
 
-Copy the returned IDs into your `wrangler.jsonc` file, replacing the `REPLACE_WITH_*` placeholders.
+**2. Add Google OAuth.** In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create an OAuth 2.0 web client with these redirect URIs, then set `APP_URL` in `wrangler.jsonc` to your production origin:
 
-### 2. Generate & Apply D1 Migrations
+```
+http://localhost:5173/api/auth/callback/google
+https://<your-worker>.workers.dev/api/auth/callback/google
+```
+
+**3. Set secrets.** Locally in `.dev.vars` (see `.dev.vars.example`), in production with `wrangler secret put`:
+
+| Secret | |
+| --- | --- |
+| `SESSION_SECRET` | Any random string of 32+ bytes |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | From step 2 |
+| `TYPESAFE_API_KEY` | Optional. Classifies email with [TypeSafe's Jev](https://docs.typesafe.ai) and enables dates, links and reply flags. Without it, built-in keyword rules are used |
+
+**4. Migrate and run:**
 
 ```bash
-npm run db:generate            # Drizzle → SQL in ./migrations
-npm run db:migrate:local       # Apply to local D1 (used by `npm run dev`)
-npm run db:migrate:remote      # Apply to production D1
+npm run db:migrate:local    # and db:migrate:remote before deploying
+npm run dev                 # http://localhost:5173
+npm run deploy              # build and deploy to Workers
 ```
 
-### 3. Set Secrets
+**5. Load the extension.** Load `extension/` unpacked from `chrome://extensions`. Users of a deployed dashboard can download it from its `/extension` page instead. See [extension/README.md](./extension/README.md).
 
-Set up your production secrets:
+## Tailoring with Claude
+
+Tailoring runs on your own Claude subscription, not an API key. Install and sign in to [Claude Code](https://claude.com/claude-code) on the machine with your browser, then start the local runner:
 
 ```bash
-npx wrangler secret put SESSION_SECRET        # any 32+ byte random string
-npx wrangler secret put GOOGLE_CLIENT_ID
-npx wrangler secret put GOOGLE_CLIENT_SECRET
-npx wrangler secret put TYPESAFE_API_KEY      # optional, enables Jev classification
+npm run runner    # http://127.0.0.1:4317
 ```
 
-Without `TYPESAFE_API_KEY`, emails are classified with the built-in keyword rules and the Jev-only features (dates, links, reply flags) are skipped. To keep a key set but turn Jev off, add `"EMAIL_CLASSIFIER": "regex"` to `vars` in `wrangler.jsonc`.
+The CV page sends each step to the runner, which runs `claude -p` and shows how much of your 5-hour and weekly limits each run used. If Google's [Antigravity](https://antigravity.google) CLI (`agy`) is installed, the read-only steps (keywords, skill gaps, company research) go to Gemini to save your Claude limits.
 
-For **local development**, create a `.dev.vars` file in the root directory:
-
-```env
-SESSION_SECRET=dev-secret-please-change
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-TYPESAFE_API_KEY=                 # optional
-```
-
-### 4. Configure Google OAuth
-
-1. Go to [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
-2. Create an **OAuth 2.0 Client (Web application)**.
-3. Add the following authorized redirect URIs:
-   - `http://localhost:5173/api/auth/callback/google`
-   - `https://<your-worker-subdomain>.workers.dev/api/auth/callback/google`
-4. Set the `APP_URL` in `wrangler.jsonc` (`vars`) to your production origin (Better Auth uses this as the base URL).
-
-### 5. Run the Application
-
-```bash
-npm run dev       # Start local dev server at http://localhost:5173
-npm test          # Run the test suite
-npm run deploy    # Build and deploy to Cloudflare Workers
-```
-
-### 6. Load the Browser Extension
-
-Load the `extension/` folder unpacked from `chrome://extensions` and sign in on the dashboard. The extension talks to `https://job-tracker.anwars.workers.dev` (`DEFAULT_ORIGIN` in `extension/src/config.js`); its options page can point it at another dashboard, like `localhost:5173`, for development. See [extension/README.md](./extension/README.md) for details.
-
-Users download it from the dashboard's `/extension` page, which also walks through installing and connecting it. `npm run deploy` publishes the current `extension/` there (`npm run extension:publish` does it on its own; add `-- --local` for the dev bucket). Every `/api/ext/*` response names the latest version in an `X-Extension-Latest` header, and an older extension opens `/extension` once per new version.
-
-### 7. Tailor with Claude (optional)
-
-Tailoring and company research need [Claude Code](https://claude.com/claude-code) installed and signed in on the same machine as your browser. Start the runner:
-
-```bash
-npm run runner    # Listens on http://127.0.0.1:4317
-```
-
-It only accepts requests from `http://localhost:5173` and from `JOB_TRACKER_URL`. To show how much of your Claude limits each run uses, it reads your Claude Code login (the macOS keychain, or `~/.claude/.credentials.json`) and asks `api.anthropic.com` for your current usage, the same way Claude Code's `/usage` does. The token never leaves the runner otherwise. Set these in `.env` if you need them:
+<details>
+<summary>Runner settings (<code>.env</code>)</summary>
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `JOB_TRACKER_URL` | none | Your deployed dashboard's address, so it can use the runner too. Separate several with commas |
-| `RUNNER_MODEL` | `opus` | Model used when the page doesn't pick one |
+| `JOB_TRACKER_URL` | none | Your deployed dashboard, so it can use the runner. Comma-separate several |
+| `RUNNER_MODEL` | `opus` | Model when the page doesn't pick one |
 | `RUNNER_PORT` | `4317` | Port to listen on |
-| `RUNNER_ANTIGRAVITY` | on when `agy` is installed | Set to `0` to run every step on Claude |
-| `ANTIGRAVITY_MODEL` | `gemini-3.8-flash` | Gemini model for the reading steps; the effort level is added to its name |
+| `RUNNER_ANTIGRAVITY` | on if `agy` is installed | `0` runs every step on Claude |
+| `ANTIGRAVITY_MODEL` | `gemini-3.8-flash` | Gemini model for the reading steps |
 
-If Google's [Antigravity](https://antigravity.google) CLI (`agy`) is installed, the runner uses it for the steps that only read: understanding the job description, checking which skills your CV implies, and company research. That saves your Claude limits for the tailoring itself, which always runs on Claude. `agy` can't prompt for permissions when run headless, so it runs with every tool allowed (`--dangerously-skip-permissions`), but sandboxed, with slash commands off, in an empty temporary folder that is deleted afterwards.
+The runner only accepts requests from `localhost:5173` and `JOB_TRACKER_URL`. It reads your Claude Code login only to ask `api.anthropic.com` for your usage, the way `/usage` does. `agy` runs headless with every tool allowed, so it is sandboxed in an empty temporary folder that is deleted afterwards.
 
-## Roadmap
+</details>
 
-- [ ] Support CV upload/download via R2 signed URLs
-- [x] Gmail integration for automatic follow-up tracking
-- [x] Browser extension companion app interacting with the Workers API
-- [x] Master CV with PDF rendering, and a tailored CV and cover letter per job
-- [ ] Data importer for legacy JSON job tracking formats
+## Built with
+
+[React Router 8](https://reactrouter.com) · [Cloudflare Workers, D1, KV and R2](https://workers.cloudflare.com) · [Drizzle](https://orm.drizzle.team) · [Better Auth](https://better-auth.com) · [Tailwind CSS v4](https://tailwindcss.com) · [pdfme](https://pdfme.com) · [Claude Code](https://claude.com/claude-code)
+
+The tailoring pipeline is ported from [Resume-Matcher](https://github.com/srbhr/Resume-Matcher) and two CV designs from [Reactive Resume](https://github.com/AmruthPillai/Reactive-Resume). See the `NOTICE.md` files next to that code.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. By participating in this project, you agree to abide by standard open source community guidelines.
+Pull requests are welcome. Read [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) for the checks to run and [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for how the code fits together.
