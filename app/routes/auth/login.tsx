@@ -11,7 +11,7 @@ import {
 import { getSession } from "~/server/auth/session.server";
 import { authClient } from "~/lib/auth-client";
 import { envContext } from "~/server/context.server";
-import logo from "~/assets/job-tracker.png";
+import { BrandWord } from "~/components/shell/brand-word";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
@@ -47,17 +47,9 @@ export default function Login({}: Route.ComponentProps) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
-      <div className="rise flex items-center gap-2.5">
-        <img
-          src={logo}
-          className="size-8 shrink-0 mix-blend-difference"
-          alt="Logo"
-        />
-
-        <span className="text-[18px] font-medium tracking-[-0.03em]">
-          job-tracker
-        </span>
-      </div>
+      <h1 className="rise">
+        <BrandWord word="hunt" size={44} />
+      </h1>
       <Card
         className="rise w-full max-w-[360px]"
         style={{ "--i": 1 } as React.CSSProperties}
