@@ -9,7 +9,7 @@ import { FromGmail } from "~/components/applications/from-gmail";
 import { LayoutToggle } from "~/components/applications/layout-toggle";
 import { ListSection } from "~/components/applications/list-section";
 import { SavedSection } from "~/components/applications/saved-section";
-import { SearchField } from "~/components/applications/table-toolbar";
+import { SearchField } from "~/components/applications/search-field";
 import { StatusFilter } from "~/components/applications/status-filter";
 import { CLOSED_TAB_STATUSES, useApplicationsView } from "~/components/applications/use-applications-view";
 import { selectedView, ViewTabs } from "~/components/applications/view-tabs";
