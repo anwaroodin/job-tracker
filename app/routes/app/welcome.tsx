@@ -48,7 +48,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 export default function Welcome({ loaderData }: Route.ComponentProps) {
   const gmail = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!.gmail;
   const [params] = useSearchParams();
-  const asked = SETUP_STEPS.find((s) => s === params.get("step")) ?? "intro";
-  const step = gmail.connected && asked !== "details" ? "done" : asked;
+  const asked = SETUP_STEPS.find((s) => s === params.get("step"));
+  const step = asked ?? (gmail.connected ? "done" : "intro");
   return <SetupScreen step={step} user={loaderData.user} personal={loaderData.personal} gmail={gmail} />;
 }

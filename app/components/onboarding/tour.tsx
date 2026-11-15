@@ -1,10 +1,11 @@
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { NAV } from "~/components/shell/nav";
 import { Button } from "~/components/ui/button";
-import { two } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import { onboarding$ } from "~/lib/state/onboarding";
 import { isLessonId, LESSONS, type LessonId, type LessonStep } from "./lessons";
@@ -13,6 +14,7 @@ import { type Box, useTargetBox } from "./use-target-box";
 const PAD = 6;
 const GAP = 14;
 const CARD_W = 360;
+const BUTTON = "h-8 px-3 text-[13px]";
 const BOTTOM_NAV_PX = 72;
 const LG_PX = 1024;
 
@@ -182,23 +184,23 @@ function Card(props: {
       role="dialog"
       aria-modal="false"
       aria-labelledby="tour-title"
-      className="panel pointer-events-auto fixed flex flex-col gap-3 bg-bg-secondary p-5 font-mono text-[12px]"
+      className="pointer-events-auto fixed flex flex-col gap-3 border border-stroke-primary bg-sidebar-active p-5 font-sans text-[14px] normal-case tracking-normal shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
       style={{ width }}
       initial={false}
       animate={place}
       transition={{ type: "spring", stiffness: 260, damping: 30 }}
     >
-      <div className="flex items-center justify-between text-[10.5px] uppercase tracking-[0.12em] text-text-tertiary">
-        <span>
-          <b className="mr-2 font-semibold text-text-accent">[{two(index + 1)}/{two(total)}]</b>
-          {props.lesson}
+      <div className="flex items-center justify-between gap-3 text-[12.5px] text-text-tertiary">
+        <span className="truncate">
+          {props.lesson} · <span className="tabular-nums">{index + 1} of {total}</span>
         </span>
         <button
           type="button"
           onClick={props.onClose}
-          className="cursor-pointer uppercase tracking-[0.12em] hover:text-text-primary"
+          aria-label="Close tour"
+          className="-mr-2 -mt-1 grid size-8 shrink-0 cursor-pointer place-items-center transition-colors hover:bg-ink/[0.04] hover:text-text-primary"
         >
-          Esc
+          <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={1.5} />
         </button>
       </div>
       <AnimatePresence mode="wait" initial={false}>
@@ -210,28 +212,31 @@ function Card(props: {
           transition={{ duration: 0.18 }}
           aria-live="polite"
         >
-          <h2 id="tour-title" className="text-[14px] uppercase tracking-[0.04em] text-text-primary">
+          <h2 id="tour-title" className="text-[16px] font-medium text-text-primary">
             {props.title}
           </h2>
-          <p className="mt-2 font-sans text-[13px] leading-relaxed text-text-secondary">{props.body}</p>
+          <p className="mt-1.5 text-[13.5px] leading-relaxed text-text-secondary">{props.body}</p>
         </motion.div>
       </AnimatePresence>
       <div className="mt-1 flex items-center justify-between gap-3">
-        <span aria-hidden className="tracking-[0.1em] text-text-tertiary">
-          {Array.from({ length: total }, (_, i) => (i <= index ? "█" : "░")).join("")}
+        <span aria-hidden className="flex gap-1.5">
+          {Array.from({ length: total }, (_, i) => (
+            <span key={i} className={cn("size-1.5 rounded-full", i <= index ? "bg-text-primary" : "bg-ink/15")} />
+          ))}
         </span>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {index > 0 && (
-            <Button type="button" variant="ghost" size="tiny" onClick={props.onBack}>
+            <Button type="button" variant="ghost" className={BUTTON} onClick={props.onBack}>
               Back
             </Button>
           )}
           {props.waiting ? (
-            <span className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.1em] text-text-accent">
-              <span className="animate-pulse">▸</span>Click it
+            <span className="flex items-center gap-2 text-[13px] font-medium text-accent-primary">
+              <span className="size-1.5 animate-pulse rounded-full bg-accent-primary" />
+              Click it to continue
             </span>
           ) : (
-            <Button ref={nextRef} type="button" size="tiny" onClick={props.onNext}>
+            <Button ref={nextRef} type="button" className={BUTTON} onClick={props.onNext}>
               {last ? "Done" : "Next"}
             </Button>
           )}
