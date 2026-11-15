@@ -24,7 +24,7 @@ export function StatusFilter({
           type="button"
           variant="secondary"
           size="tiny"
-          className="h-9 gap-2 border-stroke-secondary bg-bg-primary px-3 font-sans text-[13px] font-medium normal-case tracking-normal text-text-primary hover:border-stroke-primary hover:bg-bg-primary"
+          className="h-9 gap-2 px-3 text-[13px]"
         >
           {value ? <StatusBadge status={value} variant="dot" /> : "All statuses"}
           <HugeiconsIcon icon={ArrowDown01Icon} size={15} strokeWidth={1.5} />
