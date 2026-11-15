@@ -135,7 +135,13 @@ export default function ProfilePage({
       </div>
 
       {dirty && (
-        <UnsavedBar>
+        <UnsavedBar
+          busy={saving}
+          onDiscard={() => {
+            setForm(loaderData.profile);
+            setDirty(false);
+          }}
+        >
           <Button type="submit" size="medium" disabled={saving}>
             {saving ? "Saving…" : "Save changes"}
           </Button>

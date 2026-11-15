@@ -21,6 +21,7 @@ import { getCv, getStories, saveStories } from "~/server/db/queries/profile.serv
 import { applicationsFor } from "~/server/db/queries/status.server";
 import type { StarStory } from "~/types/cv";
 import { PREP_STATUSES } from "~/lib/status";
+import { BrandWord, WordTitle } from "~/components/shell/brand-word";
 
 const STAR = [
   ["S", "Situation", "Where you were and what was going on."],
@@ -68,7 +69,7 @@ export default function InterviewsPage({ loaderData, actionData }: Route.Compone
       <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
         <div>
           <PageTitle
-            title="Your interviews"
+            title={<WordTitle word="interview" label="Your interviews" />}
             sub="Your STAR stories, told once. Each job's interview prep answers from them."
           />
         </div>
@@ -100,9 +101,13 @@ export default function InterviewsPage({ loaderData, actionData }: Route.Compone
             ))}
           </ul>
         ) : (
-          <p className="border border-stroke-secondary px-6 py-8 text-center text-[13.5px] leading-relaxed text-text-tertiary">
-            When an application moves to screening, assessment or interview, it shows here with its prep.
-          </p>
+          <div className="flex flex-col items-center border border-stroke-secondary px-6 py-10 text-center">
+            <BrandWord word="interview" size={24} className="mb-3" />
+            <p className="font-medium text-text-primary">Nothing coming up yet</p>
+            <p className="mt-1 max-w-md text-[13px] leading-relaxed text-text-tertiary">
+              When an application moves to screening, assessment or interview, it shows here with its prep.
+            </p>
+          </div>
         )}
       </PageSection>
 
@@ -146,7 +151,17 @@ export default function InterviewsPage({ loaderData, actionData }: Route.Compone
         </aside>
       </div>
 
-      {dirty && <UnsavedBar>{save}</UnsavedBar>}
+      {dirty && (
+        <UnsavedBar
+          busy={saving}
+          onDiscard={() => {
+            setStories(loaderData.stories);
+            setDirty(false);
+          }}
+        >
+          {save}
+        </UnsavedBar>
+      )}
     </Form>
   );
 }
