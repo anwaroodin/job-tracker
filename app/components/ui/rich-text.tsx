@@ -3,22 +3,19 @@ import { cn } from "~/lib/cn";
 
 type Block = { kind: "heading"; text: string } | { kind: "list"; items: string[] } | { kind: "paragraph"; text: string };
 
+export type Highlight = { term: string; kind: "required" | "preferred" | "keyword" };
+
 const BULLET = /^(?:[•·▪◦●‣∙*–\-→➔➜►▸✓✔]|\d{1,2}[.)])\s+/;
 const HEADING_MAX = 60;
 
-/**
- * Splits light markup into blocks. The extension marks headings with "## "
- * and list items with "• ", but many listings write headings as plain lines,
- * so a short line ending in ":" or leading into a list is read as a heading too.
- */
 function parse(text: string): Block[] {
   const lines = text.split("\n").map((l) => l.trim());
   const blocks: Block[] = [];
 
   lines.forEach((line, i) => {
     if (!line) return;
-    if (line.startsWith("## ")) {
-      blocks.push({ kind: "heading", text: line.slice(3).replace(/:$/, "") });
+    if (/^#{1,6} /.test(line)) {
+      blocks.push({ kind: "heading", text: line.replace(/^#+ /, "").replace(/:$/, "") });
       return;
     }
     if (BULLET.test(line)) {
@@ -30,8 +27,8 @@ function parse(text: string): Block[] {
     }
     const next = lines.slice(i + 1).find(Boolean) ?? "";
     const short = line.length <= HEADING_MAX && !/[.!?,;]$/.test(line);
-    if (short && (line.endsWith(":") || BULLET.test(next))) {
-      blocks.push({ kind: "heading", text: line.replace(/:$/, "") });
+    if (short && (line.endsWith(":") || BULLET.test(next) || /^\*\*[^*]+\*\*:?$/.test(line))) {
+      blocks.push({ kind: "heading", text: line.replace(/^\*\*(.+)\*\*:?$/, "$1").replace(/:$/, "") });
       return;
     }
     blocks.push({ kind: "paragraph", text: line });
@@ -39,33 +36,58 @@ function parse(text: string): Block[] {
   return blocks;
 }
 
-function inline(text: string): ReactNode[] {
-  return text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function matcher(highlights: Highlight[]) {
+  const terms = highlights.map((h) => h.term.trim()).filter((t) => t.length > 1);
+  if (!terms.length) return null;
+  const kinds = new Map(highlights.map((h) => [h.term.trim().toLowerCase(), h.kind]));
+  const pattern = [...new Set(terms)].sort((a, b) => b.length - a.length).map(escape).join("|");
+  return { regex: new RegExp(`(?<![\\w])(${pattern})(?![\\w])`, "gi"), kind: (t: string) => kinds.get(t.toLowerCase()) ?? "keyword" };
+}
+
+type Matcher = ReturnType<typeof matcher>;
+
+function marked(text: string, m: Matcher, key: string): ReactNode[] {
+  if (!m) return [text];
+  return text.split(m.regex).map((part, i) =>
     i % 2 ? (
-      <strong key={i} className="font-medium text-text-primary">
+      <mark
+        key={`${key}-${i}`}
+        className={cn(
+          "bg-transparent font-medium text-text-primary",
+          m.kind(part) === "required" ? "bg-accent-primary/15 px-0.5" : "underline decoration-stroke-primary decoration-dotted underline-offset-4",
+        )}
+      >
         {part}
-      </strong>
+      </mark>
     ) : (
       part
     ),
   );
 }
 
-/** Light markup (a captured job description, Claude's notes) laid out as headings, lists and paragraphs. */
-export function RichText({ text, className }: { text: string; className?: string }) {
+function inline(text: string, m: Matcher): ReactNode[] {
+  return text.split(/\*\*(.+?)\*\*/g).flatMap((part, i) =>
+    i % 2 ? (
+      <strong key={i} className="font-medium text-text-primary">
+        {marked(part, m, String(i))}
+      </strong>
+    ) : (
+      marked(part, m, String(i))
+    ),
+  );
+}
+
+export function RichText({ text, className, highlights = [] }: { text: string; className?: string; highlights?: Highlight[] }) {
+  const m = matcher(highlights);
   return (
     <div className={cn("flex max-w-[72ch] flex-col font-sans text-[14px] normal-case leading-[1.7] tracking-normal", className)}>
       {parse(text).map((block, i) => {
         if (block.kind === "heading") {
           return (
-            <h3
-              key={i}
-              className="mb-2 mt-7 font-mono text-[11.5px] uppercase tracking-[0.1em] text-text-primary first:mt-0"
-            >
-              <span aria-hidden className="mr-2 text-text-tertiary">
-                ##
-              </span>
-              {inline(block.text)}
+            <h3 key={i} className="mb-2 mt-6 text-[15px] font-medium leading-snug text-text-primary first:mt-0">
+              {inline(block.text, null)}
             </h3>
           );
         }
@@ -73,11 +95,9 @@ export function RichText({ text, className }: { text: string; className?: string
           return (
             <ul key={i} className="mb-3 flex flex-col gap-1.5">
               {block.items.map((item, j) => (
-                <li key={j} className="grid grid-cols-[18px_1fr] text-text-secondary">
-                  <span aria-hidden className="font-mono text-text-tertiary">
-                    ›
-                  </span>
-                  <span>{inline(item)}</span>
+                <li key={j} className="grid grid-cols-[16px_1fr] text-text-secondary">
+                  <span aria-hidden className="mt-[0.7em] size-1 rounded-full bg-text-tertiary" />
+                  <span>{inline(item, m)}</span>
                 </li>
               ))}
             </ul>
@@ -85,7 +105,7 @@ export function RichText({ text, className }: { text: string; className?: string
         }
         return (
           <p key={i} className="mb-3 text-text-secondary">
-            {inline(block.text)}
+            {inline(block.text, m)}
           </p>
         );
       })}
