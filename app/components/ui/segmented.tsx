@@ -14,7 +14,7 @@ export function Segmented<T extends string | number>({
   disabled?: boolean;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className={cn("inline-flex border border-stroke-primary", disabled && "opacity-40")}>
+    <div role="radiogroup" aria-label={label} className={cn("inline-flex gap-0.5 font-sans normal-case tracking-normal", disabled && "opacity-40")}>
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -26,9 +26,9 @@ export function Segmented<T extends string | number>({
             disabled={disabled}
             onClick={() => onChange(option.value)}
             className={cn(
-              "h-8 px-3.5 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors [&+&]:border-l [&+&]:border-stroke-primary",
+              "flex h-8 cursor-pointer select-none items-center px-3 text-[13px] font-medium transition-colors disabled:cursor-default",
               "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-text-secondary",
-              selected ? "bg-text-primary text-text-inverse" : "bg-fill-secondary text-text-secondary hover:bg-fill-primary hover:text-text-primary",
+              selected ? "bg-ink/[0.07] text-text-primary" : "text-text-tertiary hover:bg-ink/[0.04] hover:text-text-primary",
             )}
           >
             {option.label}

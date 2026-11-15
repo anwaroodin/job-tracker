@@ -4,7 +4,7 @@ export function NewBadge({ count, className }: { count?: number; className?: str
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 bg-green-quaternary px-1.5 py-px text-[10px] leading-4 tracking-[0.08em] text-green-primary",
+        "inline-flex shrink-0 items-center gap-1.5 bg-green-quaternary px-1.5 py-px font-sans text-[12px] font-medium leading-4 normal-case tracking-normal text-green-primary",
         className,
       )}
     >
