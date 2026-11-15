@@ -9,6 +9,7 @@ import { activityPanel$ } from "~/lib/state/activity-panel";
 import type { GmailStatus } from "~/types/gmail";
 import { ACTIVITY_URL, type ActivityData } from "~/components/shell/activity-feed/activity-data";
 import { ActivityRow } from "~/components/shell/activity-feed/row";
+import { BrandWord, topWord } from "~/components/shell/brand-word";
 
 const TOAST_MS = 9000;
 const TOAST_ITEMS = 3;
@@ -44,6 +45,8 @@ export function ActivityToasts({ initial }: { initial: GmailStatus }) {
     return () => clearTimeout(timer);
   }, [toast, hovered]);
 
+  const milestone = toast && topWord(toast.filter((item) => item.kind === "status").map((item) => item.detail.to));
+
   const openPanel = () => {
     setToast(null);
     activityPanel$.open.set(true);
@@ -67,10 +70,19 @@ export function ActivityToasts({ initial }: { initial: GmailStatus }) {
             className="pointer-events-auto w-full max-w-sm border border-stroke-primary bg-sidebar-active font-sans text-[14px] normal-case tracking-normal shadow-[0_24px_64px_rgba(0,0,0,0.22)]"
           >
             <div className="flex items-center justify-between gap-3 px-4 pb-1 pt-3">
-              <span className="flex items-center gap-2 font-medium text-text-primary">
-                <span aria-hidden className="size-2 rounded-full bg-green-primary" />
-                {toast.length} {toast.length === 1 ? "update" : "updates"} from Gmail
-              </span>
+              {milestone ? (
+                <span className="flex flex-col gap-1.5">
+                  <BrandWord word={milestone} size={22} />
+                  <span className="text-[12.5px] text-text-tertiary">
+                    {toast.length} {toast.length === 1 ? "update" : "updates"} from Gmail
+                  </span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-2 font-medium text-text-primary">
+                  <span aria-hidden className="size-2 rounded-full bg-green-primary" />
+                  {toast.length} {toast.length === 1 ? "update" : "updates"} from Gmail
+                </span>
+              )}
               <button
                 type="button"
                 aria-label="Dismiss"

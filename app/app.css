@@ -253,6 +253,24 @@ html body[data-scroll-locked] {
   }
 }
 
+@keyframes countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.countdown {
+  transform-origin: left;
+  animation: countdown var(--countdown, 6s) linear forwards;
+}
+
+.group:hover .countdown {
+  animation-play-state: paused;
+}
+
 @keyframes arrive {
   from {
     background-color: var(--color-green-tertiary);
