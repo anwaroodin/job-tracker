@@ -49,7 +49,7 @@ const CLASSIC: Design = {
   headingRule: { gap: 3.73, pt: 1, color: "#000000" },
   entries: "classic",
   dash: " - ",
-  gap: { firstEntry: 15.02, nextEntry: 18.76, subtitle: 13.36, firstBullet: 13.45, bullet: 13.45, detail: 13.45, skill: 13.59 },
+  gap: { firstEntry: 15.02, nextEntry: 18.76, subtitle: 13.36, firstBullet: 13.45, bullet: 13.45, detail: 13.45, skill: 16.2 },
   bullet: { indent: 8.71, x: 1.79, rise: 3.39, r: 1.38 },
 };
 
@@ -81,7 +81,7 @@ const ONYX: Design = {
   heading: { font: "IBM Plex Serif SemiBold", pt: 13, gap: 34.19, afterRule: 27.12 },
   entries: "rows",
   dash: " – ",
-  gap: { firstEntry: 15.33, nextEntry: 21.01, subtitle: 12.65, firstBullet: 12.65, bullet: 17.01, detail: 17.01, skill: 16.15 },
+  gap: { firstEntry: 15.33, nextEntry: 21.01, subtitle: 12.65, firstBullet: 12.65, bullet: 17.01, detail: 17.01, skill: 18.6 },
   bullet: { indent: 10.33, x: 7.13, rise: 2.74, r: 1.06 },
 };
 
