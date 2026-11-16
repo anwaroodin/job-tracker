@@ -1,0 +1,13 @@
+diff --git a/node_modules/@pdfme/schemas/dist/splitRange-BkQuwzIU.js b/node_modules/@pdfme/schemas/dist/splitRange-BkQuwzIU.js
+index 26714e6..b5882a1 100644
+--- a/node_modules/@pdfme/schemas/dist/splitRange-BkQuwzIU.js
++++ b/node_modules/@pdfme/schemas/dist/splitRange-BkQuwzIU.js
+@@ -10417,7 +10417,7 @@ var wrapParagraphRanges = (source, measureRaw, maxWidth) => {
+ 		}
+ 		lines.push({
+ 			start,
+-			end: trimmed,
++			end: hardBreak ? trimmed : end,
+ 			hardBreak
+ 		});
+ 	};

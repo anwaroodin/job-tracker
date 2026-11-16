@@ -23,7 +23,6 @@ export type Design = {
   heading: Text & { gap: number; afterRule: number };
   headingRule?: Rule;
   entries: "classic" | "rows";
-  skills?: { columns: number; gap: number; keywords: number };
   dash: string;
   gap: { firstEntry: number; nextEntry: number; subtitle: number; firstBullet: number; bullet: number; detail: number; skill: number };
   bullet: { indent: number; x: number; rise: number; r: number };
@@ -49,7 +48,7 @@ const CLASSIC: Design = {
   headingRule: { gap: 3.73, pt: 1, color: "#000000" },
   entries: "classic",
   dash: " - ",
-  gap: { firstEntry: 15.02, nextEntry: 18.76, subtitle: 13.36, firstBullet: 13.45, bullet: 13.45, detail: 13.45, skill: 13.59 },
+  gap: { firstEntry: 15.02, nextEntry: 18.76, subtitle: 13.36, firstBullet: 13.45, bullet: 13.45, detail: 13.45, skill: 16.2 },
   bullet: { indent: 8.71, x: 1.79, rise: 3.39, r: 1.38 },
 };
 
@@ -81,7 +80,7 @@ const ONYX: Design = {
   heading: { font: "IBM Plex Serif SemiBold", pt: 13, gap: 34.19, afterRule: 27.12 },
   entries: "rows",
   dash: " – ",
-  gap: { firstEntry: 15.33, nextEntry: 21.01, subtitle: 12.65, firstBullet: 12.65, bullet: 17.01, detail: 17.01, skill: 16.15 },
+  gap: { firstEntry: 15.33, nextEntry: 21.01, subtitle: 12.65, firstBullet: 12.65, bullet: 17.01, detail: 17.01, skill: 18.6 },
   bullet: { indent: 10.33, x: 7.13, rise: 2.74, r: 1.06 },
 };
 
@@ -108,9 +107,8 @@ const PERSIAN: Design = {
   heading: { font: "Montserrat SemiBold", pt: 9.7, gap: 19.76, afterRule: 16.79, upper: true, spacing: 0.5445 },
   headingRule: { gap: 3.47, pt: 0.5, color: SLATE },
   entries: "rows",
-  skills: { columns: 3, gap: 38, keywords: 12.64 },
   dash: " – ",
-  gap: { firstEntry: 12.41, nextEntry: 16.62, subtitle: 13.5, firstBullet: 13.5, bullet: 18.03, detail: 18.03, skill: 13.5 },
+  gap: { firstEntry: 12.41, nextEntry: 16.62, subtitle: 13.5, firstBullet: 13.5, bullet: 18.03, detail: 18.03, skill: 15 },
   bullet: { indent: 12.2, x: 6.87, rise: 2.76, r: 1.49 },
 };
 

@@ -30,7 +30,11 @@ const cv = (bullet: string, jobs: number, design: CvDesign = "classic"): PdfCv =
   experience: Array.from({ length: jobs }, (_, i) => job(i + 1, bullet)),
   projects: [],
   education: [{ institution: "Cambridge", qualification: "BA Maths", location: "", start: "2016", end: "2019", details: [] }],
-  skills: [{ label: "Languages", items: ["TypeScript", "Go"] }],
+  skills: [
+    { label: "Languages", items: ["TypeScript", "Go"] },
+    { label: "Cloud", items: ["AWS", "Terraform"] },
+    { label: "Spoken", items: ["English", "French"] },
+  ],
 });
 
 async function read(bytes: Uint8Array) {
@@ -54,6 +58,23 @@ describe("cvPdf", () => {
     const long = "Migrated the billing platform to TypeScript and PostgreSQL, cutting infrastructure costs by 40% across regions. ".repeat(2).trim();
     const data = cv(long, 2, design);
     expect(atsReport(data, await pdfRuns(await cvPdf(data, fromDisk))).filter((check) => !check.pass)).toEqual([]);
+  });
+
+  it.each(CV_DESIGNS.map((d) => d.value))("tags every %s text line as body content and drawings as artifacts", async (design) => {
+    const doc = await getDocumentProxy(await cvPdf(cv("Short bullet", 1, design), fromDisk));
+    expect(await doc.getMarkInfo()).toMatchObject({ Marked: true });
+    const page = await doc.getPage(1);
+    const { items } = await page.getTextContent({ includeMarkedContent: true });
+    let tag = "";
+    const textTags = new Set<string>();
+    for (const item of items) {
+      if ("type" in item && item.type.startsWith("beginMarkedContent")) tag = item.tag ?? "";
+      else if ("type" in item && item.type === "endMarkedContent") tag = "";
+      else if ("str" in item && item.str.trim()) textTags.add(tag);
+    }
+    expect([...textTags]).toEqual(["P"]);
+    const tree = await page.getStructTree();
+    expect(tree.children[0]).toMatchObject({ role: "Document" });
   });
 
   it("saves ATS results only in a valid shape", async () => {

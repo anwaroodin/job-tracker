@@ -24,7 +24,7 @@ type Line = { x0: number; x1: number; y: number; height: number; text: string };
 export type AtsCheck = { label: string; why: string; pass: boolean; detail: string; missing?: string[] };
 export type SavedAts = { version: number; key: string; checks: AtsCheck[] };
 
-export const ATS_VERSION = 4;
+export const ATS_VERSION = 5;
 const MAX_CHECKS = 20;
 const MAX_MISSING = 100;
 const MAX_TEXT = 2000;
@@ -74,7 +74,7 @@ const sections = (cv: PdfCv) =>
     cv.experience.length && "Work Experience",
     cv.projects.length && "Projects",
     cv.education.length && "Education",
-    cv.skills.length && "Additional Information",
+    cv.skills.length && "Skills",
   ].filter((s): s is string => !!s);
 
 export function atsKeywords(cv: PdfCv) {
@@ -96,13 +96,19 @@ export function atsKeywords(cv: PdfCv) {
 
 function lines(runs: TextRun[], splitColumns: boolean) {
   const out: Line[] = [];
+  let spaced = false;
   for (const run of runs) {
-    if (!run.str.trim()) continue;
+    if (!run.str.trim()) {
+      spaced = run.str.length > 0;
+      continue;
+    }
     const last = out.at(-1);
     const gap = last ? run.x - last.x1 : 0;
     const sameLine = last && Math.abs(run.y - last.y) < SAME_LINE * run.height && !(splitColumns && (gap > COLUMN_GAP * run.height || gap < -WORD_GAP * run.height));
+    const space = spaced || gap > WORD_GAP * run.height;
+    spaced = false;
     if (sameLine) {
-      last.text += (gap > WORD_GAP * run.height ? " " : "") + run.str;
+      last.text += (space ? " " : "") + run.str;
       last.x1 = run.x + run.width;
     } else out.push({ x0: run.x, x1: run.x + run.width, y: run.y, height: run.height, text: run.str });
   }
@@ -157,6 +163,12 @@ export function atsReport(cv: PdfCv, pages: TextRun[][]): AtsCheck[] {
   return [
     found("Keywords, drawing order", "Simple parsers read text in the order the PDF draws it.", streamJoined, keywords),
     found("Keywords, layout order", "Most parsers group lines into blocks by position, then read the blocks.", blocksJoined, keywords),
+    found(
+      "Skill groups read as one line each",
+      "Parsers attach skills to the label on the same line, so each label has to be read right before its own items.",
+      blocksJoined,
+      cv.skills.map((group) => `${group.label}: ${group.items.join(", ")}`),
+    ),
     {
       label: "Name on its own first line",
       why: "Parsers take the first line as the candidate's name.",
