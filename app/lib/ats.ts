@@ -24,7 +24,7 @@ type Line = { x0: number; x1: number; y: number; height: number; text: string };
 export type AtsCheck = { label: string; why: string; pass: boolean; detail: string; missing?: string[] };
 export type SavedAts = { version: number; key: string; checks: AtsCheck[] };
 
-export const ATS_VERSION = 4;
+export const ATS_VERSION = 5;
 const MAX_CHECKS = 20;
 const MAX_MISSING = 100;
 const MAX_TEXT = 2000;
