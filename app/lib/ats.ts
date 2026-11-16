@@ -163,6 +163,12 @@ export function atsReport(cv: PdfCv, pages: TextRun[][]): AtsCheck[] {
   return [
     found("Keywords, drawing order", "Simple parsers read text in the order the PDF draws it.", streamJoined, keywords),
     found("Keywords, layout order", "Most parsers group lines into blocks by position, then read the blocks.", blocksJoined, keywords),
+    found(
+      "Skill groups read as one line each",
+      "Parsers attach skills to the label on the same line, so each label has to be read right before its own items.",
+      blocksJoined,
+      cv.skills.map((group) => `${group.label}: ${group.items.join(", ")}`),
+    ),
     {
       label: "Name on its own first line",
       why: "Parsers take the first line as the candidate's name.",

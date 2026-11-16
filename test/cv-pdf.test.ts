@@ -30,7 +30,11 @@ const cv = (bullet: string, jobs: number, design: CvDesign = "classic"): PdfCv =
   experience: Array.from({ length: jobs }, (_, i) => job(i + 1, bullet)),
   projects: [],
   education: [{ institution: "Cambridge", qualification: "BA Maths", location: "", start: "2016", end: "2019", details: [] }],
-  skills: [{ label: "Languages", items: ["TypeScript", "Go"] }],
+  skills: [
+    { label: "Languages", items: ["TypeScript", "Go"] },
+    { label: "Cloud", items: ["AWS", "Terraform"] },
+    { label: "Spoken", items: ["English", "French"] },
+  ],
 });
 
 async function read(bytes: Uint8Array) {
