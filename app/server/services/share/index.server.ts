@@ -30,10 +30,9 @@ export async function createShareLink(db: Db, userId: string, applicationId: str
   return token;
 }
 
-export async function sharedApplication(db: Db, token: string) {
-  if (!TOKEN_PATTERN.test(token)) return null;
-  const link = await liveShareLink(db, await sha256(token), new Date().toISOString());
-  if (!link) return null;
+type ShareSource = { userId: string; applicationId: string; includeCv: boolean; expiresAt: string; account: { name: string | null; email: string } };
+
+async function shareView(db: Db, link: ShareSource) {
   const [row, tailored, profile, design] = await Promise.all([
     getApplication(db, link.userId, link.applicationId),
     link.includeCv ? latestTailoredCv(db, link.userId, link.applicationId) : null,
@@ -41,10 +40,16 @@ export async function sharedApplication(db: Db, token: string) {
     link.includeCv ? getCvDesign(db, link.userId) : undefined,
   ]);
   if (!row) return null;
-  const { company, role, location, workType, url, description } = row;
+  const { company, role, location, workType, url, description, logoUrl, employmentType, postedAt, applicants } = row;
   return {
-    job: { company, role, location, workType, url, description },
+    job: { company, role, location, workType, url, description, logoUrl, employmentType, postedAt, applicants },
     expiresAt: link.expiresAt,
     cv: tailored && profile ? pdfCv(personFor(profile.personal, link.account), tailored.cv, design) : null,
   };
+}
+
+export async function sharedApplication(db: Db, token: string) {
+  if (!TOKEN_PATTERN.test(token)) return null;
+  const link = await liveShareLink(db, await sha256(token), new Date().toISOString());
+  return link ? shareView(db, link) : null;
 }

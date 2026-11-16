@@ -6,7 +6,7 @@ import { getDb } from "~/server/db/client.server";
 import { PRIVATE_HEADERS, sharedApplication } from "~/server/services/share/index.server";
 
 export const meta: Route.MetaFunction = ({ loaderData }) => [
-  { title: loaderData ? `${loaderData.job.role} at ${loaderData.job.company}` : "job-tracker" },
+  { title: loaderData ? `${loaderData.job.role} at ${loaderData.job.company}` : "j*b" },
   { name: "robots", content: "noindex, nofollow" },
 ];
 
@@ -17,7 +17,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
   const shared = await sharedApplication(getDb(env.DB), params.token);
   if (!shared) throw data("Not found", { status: 404, headers: PRIVATE_HEADERS });
   const { cv, ...rest } = shared;
-  return { ...rest, hasCv: !!cv };
+  return { ...rest, hasCv: !!cv, logoToken: env.LOGO_DEV_TOKEN || null };
 }
 
 export default function SharedApplicationPage({ loaderData, params }: Route.ComponentProps) {

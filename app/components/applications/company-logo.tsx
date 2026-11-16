@@ -15,8 +15,9 @@ export function useLogoToken() {
   return (useRouteLoaderData("routes/app/layout") as { logoToken?: string | null } | undefined)?.logoToken ?? null;
 }
 
-export function CompanyLogo({ company, logoUrl, className }: { company: string; logoUrl?: string | null; className?: string }) {
-  const sources = logoSources(company, logoUrl, useLogoToken());
+export function CompanyLogo({ company, logoUrl, token, className }: { company: string; logoUrl?: string | null; token?: string | null; className?: string }) {
+  const layoutToken = useLogoToken();
+  const sources = logoSources(company, logoUrl, token ?? layoutToken);
   const [failed, setFailed] = useState(0);
   const img = useRef<HTMLImageElement>(null);
   const src = sources[failed];
