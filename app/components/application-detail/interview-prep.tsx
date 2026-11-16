@@ -2,7 +2,7 @@ import { PageSection } from "~/components/ui/page-section";
 import { useState } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
-import { Points } from "~/components/tailored-cv/research";
+import { Points } from "~/components/application-detail/research";
 import { fmtDate } from "~/components/ui/terminal";
 import { RunnerOffline, useRunnerStatus } from "~/components/tailored-cv/runner";
 import { runOnRunner } from "~/lib/runner";
@@ -40,7 +40,7 @@ export function InterviewPrep({ prep, request }: { prep: Prep | null; request: T
         {prep && <PrepView prep={prep} />}
         <div className="flex flex-wrap items-center gap-3">
           {request ? (
-            <Button type="button" size="small" className="" disabled={busy || runner !== "ready"} onClick={prepare}>
+            <Button type="button" size="small" disabled={busy || runner !== "ready"} onClick={prepare}>
               {busy ? "Preparing…" : prep ? "Prepare again" : "Prepare for the interview"}
             </Button>
           ) : (
