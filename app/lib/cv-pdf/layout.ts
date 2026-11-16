@@ -235,7 +235,7 @@ export function cvTemplate(cv: PdfCv, design: Design, textWidth: TextWidth): Tem
       row(`${label}: ${md(group.items.join(", "))}`);
     });
   const grid = design.skills;
-  section("Additional Information", cv.skills.length ? [grid ? () => skillGrid(grid) : skillRows] : []);
+  section("Skills", cv.skills.length ? [grid ? () => skillGrid(grid) : skillRows] : []);
 
   const padding = [pt2mm(Math.min(design.pageTop, nameTop)), margin, pt2mm(design.pageBottom), margin] as [number, number, number, number];
   return { basePdf: { ...design.page, padding }, schemas: [schemas] };

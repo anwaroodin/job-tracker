@@ -74,7 +74,7 @@ const sections = (cv: PdfCv) =>
     cv.experience.length && "Work Experience",
     cv.projects.length && "Projects",
     cv.education.length && "Education",
-    cv.skills.length && "Additional Information",
+    cv.skills.length && "Skills",
   ].filter((s): s is string => !!s);
 
 export function atsKeywords(cv: PdfCv) {
