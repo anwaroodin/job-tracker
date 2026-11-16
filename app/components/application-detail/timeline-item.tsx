@@ -1,5 +1,6 @@
 import { StatusBadge } from "~/components/ui/status-badge";
-import { ChevronRight, Reply } from "lucide-react";
+import { ArrowRight01Icon, MailReply01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { motion } from "motion/react";
 import { useState, type ReactNode } from "react";
 import { NewBadge } from "~/components/ui/new-badge";
@@ -56,7 +57,7 @@ export function TimelineItem({
         {unread && <NewBadge className="self-center" />}
         {needsReply && (
           <span className="flex items-center gap-1 text-text-primary">
-            <Reply className="size-3" />
+            <HugeiconsIcon icon={MailReply01Icon} size={13} strokeWidth={1.5} />
             Reply needed
           </span>
         )}
@@ -119,10 +120,13 @@ export function TimelineItem({
               className="group flex w-full items-start gap-2 py-2.5 text-left focus-visible:outline-none"
             >
               <span className="flex min-w-0 flex-1 flex-col">{headline}</span>
-              <ChevronRight
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={15}
+                strokeWidth={1.5}
                 aria-hidden
                 className={cn(
-                  "mt-[22px] size-3.5 shrink-0 text-text-tertiary transition-transform group-hover:text-text-primary group-focus-visible:text-text-primary",
+                  "mt-[22px] shrink-0 text-text-tertiary transition-transform group-hover:text-text-primary group-focus-visible:text-text-primary",
                   open && "rotate-90",
                 )}
               />
