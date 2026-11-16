@@ -8,6 +8,7 @@ import { cvDesign, type PdfCv } from "~/types/cv";
 import { DESIGNS, designFonts, type Design } from "./designs";
 import { loadFonts, type FontLoader } from "./fonts";
 import { cvTemplate, type TextWidth } from "./layout";
+import { addStructTree, tagOperators } from "./tags";
 
 export type { FontLoader } from "./fonts";
 
@@ -20,15 +21,19 @@ const latin1 = (bytes: Uint8Array) => Array.from(bytes, (b) => String.fromCharCo
 
 async function tidyOperators(pdf: Uint8Array, underline: Design["underline"]) {
   const doc = await PDFDocument.load(pdf, { updateMetadata: false });
-  for (const page of doc.getPages()) {
+  const tagged = doc.getPages().map((page) => {
+    let mcids = 0;
     const contents = page.node.get(PDFName.of("Contents"));
     for (const ref of contents instanceof PDFArray ? contents.asArray() : [contents]) {
       const stream = doc.context.lookup(ref);
       if (!(ref instanceof PDFRef) || !(stream instanceof PDFRawStream)) continue;
-      const ops = restyleUnderlines(latin1(decodePDFRawStream(stream).decode()).replace(/T\*\s+ET/g, "ET"), underline);
-      doc.context.assign(ref, doc.context.flateStream(Uint8Array.from(ops, (c) => c.charCodeAt(0))));
+      const tidy = tagOperators(restyleUnderlines(latin1(decodePDFRawStream(stream).decode()).replace(/T\*\s+ET/g, "ET"), underline), mcids);
+      mcids = tidy.mcids;
+      doc.context.assign(ref, doc.context.flateStream(Uint8Array.from(tidy.ops, (c) => c.charCodeAt(0))));
     }
-  }
+    return { page, mcids };
+  });
+  addStructTree(doc, tagged);
   return doc.save({ updateFieldAppearances: false });
 }
 
