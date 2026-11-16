@@ -96,13 +96,19 @@ export function atsKeywords(cv: PdfCv) {
 
 function lines(runs: TextRun[], splitColumns: boolean) {
   const out: Line[] = [];
+  let spaced = false;
   for (const run of runs) {
-    if (!run.str.trim()) continue;
+    if (!run.str.trim()) {
+      spaced = run.str.length > 0;
+      continue;
+    }
     const last = out.at(-1);
     const gap = last ? run.x - last.x1 : 0;
     const sameLine = last && Math.abs(run.y - last.y) < SAME_LINE * run.height && !(splitColumns && (gap > COLUMN_GAP * run.height || gap < -WORD_GAP * run.height));
+    const space = spaced || gap > WORD_GAP * run.height;
+    spaced = false;
     if (sameLine) {
-      last.text += (gap > WORD_GAP * run.height ? " " : "") + run.str;
+      last.text += (space ? " " : "") + run.str;
       last.x1 = run.x + run.width;
     } else out.push({ x0: run.x, x1: run.x + run.width, y: run.y, height: run.height, text: run.str });
   }
