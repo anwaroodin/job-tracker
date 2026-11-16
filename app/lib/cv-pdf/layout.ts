@@ -217,25 +217,13 @@ export function cvTemplate(cv: PdfCv, design: Design, textWidth: TextWidth): Tem
       bullets(school.details.map(md), design.gap.detail);
     }),
   );
-  const skillGrid = ({ columns, gap, keywords }: NonNullable<Design["skills"]>) => {
-    const step = (width + pt2mm(gap)) / columns;
-    cv.skills.forEach((group, i) => {
-      const col = i % columns;
-      if (i && !col) baseline += keywords + design.gap.nextEntry;
-      const box = { x: col * step, width: step - pt2mm(gap) };
-      add(`**${md(group.label)}**`, box);
-      add(md(group.items.join(", ")), { ...box, pt: design.body * 0.875, dy: keywords });
-    });
-    baseline += keywords;
-  };
   const skillRows = () =>
     cv.skills.forEach((group, i) => {
       if (i) baseline += design.gap.skill;
       const label = design.plainSkillLabels ? md(group.label) : `**${md(group.label)}**`;
       row(`${label}: ${md(group.items.join(", "))}`);
     });
-  const grid = design.skills;
-  section("Skills", cv.skills.length ? [grid ? () => skillGrid(grid) : skillRows] : []);
+  section("Skills", cv.skills.length ? [skillRows] : []);
 
   const padding = [pt2mm(Math.min(design.pageTop, nameTop)), margin, pt2mm(design.pageBottom), margin] as [number, number, number, number];
   return { basePdf: { ...design.page, padding }, schemas: [schemas] };

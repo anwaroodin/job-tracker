@@ -23,7 +23,6 @@ export type Design = {
   heading: Text & { gap: number; afterRule: number };
   headingRule?: Rule;
   entries: "classic" | "rows";
-  skills?: { columns: number; gap: number; keywords: number };
   dash: string;
   gap: { firstEntry: number; nextEntry: number; subtitle: number; firstBullet: number; bullet: number; detail: number; skill: number };
   bullet: { indent: number; x: number; rise: number; r: number };
@@ -108,9 +107,8 @@ const PERSIAN: Design = {
   heading: { font: "Montserrat SemiBold", pt: 9.7, gap: 19.76, afterRule: 16.79, upper: true, spacing: 0.5445 },
   headingRule: { gap: 3.47, pt: 0.5, color: SLATE },
   entries: "rows",
-  skills: { columns: 3, gap: 38, keywords: 12.64 },
   dash: " – ",
-  gap: { firstEntry: 12.41, nextEntry: 16.62, subtitle: 13.5, firstBullet: 13.5, bullet: 18.03, detail: 18.03, skill: 13.5 },
+  gap: { firstEntry: 12.41, nextEntry: 16.62, subtitle: 13.5, firstBullet: 13.5, bullet: 18.03, detail: 18.03, skill: 15 },
   bullet: { indent: 12.2, x: 6.87, rise: 2.76, r: 1.49 },
 };
 
