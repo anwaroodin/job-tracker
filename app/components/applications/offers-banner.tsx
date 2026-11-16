@@ -1,71 +1,42 @@
 import { Link } from "react-router";
-import { fmtDate } from "~/components/ui/terminal";
-import type { ApplicationRowData } from "~/types/application";
+import { CompanyLogo } from "~/components/applications/company-logo";
+import { INSET_SEPARATORS } from "~/components/applications/applications-table";
+import { BrandWord } from "~/components/shell/brand-word";
+import { StatusBadge } from "~/components/ui/status-badge";
+import { cn } from "~/lib/cn";
 
-export function OffersBanner({ offersList, offersCount }: { offersList: ApplicationRowData[]; offersCount: number }) {
+type OfferRow = { id: string; company: string; role: string; status: string; salary?: string | null; location?: string | null };
+
+function headline(offers: OfferRow[]) {
+  const hired = offers.find((o) => o.status === "accepted");
+  if (hired) return `You accepted the offer from ${hired.company}. Congratulations.`;
+  return offers.length === 1 ? `${offers[0].company} made you an offer. Nice work.` : `You have ${offers.length} offers to weigh up. Nice work.`;
+}
+
+export function OffersBanner({ offers }: { offers: OfferRow[] }) {
+  if (offers.length === 0) return null;
+  const hired = offers.some((o) => o.status === "accepted");
+
   return (
-    <div className="relative overflow-hidden border border-green-primary/45 bg-green-primary/10 px-4 py-3 sm:px-5 sm:py-3.5">
-      {/* Header row with status, counter, and action required notice */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-green-primary/25 pb-2.5">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-2 rounded-full bg-green-primary animate-pulse" />
-          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-green-primary">
-            Offer Milestone
-          </span>
-          <span className="text-green-primary/40 font-mono">/</span>
-          <span className="font-sans text-[12px] normal-case text-text-primary">
-            {offersCount === 1
-              ? "1 active offer received"
-              : `${offersCount} active offers received`}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-green-primary/90 font-medium">
-            Action required
-          </span>
-        </div>
-      </div>
-
-      {/* Clean, high-density terminal offer rows */}
-      <div className="divide-y divide-dashed divide-green-primary/25">
-        {offersList.map((offer) => (
-          <Link
-            key={offer.id}
-            to={`/applications/${offer.id}`}
-            className="group flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 py-2.5 transition-colors hover:bg-green-primary/10 -mx-2 px-2 rounded-xs"
-          >
-            <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="font-mono font-semibold text-[13.5px] text-text-primary group-hover:text-green-primary transition-colors">
-                {offer.company}
-              </span>
-              <span className="truncate font-sans text-[12.5px] text-text-secondary normal-case">
-                {offer.role}
-              </span>
-              {offer.salary && (
-                <span className="font-mono text-[10.5px] font-medium text-green-primary bg-green-primary/15 border border-green-primary/30 px-1.5 py-0.5 rounded-xs">
-                  {offer.salary}
-                </span>
-              )}
-              {offer.location && (
-                <span className="hidden font-mono text-[11px] text-text-tertiary sm:inline">
-                  · {offer.location}
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="font-mono text-[10.5px] text-text-tertiary">
-                Received {fmtDate(offer.appliedAt)}
-              </span>
-              <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.06em] text-green-primary font-medium group-hover:translate-x-0.5 transition-transform">
-                <span>View offer</span>
-                <span>→</span>
-              </span>
-            </div>
-          </Link>
+    <section aria-label="Offers" className="border border-stroke-secondary font-sans text-[14px] normal-case tracking-normal">
+      <header className="px-5 pb-4 pt-5">
+        <BrandWord word={hired ? "hired" : "offer"} size={30} />
+        <p className="mt-2 text-[13.5px] text-text-secondary">{headline(offers)}</p>
+      </header>
+      <ul className={cn("flex flex-col border-t border-stroke-secondary", INSET_SEPARATORS)}>
+        {offers.map((offer) => (
+          <li key={offer.id}>
+            <Link to={`/applications/${offer.id}`} className="flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-ink/[0.04]">
+              <CompanyLogo company={offer.company} className="size-9 text-[14px]" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-text-primary">{offer.company}</p>
+                <p className="truncate text-[12.5px] text-text-tertiary">{[offer.role, offer.salary, offer.location].filter(Boolean).join(" · ")}</p>
+              </div>
+              <StatusBadge status={offer.status} variant="dot" className="shrink-0 text-[12.5px]" />
+            </Link>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 }

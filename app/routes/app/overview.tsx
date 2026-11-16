@@ -17,6 +17,7 @@ import { StatusBadge } from "~/components/ui/status-badge";
 import { Pipeline } from "~/components/overview/pipeline";
 import { Figures, Verdict } from "~/components/overview/summary";
 import { UpNextSection } from "~/components/overview/up-next";
+import { OffersBanner } from "~/components/applications/offers-banner";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
@@ -39,10 +40,11 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
         <Verdict totals={t} />
       </header>
 
-      <GettingStarted n="00" gmailConnected={gmailConnected} />
+      <GettingStarted gmailConnected={gmailConnected} />
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
         <div className="flex min-w-0 flex-col gap-10">
+          <OffersBanner offers={a.offers ?? []} />
           {upNextTotal > 0 && <UpNextSection next={loaderData.next} />}
 
           <ListSection

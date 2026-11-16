@@ -130,6 +130,9 @@ async function computeAnalytics(db: Db, userId: string): Promise<Analytics> {
     }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5),
+    offers: rows
+      .filter((r) => OFFER_STATUSES.has(r.status))
+      .map(({ id, company, role, status, salary, location }) => ({ id, company, role, status, salary, location })),
     recent: rows.slice(0, 6).map(({ id, company, role, status, appliedAt }) => ({ id, company, role, status, appliedAt })),
   };
 }
