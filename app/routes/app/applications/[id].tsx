@@ -8,9 +8,8 @@ import { FlagToggle } from "~/components/applications/flag-toggle";
 import { DeleteApplication } from "~/components/application-detail/delete-application";
 import { EditDetails } from "~/components/application-detail/edit-details";
 import { ShareLink } from "~/components/application-detail/share-link";
-import { SavedListing } from "~/components/application-detail/saved-listing";
 import { StatusPicker } from "~/components/application-detail/status-picker";
-import { BackToSaved } from "~/components/application-detail/back-to-saved";
+import { BackToSaved, SavedActions } from "~/components/application-detail/saved-actions";
 import { stagger, PageTitle } from "~/components/ui/terminal";
 import { PageSection, SANS_PAGE } from "~/components/ui/page-section";
 import { SideBlock } from "~/components/ui/side-block";
@@ -50,11 +49,16 @@ import { useNewOnArrival } from "~/components/application-detail/use-new-on-arri
 import { Journey } from "~/components/application-detail/journey";
 import { CvPanel, DetailsPanel, NotesPanel } from "~/components/application-detail/details-panel";
 import { JobDescription } from "~/components/application-detail/job-description";
+import { storedJobKeywords } from "~/server/cv/tailoring/cache";
+import { allKeywords } from "~/server/cv/tailoring/keywords";
 import { FollowUp } from "~/components/application-detail/follow-up";
 import { InterviewPrep } from "~/components/application-detail/interview-prep";
 import { followUpDraft, followUpRecipient, quietDays } from "~/server/services/follow-up/rules";
+import { BrandWord, statusWord } from "~/components/shell/brand-word";
 
 const MAX_FIELD_LENGTH = 200;
+
+export const handle = { title: (data: { row: { company: string } }) => data.row.company };
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
@@ -73,8 +77,9 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     .filter((a) => a.id !== row.id && a.status !== "saved")
     .map(({ id, company, role, appliedAt }) => ({ id, company, role, appliedAt }));
   const share = { applicationId: row.id, link: shareLink, hasTailoredCv: tailored.has(row.id) };
-  const prep = await prepFor(db, user.id, row);
-  return { row, emails, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user), prep };
+  const [prep, keywords] = await Promise.all([prepFor(db, user.id, row), storedJobKeywords(row)]);
+  const highlights = keywords ? allKeywords(keywords) : [];
+  return { row, emails, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user), prep, highlights };
 }
 
 async function prepFor(db: Db, userId: string, row: Application) {
@@ -88,15 +93,24 @@ async function prepFor(db: Db, userId: string, row: Application) {
 
 function followUpFor(
   row: Parameters<typeof quietDays>[0] & Parameters<typeof followUpDraft>[0],
-  emails: { fromAddress: string | null; receivedAt: string | null; dismissedAt: string | null }[],
+  emails: { id: string; threadId: string | null; fromAddress: string | null; receivedAt: string | null; dismissedAt: string | null }[],
   user: { name?: string | null; email: string },
 ) {
-  const linked = emails.flatMap((e) => (!e.dismissedAt && e.receivedAt ? [{ fromAddress: e.fromAddress ?? "", receivedAt: e.receivedAt }] : []));
+  const linked = emails.flatMap((e) =>
+    !e.dismissedAt && e.receivedAt ? [{ fromAddress: e.fromAddress ?? "", receivedAt: e.receivedAt, thread: e.threadId || e.id }] : [],
+  );
   const lastEmailAt = linked.map((e) => e.receivedAt).sort().at(-1) ?? null;
   const days = quietDays(row, lastEmailAt, new Date());
   if (days === null) return null;
   const draft = { to: followUpRecipient(linked), ...followUpDraft(row, user.name ?? "") };
-  return { quietDays: days, composeUrl: gmailComposeUrl(user.email, draft) };
+  const thread = linked.filter((e) => draft.to && e.fromAddress === draft.to).sort((a, b) => b.receivedAt.localeCompare(a.receivedAt))[0]?.thread;
+  return {
+    quietDays: days,
+    account: user.email,
+    ...draft,
+    threadUrl: thread ? gmailThreadUrl(user.email, thread) : null,
+    composeUrl: gmailComposeUrl(user.email, draft),
+  };
 }
 
 export async function action({ request, context, params }: Route.ActionArgs) {
@@ -112,10 +126,9 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     await updateApplication(db, user.id, params.id, { starred: form.get("flagged") === "true" });
     return { ok: true };
   }
-  if (intent === "saved-applied" || intent === "saved-remove") {
-    const outcome = intent === "saved-remove" ? "removed" : "applied";
-    if (!(await settleSavedJob(db, user.id, params.id, outcome))) throw data("Not a saved posting", { status: 400 });
-    return outcome === "removed" ? redirect("/applications") : { ok: true };
+  if (intent === "saved-applied") {
+    if (!(await settleSavedJob(db, user.id, params.id, "applied"))) throw data("Not a saved posting", { status: 400 });
+    return { ok: true };
   }
   if (intent === "unapply") {
     if (!(await unsettleAppliedJob(db, user.id, params.id))) throw data("It already has emails", { status: 400 });
@@ -182,13 +195,12 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 }
 
 export default function ApplicationDetail({ loaderData }: Route.ComponentProps) {
-  // A saved posting hasn't been applied to yet: show it as the job listing.
-  if (loaderData.row.status === "saved") return <SavedListing job={loaderData.row} share={loaderData.share} />;
-  return <TrackedApplication key={loaderData.row.id} loaderData={loaderData} />;
+  return <Application key={loaderData.row.id} loaderData={loaderData} />;
 }
 
-function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
+function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
   const { row, accountEmail } = loaderData;
+  const saved = row.status === "saved";
   const gmail = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!.gmail;
   const isNew = useNewOnArrival(row.id, loaderData.emails);
   const isArrival = useArrivals(
@@ -208,9 +220,16 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
         <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
           <div className="flex min-w-0 items-start gap-4">
             <CompanyLogo company={row.company} logoUrl={row.logoUrl} className="mt-0.5 size-12 text-[18px]" />
-            <PageTitle className="min-w-0" title={row.company} sub={row.role} />
+            <PageTitle className="min-w-0 gap-0.5" title={row.company} sub={row.role} />
           </div>
-          <StatusPicker status={row.status} />
+          {saved ? (
+            <SavedActions url={row.url} />
+          ) : (
+            <div className="flex items-center gap-4">
+              {statusWord(row.status) && <BrandWord word={statusWord(row.status)!} size={22} />}
+              <StatusPicker id={row.id} status={row.status} company={row.company} role={row.role} />
+            </div>
+          )}
         </div>
 
         <FactChips facts={listingFacts(row)} />
@@ -222,7 +241,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
             </span>
             <EditDetails job={row} />
             <ShareLink {...loaderData.share} />
-            {emails.length === 0 && <BackToSaved />}
+            {!saved && emails.length === 0 && <BackToSaved />}
           </div>
           <DeleteApplication company={row.company} role={row.role} />
         </div>
@@ -231,10 +250,10 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
       <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-14">
         <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
           {loaderData.followUp && <FollowUp {...loaderData.followUp} />}
-          <Journey status={row.status} appliedAt={row.appliedAt} updatedAt={row.updatedAt} emails={emails} />
+          {!saved && <Journey status={row.status} appliedAt={row.appliedAt} updatedAt={row.updatedAt} emails={emails} />}
           {loaderData.prep && <InterviewPrep {...loaderData.prep} />}
 
-          <PageSection
+          {!saved && <PageSection
             id="timeline"
             title="Timeline"
             description={
@@ -271,7 +290,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
                   : "Connect Gmail in your profile to pull in emails for this application."}
               </p>
             )}
-          </PageSection>
+          </PageSection>}
         </div>
 
         <aside
@@ -292,7 +311,7 @@ function TrackedApplication({ loaderData }: Pick<Route.ComponentProps, "loaderDa
 
         {row.description && (
           <div className="lg:col-start-1 lg:row-start-2">
-            <JobDescription text={row.description} source={source} />
+            <JobDescription text={row.description} source={source} highlights={loaderData.highlights} />
           </div>
         )}
       </div>

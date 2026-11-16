@@ -18,25 +18,3 @@ export type SavedJobData = Pick<Application, "id" | "company" | "role"> & {
   tailored?: boolean;
 };
 
-export type SavedListingJob = Pick<
-  Application,
-  | "id"
-  | "company"
-  | "role"
-  | "url"
-  | "status"
-  | "starred"
-  | "location"
-  | "workType"
-  | "employmentType"
-  | "salary"
-  | "postedAt"
-  | "applicants"
-  | "logoUrl"
-  | "contactsJson"
-  | "cvType"
-  | "category"
-  | "description"
-  | "notes"
-  | "appliedAt"
->;
