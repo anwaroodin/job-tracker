@@ -1,4 +1,5 @@
-import { Pencil } from "lucide-react";
+import { PencilEdit02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { Button, type ButtonProps } from "~/components/ui/button";
@@ -38,14 +39,14 @@ const GROUPS: { title: string; fields: Field[] }[] = [
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <fieldset className="flex flex-col gap-3 border-t border-ink/15 pt-4">
-      <legend className="float-left mb-1 text-[12.5px] font-semibold text-text-primary">{title}</legend>
+    <fieldset className="flex flex-col gap-3 border-t border-stroke-secondary pt-4 first:border-t-0 first:pt-0">
+      <legend className="float-left mb-1 text-[14px] font-medium text-text-primary">{title}</legend>
       {children}
     </fieldset>
   );
 }
 
-const LABEL ="text-[12.5px] text-text-secondary";
+const LABEL = "text-[12.5px] text-text-tertiary";
 
 export function EditDetails({ job, variant = "ghost", size = "tiny" }: { job: EditableDetails } & Pick<ButtonProps, "variant" | "size">) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
@@ -58,19 +59,20 @@ export function EditDetails({ job, variant = "ghost", size = "tiny" }: { job: Ed
 
   return (
     <>
-      <Button type="button" variant={variant} size={size} className="" onClick={() => setOpen(true)}>
-        <Pencil />
+      <Button type="button" variant={variant} size={size} onClick={() => setOpen(true)}>
+        <HugeiconsIcon icon={PencilEdit02Icon} size={15} strokeWidth={1.5} />
         Edit
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl grid-cols-[minmax(0,1fr)] gap-6 overflow-y-auto pb-0">
-          <DialogHeader className="gap-1">
-            <DialogTitle className="text-[16px] font-medium tracking-tight">Edit details</DialogTitle>
-            <DialogDescription className="text-text-secondary">
+        <DialogContent className="max-h-[90dvh] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit details</DialogTitle>
+            <DialogDescription>
               Leave a field empty to clear it.
             </DialogDescription>
           </DialogHeader>
-          <fetcher.Form method="post" className="flex flex-col gap-7">
+          <fetcher.Form method="post" className="flex flex-col">
+            <div className="flex flex-col gap-6 px-6 py-5">
             <input type="hidden" name="intent" value="edit" />
             {GROUPS.map((g) => (
               <Group key={g.title} title={g.title}>
@@ -88,7 +90,7 @@ export function EditDetails({ job, variant = "ghost", size = "tiny" }: { job: Ed
                         maxLength={f.max}
                         placeholder={f.placeholder}
                         list={f.options && `${f.name}-options`}
-                        className=""
+                        className="h-9 text-[13.5px]"
                       />
                       {f.options && (
                         <datalist id={`${f.name}-options`}>
@@ -110,7 +112,7 @@ export function EditDetails({ job, variant = "ghost", size = "tiny" }: { job: Ed
                 rows={3}
                 maxLength={5_000}
                 placeholder="Who you spoke to, what to mention next time…"
-                className=""
+                className="text-[13.5px]"
               />
             </Group>
             <Group title="Job description">
@@ -121,15 +123,16 @@ export function EditDetails({ job, variant = "ghost", size = "tiny" }: { job: Ed
                 rows={7}
                 maxLength={20_000}
                 placeholder="Paste the posting so tailoring and interview prep can use it."
-                className=""
+                className="text-[13.5px]"
               />
             </Group>
-            {fetcher.data?.error && <p className="text-[13px] text-red-primary">{fetcher.data.error}</p>}
-            <DialogFooter className="sticky bottom-0 -mx-6 gap-2 border-t border-stroke-primary bg-bg-secondary px-6 py-4">
-              <Button type="button" variant="ghost" className="" disabled={busy} onClick={() => setOpen(false)}>
+            {fetcher.data?.error && <p role="alert" className="text-[13px] text-red-primary">{fetcher.data.error}</p>}
+            </div>
+            <DialogFooter className="sticky bottom-0">
+              <Button type="button" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="" disabled={busy}>
+              <Button type="submit" disabled={busy}>
                 {busy ? "Saving…" : "Save changes"}
               </Button>
             </DialogFooter>

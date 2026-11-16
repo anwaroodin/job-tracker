@@ -1,4 +1,5 @@
-import { Trash2 } from "lucide-react";
+import { Delete02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
@@ -11,22 +12,22 @@ export function DeleteApplication({ company, role }: { company: string; role: st
   return (
     <>
       <Button type="button" variant="ghost" size="tiny" className="hover:bg-red-quaternary hover:text-red-primary" onClick={() => setOpen(true)}>
-        <Trash2 />
+        <HugeiconsIcon icon={Delete02Icon} size={15} strokeWidth={1.5} />
         Delete
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-[calc(100%-2rem)]">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-normal">Delete application</DialogTitle>
-            <DialogDescription className="font-sans">
+            <DialogTitle>Delete application</DialogTitle>
+            <DialogDescription>
               {role} at {company}, with its tailored CVs and activity. Its emails stay in Gmail. This can't be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="ghost" className="" disabled={busy} onClick={() => setOpen(false)}>
+          <DialogFooter>
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" variant="destructive" className="" disabled={busy} onClick={() => fetcher.submit({ intent: "delete" }, { method: "post" })}>
+            <Button type="button" variant="destructive" disabled={busy} onClick={() => fetcher.submit({ intent: "delete" }, { method: "post" })}>
               {busy ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>

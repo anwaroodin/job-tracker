@@ -1,11 +1,13 @@
-import { Check, Copy, Link2 } from "lucide-react";
+import { Copy01Icon, Link01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { Button, type ButtonProps } from "~/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
-import { fmtDate } from "~/components/ui/terminal";
+import { shortDate } from "~/components/ui/terminal";
+import { cn } from "~/lib/cn";
 import { DEFAULT_SHARE_DAYS, SHARE_DAYS, type ShareLinkState } from "~/lib/share";
 
 export interface ShareProps {
@@ -43,48 +45,52 @@ export function ShareLink({ applicationId, link, hasTailoredCv, variant = "ghost
   const label = "text-[12.5px] text-text-tertiary";
   return (
     <>
-      <Button type="button" variant={variant} size={size} className="" onClick={() => setOpen(true)}>
-        <Link2 />
+      <Button type="button" variant={variant} size={size} onClick={() => setOpen(true)}>
+        <HugeiconsIcon icon={Link01Icon} size={15} strokeWidth={1.5} />
         Share{link && " · on"}
       </Button>
       <Dialog open={open} onOpenChange={close}>
-        <DialogContent className="w-[calc(100%-2rem)]">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-normal">Share link</DialogTitle>
-            <DialogDescription className="font-sans">
+            <DialogTitle>Share link</DialogTitle>
+            <DialogDescription>
               Anyone with the link can view the job description{hasTailoredCv && " and, if you include it, your latest tailored CV"}. Your notes, emails and status stay private.
             </DialogDescription>
           </DialogHeader>
 
+          <DialogBody>
           {url ? (
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                <Input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className="font-sans " />
-                <Button type="button" variant="secondary" className="" onClick={copy}>
-                  {copied ? <Check /> : <Copy />}
+                <Input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className="h-9 text-[13.5px]" />
+                <Button type="button" variant="secondary" className="px-3" onClick={copy}>
+                  <HugeiconsIcon icon={copied ? Tick02Icon : Copy01Icon} size={15} strokeWidth={1.5} />
                   {copied ? "Copied" : "Copy"}
                 </Button>
               </div>
-              <p className="font-sans text-[12px] text-text-tertiary">Copy it now: it's only shown once. You can make a new one later, which turns this one off.</p>
+              <p className="text-[12.5px] text-text-tertiary">Copy it now: it's only shown once. You can make a new one later, which turns this one off.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               {link && (
-                <p className="font-sans text-[13px] text-text-secondary">
-                  A link is on until {fmtDate(link.expiresAt)}
+                <p className="text-[13.5px] text-text-secondary">
+                  A link is on until {shortDate(link.expiresAt)}
                   {hasTailoredCv && (link.includeCv ? ", with your tailored CV" : ", without your CV")}.
                 </p>
               )}
               <div className="flex flex-col gap-1.5">
                 <span className={label}>{link ? "Change expiry to" : "Expires in"}</span>
-                <div className="flex gap-2">
+                <div className="flex gap-1">
                   {SHARE_DAYS.map((d) => (
                     <Button
                       key={d}
                       type="button"
-                      size="tiny"
-                      variant={!link && days === d ? "primary" : "secondary"}
-                      className=""
+                      variant="ghost"
+                      aria-pressed={!link && days === d}
+                      className={cn(
+                        "h-8 px-3 text-[13px]",
+                        !link && days === d ? "bg-ink/[0.07] text-text-primary hover:bg-ink/[0.07]" : "text-text-tertiary hover:bg-ink/[0.04] hover:text-text-primary",
+                      )}
                       disabled={busy}
                       onClick={() => (link ? submit({ intent: "update", days: String(d) }) : setDays(d))}
                     >
@@ -102,19 +108,20 @@ export function ShareLink({ applicationId, link, hasTailoredCv, variant = "ghost
               )}
             </div>
           )}
+          </DialogBody>
 
-          <DialogFooter className="gap-2">
-            {link && !url && (
-              <Button type="button" variant="destructive" className="" disabled={busy} onClick={() => submit({ intent: "revoke" })}>
-                Turn off
-              </Button>
-            )}
-            {!url && (
-              <Button type="button" className="" disabled={busy} onClick={create}>
+          {!url && (
+            <DialogFooter>
+              {link && (
+                <Button type="button" variant="ghost" className="h-9 text-[13.5px] text-red-primary hover:bg-red-quaternary hover:text-red-primary sm:mr-auto" disabled={busy} onClick={() => submit({ intent: "revoke" })}>
+                  Turn off
+                </Button>
+              )}
+              <Button type="button" disabled={busy} onClick={create}>
                 {busy ? "Working…" : link ? "New link" : "Create link"}
               </Button>
-            )}
-          </DialogFooter>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </>
