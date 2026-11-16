@@ -16,24 +16,31 @@ export function GmailConnectButton({
   connected,
   broken,
   callbackURL = "/profile#integrations",
+  className,
 }: {
   connected: boolean;
   broken: boolean;
   callbackURL?: string;
+  className?: string;
 }) {
   const [pending, setPending] = useState(false);
   if (connected && !broken) {
-    return <span className="text-[11px] tracking-[0.08em] text-green-primary">Connected</span>;
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-primary">
+        <span aria-hidden className="size-1.5 rounded-full bg-green-primary" />
+        Connected
+      </span>
+    );
   }
   return (
     <Button
       type="button"
       variant="secondary"
       size="small"
+      className={className}
       disabled={pending}
       onClick={async () => {
         setPending(true);
-        // google only hands out a refresh token when the consent screen is shown
         const { error } = await authClient.linkSocial({
           provider: "google",
           scopes: [GMAIL_SCOPE],

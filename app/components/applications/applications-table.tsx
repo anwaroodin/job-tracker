@@ -5,6 +5,7 @@ import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/cn";
 import type { GmailStatus } from "~/types/gmail";
 import { PAGE_SIZE, type ApplicationsView, type SortKey } from "./use-applications-view";
+import { BrandWord } from "~/components/shell/brand-word";
 
 export function ApplicationsTable({
   view,
@@ -41,6 +42,7 @@ export function ApplicationsTable({
         <div className="flex flex-col items-center gap-2 px-4 py-14 text-center">
           {total === 0 ? (
             <>
+              <BrandWord word="jobs" size={24} className="mb-3" />
               <p className="font-medium text-text-primary">No applications yet</p>
               <p className="max-w-md text-[13px] text-text-tertiary">Add one by hand, or sync Gmail and they'll fill in from your inbox.</p>
               <div className="mt-3 flex items-center gap-3">
@@ -52,7 +54,7 @@ export function ApplicationsTable({
             <>
               <p className="font-medium text-text-primary">Nothing matches these filters</p>
               <p className="text-[13px] text-text-tertiary">Try a different search, or clear the filters.</p>
-              <Button type="button" variant="secondary" size="small" onClick={resetAllFilters} className="mt-2 font-sans normal-case tracking-normal">
+              <Button type="button" variant="secondary" size="small" onClick={resetAllFilters} className="mt-2">
                 Clear filters
               </Button>
             </>
@@ -78,7 +80,6 @@ export function ApplicationsTable({
               size="small"
               disabled={currentPage === 0}
               onClick={() => setPage((p) => Math.max(0, p - 1))}
-              className="font-sans normal-case tracking-normal"
             >
               Previous
             </Button>
@@ -91,7 +92,6 @@ export function ApplicationsTable({
               size="small"
               disabled={currentPage >= totalPages - 1}
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              className="font-sans normal-case tracking-normal"
             >
               Next
             </Button>
@@ -103,4 +103,4 @@ export function ApplicationsTable({
 }
 
 export const INSET_SEPARATORS =
-  "[&>*+*]:before:absolute [&>*+*]:before:left-[60px] [&>*+*]:before:right-0 [&>*+*]:before:top-0 [&>*+*]:before:h-px [&>*+*]:before:bg-stroke-secondary";
+  "[&>*]:relative [&>*+*]:before:absolute [&>*+*]:before:left-[60px] [&>*+*]:before:right-0 [&>*+*]:before:top-0 [&>*+*]:before:h-px [&>*+*]:before:bg-stroke-secondary";

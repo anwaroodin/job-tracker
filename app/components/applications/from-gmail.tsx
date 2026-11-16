@@ -54,7 +54,7 @@ function Review({ count, title, children }: { count: number; title: string; chil
           size="small"
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
-          className="-mr-2 shrink-0 font-sans text-[13px] normal-case tracking-normal text-text-primary"
+          className="-mr-2 shrink-0 text-[13px] text-text-primary"
         >
           {open ? "Hide" : "Review"}
           <HugeiconsIcon icon={ArrowDown01Icon} size={15} strokeWidth={1.5} className={cn("transition-transform", open && "rotate-180")} />

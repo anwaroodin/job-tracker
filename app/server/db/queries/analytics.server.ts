@@ -13,6 +13,8 @@ export function analyticsRows(db: Db, userId: string) {
       cvType: application.cvType,
       appliedAt: application.appliedAt,
       updatedAt: application.updatedAt,
+      salary: application.salary,
+      location: application.location,
     })
     .from(application)
     .where(and(eq(application.userId, userId), ne(application.status, "saved")))

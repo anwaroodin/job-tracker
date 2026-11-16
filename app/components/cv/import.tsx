@@ -41,10 +41,10 @@ export function CvImport({ onImported }: { onImported: (cv: Cv) => void }) {
           className="hidden"
           onChange={(e) => uploadPdf(e.target.files?.[0])}
         />
-        <Button type="button" variant="secondary" size="small" className="uppercase" disabled={busy} onClick={() => fileInput.current?.click()}>
+        <Button type="button" variant="secondary" size="small" disabled={busy} onClick={() => fileInput.current?.click()}>
           Upload PDF
         </Button>
-        <Button type="button" variant="ghost" size="small" className="uppercase" disabled={busy} onClick={() => setPasting((p) => !p)}>
+        <Button type="button" variant="ghost" size="small" disabled={busy} onClick={() => setPasting((p) => !p)}>
           Paste text
         </Button>
         <span className="font-sans text-[12.5px] normal-case tracking-normal text-text-tertiary">
@@ -56,10 +56,10 @@ export function CvImport({ onImported }: { onImported: (cv: Cv) => void }) {
         <div className="flex flex-col gap-2">
           <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste your CV's text here…" autoFocus />
           <div className="flex gap-2">
-            <Button type="button" size="small" className="uppercase" disabled={busy || !text.trim()} onClick={() => submit({ text })}>
+            <Button type="button" size="small" disabled={busy || !text.trim()} onClick={() => submit({ text })}>
               Import
             </Button>
-            <Button type="button" variant="ghost" size="small" className="uppercase" onClick={() => setPasting(false)}>
+            <Button type="button" variant="ghost" size="small" onClick={() => setPasting(false)}>
               Cancel
             </Button>
           </div>

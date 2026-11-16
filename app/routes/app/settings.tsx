@@ -182,7 +182,14 @@ export default function SettingsPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       {dirty && (
-        <UnsavedBar>
+        <UnsavedBar
+          busy={saving}
+          onDiscard={() => {
+            setForm(loaderData.settings);
+            setBudgetText(loaderData.settings.monthlyBudget?.toString() ?? "");
+            setDirty(false);
+          }}
+        >
           <Button
             type="button"
             size="medium"

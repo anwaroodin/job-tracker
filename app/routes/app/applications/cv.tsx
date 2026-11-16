@@ -1,18 +1,12 @@
-import { useState } from "react";
 import { data, Link } from "react-router";
 import type { Route } from "./+types/cv";
-import type { SidePanelHandle } from "~/components/shell/side-panel";
-import { CvPreview, PdfButton } from "~/components/cv/cv-preview";
-import { CoverLetterDocument } from "~/components/tailored-cv/document";
-import { TailoredCvEditor } from "~/components/tailored-cv/editor";
-import { EditsView } from "~/components/tailored-cv/edits";
-import { ResearchView } from "~/components/tailored-cv/research";
 import { ScoreView } from "~/components/tailored-cv/score";
-import { JobDescriptionPanel } from "~/components/tailored-cv/job-description-panel";
+import { TailoredTabs } from "~/components/tailored-cv/tailored-tabs";
 import { TailorPanel } from "~/components/tailored-cv/tailor-panel";
-import { Button } from "~/components/ui/button";
-import { Section, fmtDate, stagger, PageTitle } from "~/components/ui/terminal";
-import { cvContent, personFor, pdfCv } from "~/lib/cv";
+import { SANS_PAGE } from "~/components/ui/page-section";
+import { SideBlock } from "~/components/ui/side-block";
+import { shortDate, stagger, PageTitle } from "~/components/ui/terminal";
+import { cvContent, personFor } from "~/lib/cv";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { cleanResearch, researchRequest, storedResearch } from "~/server/cv/research";
@@ -27,10 +21,7 @@ import { getCv, getCvDesign, getProfile } from "~/server/db/queries/profile.serv
 import { insertTailoredCv, latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
 import type { AtsScore } from "~/types/cv";
 
-export const handle: SidePanelHandle = {
-  sidePanel: (data: Awaited<ReturnType<typeof loader>>) =>
-    data.application.description ? { title: "Job description", text: data.application.description } : null,
-};
+export const handle = { title: () => "Tailored CV" };
 
 export async function loader({ context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
@@ -92,92 +83,73 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
 export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
   const { application, canTailor, researchRequest, research, hasCv, hasDescription, score, person, design, tailored } = loaderData;
-  const [editing, setEditing] = useState(false);
+
   return (
-    <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
-      <header className="rise flex flex-col gap-6" style={stagger(0)}>
-        <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-          <Link to="/applications" className="transition-colors hover:text-text-primary">
-            [02] Applications
-          </Link>
-          <span className="mx-2 opacity-50">/</span>
-          <Link to={`/applications/${application.id}`} className="transition-colors hover:text-text-primary">
-            {application.company}
-          </Link>
-          <span className="mx-2 opacity-50">/</span>
-          CV
-        </p>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <PageTitle title="Tailored CV" sub={application.role} />
-          {application.description && (
-            <div className="lg:hidden">
-              <JobDescriptionPanel description={application.description} />
-            </div>
-          )}
-        </div>
+    <div className={`flex flex-col gap-8 ${SANS_PAGE}`}>
+      <header className="rise" style={stagger(0)}>
+        <PageTitle title="Tailored CV" sub={`${application.role} · ${application.company}`} />
       </header>
 
-      <Section n="01" title="Tailor" hint={tailored ? `Version ${tailored.version} · ${fmtDate(tailored.createdAt)}` : undefined} i={1}>
+      <div className="rise" style={stagger(1)}>
         {canTailor ? (
-          <TailorPanel target={{ applicationId: application.id }} company={application.company} role={application.role} research={researchRequest} hasResearch={!!research} retailor={!!tailored} />
+          <TailorPanel
+            target={{ applicationId: application.id }}
+            company={application.company}
+            role={application.role}
+            research={researchRequest}
+            hasResearch={!!research}
+            retailor={!!tailored}
+          />
         ) : (
-          <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
-            {!hasCv ? (
-              <>
-                Add your{" "}
-                <Link to="/cv?edit" className="text-accent-primary hover:text-accent-secondary">
-                  CV
-                </Link>{" "}
-                first.
-              </>
-            ) : (
-              !hasDescription && "This application has no job description to tailor to. Open the posting with the extension to capture it."
-            )}
-          </p>
+          <div className="border border-stroke-secondary px-6 py-10 text-center">
+            <p className="font-medium text-text-primary">{!hasCv ? "Add your CV first" : "No job description yet"}</p>
+            <p className="mt-1 text-[13px] text-text-tertiary">
+              {!hasCv ? (
+                <>
+                  Tailoring rewrites your master CV for this job.{" "}
+                  <Link to="/cv?edit" className="text-text-primary underline underline-offset-4">
+                    Add your experience
+                  </Link>
+                  , then come back.
+                </>
+              ) : (
+                !hasDescription && "Open the posting and save it with the extension, or paste it in Edit details on the application."
+              )}
+            </p>
+          </div>
         )}
-      </Section>
+      </div>
 
-      {research && (
-        <Section n="02" title="Company" hint={`What ${application.company} values`} i={2}>
-          <ResearchView research={research} />
-        </Section>
-      )}
+      <div className="rise grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12" style={stagger(2)}>
+        <div className="flex min-w-0 flex-col gap-10">
+          <TailoredTabs
+            cv={tailored?.cv ?? null}
+            person={person}
+            design={design}
+            filename={`${person.name || "CV"} - ${application.company} CV.pdf`}
+            score={score}
+            description={application.description}
+            research={research}
+            company={application.company}
+          />
+        </div>
 
-      {score && (
-        <Section n="03" title="Match score" hint={score.after ? "After tailoring" : "Your CV as it is"} i={2}>
-          <ScoreView before={score.before} after={score.after} />
-        </Section>
-      )}
-
-      {tailored && (tailored.cv.edits?.length || tailored.cv.flags.length || tailored.cv.changes.length) ? (
-        <Section n="04" title="What changed" hint={tailored.cv.edits ? `${tailored.cv.edits.length} edits` : undefined} i={3}>
-          <EditsView cv={tailored.cv} keywords={score?.before.keywords.map((k) => k.term) ?? []} />
-        </Section>
-      ) : null}
-
-      {tailored && editing && (
-        <Section n="05" title="Edit" i={4}>
-          <TailoredCvEditor value={tailored.cv} onDone={() => setEditing(false)} />
-        </Section>
-      )}
-
-      {tailored && !editing && (
-        <>
-          <Section n="05" title="CV" hint={<Button type="button" variant="link" size="tiny" className="h-auto px-0 uppercase" onClick={() => setEditing(true)}>Edit</Button>} i={4}>
-            <div className="flex flex-col gap-3">
-              <div className="self-end">
-                <PdfButton cv={pdfCv(person, tailored.cv, design)} filename={`${person.name || "CV"} - ${application.company} CV.pdf`} />
-              </div>
-              <CvPreview cv={pdfCv(person, tailored.cv, design)} filename={`${person.name || "CV"} - ${application.company} CV.pdf`} />
-            </div>
-          </Section>
-          {tailored.cv.coverLetter.paragraphs.length > 0 && (
-            <Section n="06" title="Cover letter" i={5}>
-              <CoverLetterDocument person={person} letter={tailored.cv.coverLetter} />
-            </Section>
+        <aside className="flex flex-col gap-5 lg:sticky lg:top-16 lg:self-start lg:border-l lg:border-stroke-secondary lg:pl-8">
+          {score && (
+            <SideBlock title="Match score" aside={score.after ? "After tailoring" : "Your CV as it is"}>
+              <ScoreView before={score.before} after={score.after} />
+            </SideBlock>
           )}
-        </>
-      )}
+          <SideBlock title="This CV">
+            <p className="text-[13.5px] text-text-secondary">
+              {tailored ? `Version ${tailored.version} · tailored ${shortDate(tailored.createdAt)}` : "Not tailored yet"}
+            </p>
+            <Link to={`/applications/${application.id}`} className="text-[13px] text-text-secondary underline-offset-4 hover:text-text-primary hover:underline">
+              Back to the application
+            </Link>
+          </SideBlock>
+        </aside>
+      </div>
     </div>
   );
 }

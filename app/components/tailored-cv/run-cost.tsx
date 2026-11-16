@@ -1,6 +1,6 @@
 import { useSelector } from "@legendapp/state/react";
 import { useEffect } from "react";
-import { Bar } from "~/components/ui/terminal";
+import { Meter } from "~/components/ui/meter";
 import { estimatePct, usedPct, type Calibration, type LimitWindow } from "~/lib/run-cost";
 import { loadRunCosts, runCosts$, type LastRun } from "~/lib/state/run-costs";
 import type { PlanUsage } from "~/types/cv";
@@ -10,17 +10,15 @@ export function useRunCosts() {
   return useSelector(() => runCosts$.get());
 }
 
-const ADDED = "var(--color-text-primary)";
 const LEVELS: [number, string][] = [
-  [90, "var(--color-red-primary)"],
-  [75, "var(--color-orange-primary)"],
-  [0, "var(--color-green-primary)"],
+  [90, "bg-red-primary"],
+  [75, "bg-accent-primary"],
+  [0, "bg-green-primary"],
 ];
-const levelColor = (usedPct: number) => LEVELS.find(([floor]) => usedPct >= floor)![1];
-const CELLS = 10;
+const levelClass = (usedPct: number) => LEVELS.find(([floor]) => usedPct >= floor)![1];
 const WINDOWS: { window: LimitWindow; label: string }[] = [
-  { window: "fiveHour", label: "5-hour" },
-  { window: "sevenDay", label: "Week" },
+  { window: "fiveHour", label: "5 hours" },
+  { window: "sevenDay", label: "This week" },
 ];
 
 const pct = (n: number) => `${Math.round(n)}%`;
@@ -29,8 +27,10 @@ function Limit({ label, from, by }: { label: string; from: number; by: number | 
   return (
     <span className="flex items-center gap-2 whitespace-nowrap">
       {label}
-      <Bar share={from} color={levelColor(from + (by ?? 0))} extra={by ? { share: by, color: ADDED } : undefined} cells={CELLS} />
-      <span className="text-text-primary">{pct(from + (by ?? 0))}</span>
+      <span className="w-16">
+        <Meter share={from} extra={by ?? undefined} className={levelClass(from + (by ?? 0))} />
+      </span>
+      <span className="font-medium tabular-nums text-text-primary">{pct(from + (by ?? 0))}</span>
     </span>
   );
 }
@@ -40,7 +40,8 @@ export function RunCost({ calibrations, model, now, last }: { calibrations: Reco
   const costUsd = calibrations[model]?.lastCost.tailor;
   const next = now.fiveHour === null || costUsd === undefined ? null : estimatePct(calibrations[model], "fiveHour", costUsd);
   return (
-    <div className="flex flex-wrap items-center gap-x-[18px] gap-y-1.5 text-[11px] text-text-tertiary">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px] text-text-tertiary">
+      <span>Plan usage</span>
       {WINDOWS.map(({ window, label }) => {
         const value = now[window];
         const run = last && last.after === now ? usedPct(last, window) : null;
@@ -48,7 +49,7 @@ export function RunCost({ calibrations, model, now, last }: { calibrations: Reco
       })}
       {next !== null && (
         <span className="flex items-center gap-2 whitespace-nowrap">
-          Next run <span className="text-text-secondary">≈ +{next < 0.5 ? "<1%" : pct(next)}</span>
+          Next run <span className="font-medium tabular-nums text-text-primary">≈ +{next < 0.5 ? "<1%" : pct(next)}</span>
         </span>
       )}
     </div>

@@ -19,7 +19,18 @@ describe("share links", () => {
     const db = await seed();
     const token = await createShareLink(db, USER_ID, "app", 7, true);
     const shared = await sharedApplication(db, token);
-    expect(shared?.job).toEqual({ company: "Acme", role: "Engineer", location: "", workType: "", url: "", description: "Build things" });
+    expect(shared?.job).toEqual({
+      company: "Acme",
+      role: "Engineer",
+      location: "",
+      workType: "",
+      url: "",
+      description: "Build things",
+      logoUrl: "",
+      employmentType: "",
+      postedAt: null,
+      applicants: "",
+    });
     expect(shared?.cv).toBeNull();
     expect(JSON.stringify(shared)).not.toMatch(/private note|my ask/);
     const [row] = await db.select().from(shareLink);

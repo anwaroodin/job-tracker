@@ -1,4 +1,5 @@
-import { Download } from "lucide-react";
+import { Download04Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useRef } from "react";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/cn";
@@ -18,11 +19,16 @@ function Paper({ title, children }: { title: string; children: React.ReactNode }
   };
   return (
     <div className="flex flex-col gap-3">
-      <Button type="button" variant="secondary" size="small" className="self-end uppercase" onClick={print}>
-        <Download />
+      <Button
+        type="button"
+        variant="secondary"
+        className="h-9 self-end px-3 text-[13.5px]"
+        onClick={print}
+      >
+        <HugeiconsIcon icon={Download04Icon} size={16} strokeWidth={1.5} />
         Save {title} as PDF
       </Button>
-      <div ref={ref} className={cn(SHEET, "px-8 py-9 sm:px-12")}>
+      <div ref={ref} className={cn(SHEET, "border border-stroke-secondary px-8 py-9 sm:px-12")}>
         {children}
       </div>
     </div>

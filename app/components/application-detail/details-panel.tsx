@@ -44,7 +44,7 @@ export function DetailsPanel({ row }: { row: Application }) {
       {row.category && <Fact label="Level">{row.category}</Fact>}
       {row.postedAt && <Fact label="Posted">{shortDate(row.postedAt)}</Fact>}
       {row.applicants && <Fact label="Applicants">{row.applicants}</Fact>}
-      <Fact label="Applied">{shortDate(row.appliedAt)}</Fact>
+      <Fact label={row.status === "saved" ? "Saved" : "Applied"}>{shortDate(row.appliedAt)}</Fact>
       <Fact label="Updated">{shortDate(row.updatedAt)}</Fact>
       {source && (
         <Fact label="Source">

@@ -1,3 +1,12 @@
+export interface Offer {
+  id: string;
+  company: string;
+  role: string;
+  status: string;
+  salary: string;
+  location: string;
+}
+
 export interface Analytics {
   totals: {
     total: number;
@@ -14,5 +23,6 @@ export interface Analytics {
   weekly: { weekLabel: string; weekStart: string; count: number }[];
   funnel: { stage: string; count: number }[];
   topCompanies: { company: string; count: number }[];
+  offers?: Offer[];
   recent: { id: string; company: string; role: string; status: string; appliedAt: string }[];
 }

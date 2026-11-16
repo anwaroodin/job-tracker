@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { Delete02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { data, Form, Link, redirect } from "react-router";
 import type { Route } from "./+types/role-cv";
-import { CvPreview, PdfButton } from "~/components/cv/cv-preview";
-import { TailoredCvEditor } from "~/components/tailored-cv/editor";
-import { EditsView } from "~/components/tailored-cv/edits";
 import { ScoreView } from "~/components/tailored-cv/score";
+import { TailoredTabs } from "~/components/tailored-cv/tailored-tabs";
 import { TailorPanel } from "~/components/tailored-cv/tailor-panel";
 import { Button } from "~/components/ui/button";
-import { Section, fmtDate, stagger, PageTitle } from "~/components/ui/terminal";
-import { cvContent, personFor, pdfCv } from "~/lib/cv";
+import { SANS_PAGE } from "~/components/ui/page-section";
+import { SideBlock } from "~/components/ui/side-block";
+import { shortDate, stagger, PageTitle } from "~/components/ui/terminal";
+import { cvContent, personFor } from "~/lib/cv";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { applyEdits } from "~/server/cv/tailored";
@@ -19,6 +20,8 @@ import { jsonField } from "~/server/form.server";
 import { getCv, getCvDesign, getProfile } from "~/server/db/queries/profile.server";
 import { deleteRoleCv, getRoleCv, saveRoleCv } from "~/server/db/queries/role-cv.server";
 import type { AtsScore } from "~/types/cv";
+
+export const handle = { title: (data: { role: { title: string } }) => data.role.title };
 
 export async function loader({ context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
@@ -52,69 +55,54 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
 export default function RoleCvPage({ loaderData }: Route.ComponentProps) {
   const { role, hasCv, score, person, design } = loaderData;
-  const [editing, setEditing] = useState(false);
+
   return (
-    <div className="flex flex-col gap-12 font-mono text-[12.5px] uppercase tracking-[0.04em] first:gap-6">
+    <div className={`flex flex-col gap-8 ${SANS_PAGE}`}>
       <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
-        <div className="flex flex-col gap-6">
-          <p className="text-[11px] tracking-[0.12em] text-text-tertiary">
-            <Link to="/cv" className="transition-colors hover:text-text-primary">
-              [03] CV
-            </Link>
-            <span className="mx-2 opacity-50">/</span>
-            Role
-          </p>
-          <PageTitle title="CV for a role" sub={role.title} />
-        </div>
+        <PageTitle title="CV for a role" sub={`${role.title} · no job description, tailored to what this title usually asks for`} />
         <Form method="post">
-          <Button type="submit" name="intent" value="delete" variant="ghost" size="medium" className="uppercase">
+          <Button type="submit" name="intent" value="delete" variant="ghost" className="h-9 px-3 text-[13.5px] text-text-secondary hover:bg-red-quaternary hover:text-red-primary">
+            <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={1.5} />
             Delete
           </Button>
         </Form>
       </header>
 
-      <Section n="01" title="Tailor" hint={role.cv ? `Version ${role.version} · ${fmtDate(role.updatedAt)}` : undefined} description={role.cv ? undefined : "No job description: tailored to what the job title usually asks for."} i={1}>
+      <div className="rise" style={stagger(1)}>
         {hasCv ? (
           <TailorPanel target={{ roleId: role.id }} company={role.title} role="Job title only" research={null} hasResearch={false} retailor={!!role.cv} />
         ) : (
-          <p className="font-sans text-[13px] normal-case tracking-normal text-text-tertiary">
-            Add your{" "}
-            <Link to="/cv?edit" className="text-accent-primary hover:text-accent-secondary">
-              CV
-            </Link>{" "}
-            first.
-          </p>
-        )}
-      </Section>
-
-      {score && (
-        <Section n="02" title="Match score" hint={score.after ? "After tailoring" : "Your CV as it is"} i={2}>
-          <ScoreView before={score.before} after={score.after} />
-        </Section>
-      )}
-
-      {role.cv && (role.cv.edits?.length || role.cv.flags.length || role.cv.changes.length) ? (
-        <Section n="03" title="What changed" hint={role.cv.edits ? `${role.cv.edits.length} edits` : undefined} i={3}>
-          <EditsView cv={role.cv} keywords={score?.before.keywords.map((k) => k.term) ?? []} />
-        </Section>
-      ) : null}
-
-      {role.cv && editing && (
-        <Section n="04" title="Edit" i={4}>
-          <TailoredCvEditor value={role.cv} onDone={() => setEditing(false)} />
-        </Section>
-      )}
-
-      {role.cv && !editing && (
-        <Section n="04" title="CV" hint={<Button type="button" variant="link" size="tiny" className="h-auto px-0 uppercase" onClick={() => setEditing(true)}>Edit</Button>} i={4}>
-          <div className="flex flex-col gap-3">
-            <div className="self-end">
-              <PdfButton cv={pdfCv(person, role.cv, design)} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} />
-            </div>
-            <CvPreview cv={pdfCv(person, role.cv, design)} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} />
+          <div className="border border-stroke-secondary px-6 py-10 text-center">
+            <p className="font-medium text-text-primary">Add your CV first</p>
+            <p className="mt-1 text-[13px] text-text-tertiary">
+              Tailoring rewrites your master CV for this role.{" "}
+              <Link to="/cv?edit" className="text-text-primary underline underline-offset-4">
+                Add your experience
+              </Link>
+              , then come back.
+            </p>
           </div>
-        </Section>
-      )}
+        )}
+      </div>
+
+      <div className="rise grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12" style={stagger(2)}>
+        <div className="flex min-w-0 flex-col gap-10">
+          <TailoredTabs cv={role.cv ?? null} person={person} design={design} filename={`${person.name || "CV"} - ${role.title} CV.pdf`} score={score} />
+        </div>
+        <aside className="flex flex-col gap-5 lg:sticky lg:top-16 lg:self-start lg:border-l lg:border-stroke-secondary lg:pl-8">
+          {score && (
+            <SideBlock title="Match score" aside={score.after ? "After tailoring" : "Your CV as it is"}>
+              <ScoreView before={score.before} after={score.after} />
+            </SideBlock>
+          )}
+          <SideBlock title="This CV">
+            <p className="text-[13.5px] text-text-secondary">{role.cv ? `Version ${role.version} · tailored ${shortDate(role.updatedAt)}` : "Not tailored yet"}</p>
+            <Link to="/cv#roles" className="text-[13px] text-text-secondary underline-offset-4 hover:text-text-primary hover:underline">
+              Back to your CV
+            </Link>
+          </SideBlock>
+        </aside>
+      </div>
     </div>
   );
 }

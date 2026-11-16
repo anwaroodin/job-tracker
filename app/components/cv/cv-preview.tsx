@@ -107,7 +107,7 @@ function Viewer({ cv, pages, filename, onClose }: { cv: PdfCv; pages: string[]; 
             </div>
           ))}
         </div>
-        <div data-keep-open className="fixed bottom-6 right-6 z-10 flex flex-col items-end gap-2">
+        <div data-keep-open className="fixed bottom-[calc(var(--bottom-nav)+1rem)] right-4 z-10 flex lg:bottom-6 lg:right-6 flex-col items-end gap-2">
           {error && <p className={`max-w-72 bg-sidebar-active px-3 py-2 text-[12.5px] text-red-primary ${FLOATING}`}>{error}</p>}
           <div className="flex items-center gap-2">
             <Button type="button" className={`${SANS_BUTTON} ${FLOATING}`} disabled={busy} onClick={download}>
@@ -162,7 +162,7 @@ export function PdfButton({ cv, filename }: { cv: PdfCv; filename: string }) {
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button type="button" variant="secondary" size="small" className="font-sans normal-case tracking-normal" disabled={busy} onClick={download}>
+      <Button type="button" variant="secondary" size="small" disabled={busy} onClick={download}>
         <DownloadLabel busy={busy} />
       </Button>
       {error && <span className="normal-case tracking-normal text-red-primary">{error}</span>}

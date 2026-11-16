@@ -336,7 +336,16 @@ describe("applyEdits", () => {
 
 describe("company research", () => {
   it("is given to the skill plan and the edits, with a rule against copying it", () => {
-    const research = { summary: "", values: ["Ship small, ship often"], lookingFor: ["Owners"], culture: [], news: [], sources: [], researchedAt: "" };
+    const research = {
+      summary: "",
+      facts: [],
+      values: [{ title: "Ship small, ship often", detail: "" }],
+      lookingFor: [{ title: "Owners", detail: "" }],
+      culture: [],
+      news: [],
+      sources: [],
+      researchedAt: "",
+    };
     const ctx: TailorContext = { master: CV, jobDescription: JOB, keywords: KEYWORDS, research, confirmed: [] };
     const plan = startTailoring(ctx, "keywords");
     if (!("request" in plan)) throw new Error("expected a request");
@@ -356,7 +365,7 @@ describe("company research", () => {
         { title: "Bad", url: "javascript:alert(1)" },
       ],
     });
-    expect(research.values).toEqual(["Ship fast"]);
+    expect(research.values).toEqual([{ title: "Ship fast", detail: "" }]);
     expect(research.sources).toEqual([{ title: "About", url: "https://acme.example/about" }]);
   });
 });

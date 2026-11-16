@@ -5,11 +5,12 @@ import type { loader as layoutLoader } from "../layout";
 import { ApplicationsBoard } from "~/components/applications/applications-board";
 import { ApplicationsHeader } from "~/components/applications/applications-header";
 import { ApplicationsTable } from "~/components/applications/applications-table";
+import { OffersBanner } from "~/components/applications/offers-banner";
 import { FromGmail } from "~/components/applications/from-gmail";
 import { LayoutToggle } from "~/components/applications/layout-toggle";
 import { ListSection } from "~/components/applications/list-section";
 import { SavedSection } from "~/components/applications/saved-section";
-import { SearchField } from "~/components/applications/table-toolbar";
+import { SearchField } from "~/components/applications/search-field";
 import { StatusFilter } from "~/components/applications/status-filter";
 import { CLOSED_TAB_STATUSES, useApplicationsView } from "~/components/applications/use-applications-view";
 import { selectedView, ViewTabs } from "~/components/applications/view-tabs";
@@ -141,6 +142,8 @@ export default function Applications({ loaderData }: Route.ComponentProps) {
         gmail={gmail}
         stats={false}
       />
+
+      {selected === "open" && <OffersBanner offers={view.offersList} />}
 
       <FromGmail suggestions={suggestions} unsure={unsure} accountEmail={loaderData.accountEmail} />
 

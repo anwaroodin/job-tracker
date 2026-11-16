@@ -1,8 +1,8 @@
-import { ArrowRight01Icon, Search01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, ArrowRight01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { MotionConfig } from "motion/react";
 import type { ReactNode } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useMatches } from "react-router";
 import { useShortcutLabel } from "~/hooks/use-shortcut-label";
 import { CommandPalette } from "~/components/shell/command-palette";
 import { commandPalette$ } from "~/lib/state/command-palette";
@@ -12,8 +12,9 @@ import { ActivityBell } from "./activity-feed";
 import { ActivityToasts } from "./activity-feed/toasts";
 import { BottomNav } from "./bottom-nav";
 import { NAV } from "./nav";
-import { SidePanel } from "./side-panel";
 import { Sidebar } from "./sidebar";
+import { Wordmark } from "./wordmark";
+import { MilestoneToast } from "./milestone-toast";
 import { TailoringTray } from "./tailoring-tray";
 
 interface AppShellProps {
@@ -28,16 +29,16 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
     <MotionConfig reducedMotion="user">
       <div className="flex min-h-dvh w-full bg-bg-primary text-text-primary">
         <Sidebar user={user} gmail={gmail} unread={unread} />
-        <main className="min-w-0 flex-1">
+        <main className="@container min-w-0 flex-1">
           <PathBar gmail={gmail} />
           <div className="mx-auto w-full max-w-[1200px] px-4 pb-[calc(var(--bottom-nav)+2.5rem)] pt-4 sm:px-6 lg:px-8 lg:pb-20">
             {children}
           </div>
         </main>
-        <SidePanel />
       </div>
-      <BottomNav unread={unread} />
+      <BottomNav user={user} unread={unread} />
       <ActivityToasts initial={gmail} />
+      <MilestoneToast />
       <CommandPalette />
       <TailoringTray />
       <Tour />
@@ -47,18 +48,34 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
 
 function PathBar({ gmail }: { gmail: GmailStatus }) {
   const { pathname } = useLocation();
+  const matches = useMatches();
   const shortcut = useShortcutLabel();
   const segments = pathname.split("/").filter(Boolean);
   const crumbs = segments.map((s, i) => {
     const to = `/${segments.slice(0, i + 1).join("/")}`;
-    const label = NAV.find((n) => n.to === to)?.label ?? (/^[0-9a-f-]{20,}$/.test(s) ? "Details" : s.charAt(0).toUpperCase() + s.slice(1));
-    return { to, label };
+    const match = matches.find((m) => m.pathname === to && hasTitle(m.handle));
+    const label =
+      (match && hasTitle(match.handle) ? match.handle.title(match.loaderData as never) : null) ??
+      NAV.find((n) => n.to === to)?.label ??
+      (/^[0-9a-f-]{20,}$/.test(s) ? "Details" : s.charAt(0).toUpperCase() + s.slice(1));
+    return { to, label, routed: matches.some((m) => m.pathname === to) };
   });
+  const back = crumbs.length > 1 ? crumbs.slice(0, -1).reverse().find((c) => c.routed) : undefined;
 
   return (
     <div className="max-lg:sticky max-lg:top-0 max-lg:z-30 max-lg:border-b max-lg:border-stroke-secondary max-lg:bg-bg-primary/95 max-lg:pt-[env(safe-area-inset-top)] max-lg:backdrop-blur-sm">
       <div className="mx-auto flex h-[52px] w-full max-w-[1200px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[13.5px] text-text-tertiary">
+        {back ? (
+          <Link to={back.to} aria-label={`Back to ${back.label}`} className="-ml-2 flex min-w-0 items-center gap-1 py-2 pr-2 sm:hidden">
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={20} strokeWidth={1.5} className="shrink-0 text-text-secondary" />
+            <span className="truncate text-[15px] font-medium text-text-primary">{crumbs.at(-1)!.label}</span>
+          </Link>
+        ) : (
+          <Link to="/overview" aria-label="j*b home" className="sm:hidden">
+            <Wordmark className="h-6 w-auto" />
+          </Link>
+        )}
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[13.5px] text-text-tertiary max-sm:hidden">
           {crumbs.map((crumb, i) => (
             <span key={crumb.to} className="flex min-w-0 items-center gap-1.5">
               {i > 0 && <HugeiconsIcon icon={ArrowRight01Icon} size={14} strokeWidth={1.5} className="shrink-0" />}
@@ -101,3 +118,7 @@ function PathBar({ gmail }: { gmail: GmailStatus }) {
     </div>
   );
 }
+
+type TitleHandle = { title: (data: never) => string };
+
+const hasTitle = (handle: unknown): handle is TitleHandle => typeof (handle as TitleHandle | undefined)?.title === "function";

@@ -33,7 +33,7 @@ export function RoleCvs({ roles }: { roles: RoleCvRow[] }) {
           maxLength={120}
           className="font-sans normal-case"
         />
-        <Button type="button" size="medium" className="shrink-0 uppercase" disabled={busy || !title.trim()} onClick={create}>
+        <Button type="button" size="medium" className="shrink-0" disabled={busy || !title.trim()} onClick={create}>
           {busy ? "Opening…" : "Tailor"}
         </Button>
       </div>

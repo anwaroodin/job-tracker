@@ -13,6 +13,7 @@ import { Button } from "~/components/ui/button";
 import { SettingsNav } from "~/components/ui/settings-nav";
 import { stagger, PageTitle } from "~/components/ui/terminal";
 import { UnsavedBar } from "~/components/ui/unsaved-bar";
+import { UnsavedDialog } from "~/components/ui/unsaved-dialog";
 import { parseSavedAts } from "~/lib/ats";
 import { cvContent, personFor, pdfCv } from "~/lib/cv";
 import { userContext } from "~/server/auth/session.server";
@@ -26,6 +27,7 @@ import { getCv, getCvAts, getCvDesign, getProfile, saveCv, saveCvAts, saveCvDesi
 import { createRoleCv, listRoleCvs } from "~/server/db/queries/role-cv.server";
 import { tailoredCvCards } from "~/server/db/queries/tailored-cv.server";
 import { cvDesign, type Cv } from "~/types/cv";
+import { WordTitle } from "~/components/shell/brand-word";
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = context.get(envContext);
@@ -84,6 +86,7 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
   const setMode = (mode: "edit" | null) =>
     setParams(mode ? { [mode]: "" } : {}, { replace: true, preventScrollReset: true });
   const designFetcher = useFetcher();
+  const saveFetcher = useFetcher();
   const design = cvDesign(designFetcher.formData?.get("design") ?? loaderData.design);
   const chooseDesign = (value: string) => designFetcher.submit({ intent: "design", design: value }, { method: "post" });
   const data = pdfCv(loaderData.person, cvContent(cv), design);
@@ -106,7 +109,7 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
       <header className="rise flex flex-wrap items-end justify-between gap-6" style={stagger(0)}>
         <div>
           <PageTitle
-            title="Your CV"
+            title={<WordTitle word="resume" label="Your CV" />}
             sub="Everything you've done, in your own words. Each job's tailored CV is rewritten from this."
           />
         </div>
@@ -114,11 +117,11 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
           {saved && <span className="text-[13.5px] text-green-primary">Saved</span>}
           {editing && save}
           {editing ? (
-            <Button type="button" variant="ghost" size="medium" className="uppercase" onClick={() => setMode(null)} data-tour="done-cv">
+            <Button type="button" variant="ghost" size="medium" onClick={() => setMode(null)} data-tour="done-cv">
               Done
             </Button>
           ) : (
-            <Button type="button" size="medium" className="uppercase" onClick={() => setMode("edit")} data-tour="edit-cv">
+            <Button type="button" size="medium" onClick={() => setMode("edit")} data-tour="edit-cv">
               Edit CV
             </Button>
           )}
@@ -186,7 +189,31 @@ export default function CvPage({ loaderData, actionData }: Route.ComponentProps)
         </div>
       )}
 
-      {dirty && <UnsavedBar>{save}</UnsavedBar>}
+      {dirty && (
+        <UnsavedBar
+          busy={saving}
+          onDiscard={() => {
+            setCv(loaderData.cv);
+            setDirty(false);
+          }}
+        >
+          {save}
+        </UnsavedBar>
+      )}
+      <UnsavedDialog
+        dirty={dirty}
+        leaving={({ currentLocation, nextLocation }) =>
+          nextLocation.pathname !== currentLocation.pathname || !new URLSearchParams(nextLocation.search).has("edit")
+        }
+        onSave={() => {
+          saveFetcher.submit({ cv: JSON.stringify(cv) }, { method: "post" });
+          setDirty(false);
+        }}
+        onDiscard={() => {
+          setCv(loaderData.cv);
+          setDirty(false);
+        }}
+      />
     </Form>
   );
 }

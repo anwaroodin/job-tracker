@@ -1,4 +1,5 @@
-import { ArrowRightLeft, Check, Ellipsis, Unlink } from "lucide-react";
+import { ArrowDataTransferHorizontalIcon, MoreHorizontalIcon, Tick02Icon, Unlink03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
 import type { TimelineEmail } from "~/types/timeline";
@@ -10,9 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { statusColor } from "~/components/ui/terminal";
+import { StatusBadge } from "~/components/ui/status-badge";
 import { EMAIL_CATEGORIES } from "~/lib/email";
 import { MoveEmailDialog, type MoveTarget } from "~/components/application-detail/move-email-dialog";
+
+const Icon = ({ icon, size = 16, className }: { icon: IconSvgElement; size?: number; className?: string }) => (
+  <HugeiconsIcon icon={icon} size={size} strokeWidth={1.5} className={className} />
+);
 
 export function EmailActions({
   email,
@@ -42,7 +47,7 @@ export function EmailActions({
           title={`Jev wasn't sure. Confirm this email really is ${email.category}.`}
           className="flex h-7 items-center gap-1.5 px-2 text-[12.5px] text-accent-primary transition-colors hover:bg-ink/[0.06] hover:text-accent-secondary focus-visible:bg-ink/[0.06] focus-visible:outline-none disabled:opacity-40"
         >
-          <Check className="size-3.5" />
+          <Icon icon={Tick02Icon} size={14} />
           Confirm
         </button>
       )}
@@ -54,7 +59,7 @@ export function EmailActions({
             disabled={busy}
             className="flex size-7 shrink-0 items-center justify-center text-text-tertiary transition-colors hover:bg-ink/[0.06] hover:text-text-primary focus-visible:bg-ink/[0.06] focus-visible:text-text-primary focus-visible:outline-none disabled:opacity-40 data-[state=open]:bg-ink/[0.06] data-[state=open]:text-text-primary"
           >
-            <Ellipsis className="size-4" />
+            <Icon icon={MoreHorizontalIcon} />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-56 whitespace-nowrap">
@@ -63,7 +68,7 @@ export function EmailActions({
               {unsure && (
                 <>
                   <DropdownMenuItem onSelect={confirm}>
-                    <Check />
+                    <Icon icon={Tick02Icon} />
                     Confirm as {email.category}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -76,13 +81,8 @@ export function EmailActions({
                   disabled={category === current && !unsure}
                   onSelect={() => submit({ intent: "categorize", category })}
                 >
-                  <span
-                    aria-hidden
-                    className="size-[7px] shrink-0"
-                    style={{ background: statusColor(category) }}
-                  />
-                  {category}
-                  {category === current && <Check className="ml-auto" />}
+                  <StatusBadge status={category} variant="dot" />
+                  {category === current && <Icon icon={Tick02Icon} className="ml-auto" />}
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
@@ -90,12 +90,12 @@ export function EmailActions({
           )}
           {move && (
             <DropdownMenuItem onSelect={() => setMoving(true)}>
-              <ArrowRightLeft />
+              <Icon icon={ArrowDataTransferHorizontalIcon} />
               Wrong application…
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onSelect={() => submit({ intent: "unlink" })}>
-            <Unlink />
+            <Icon icon={Unlink03Icon} />
             Unlink from application
           </DropdownMenuItem>
         </DropdownMenuContent>

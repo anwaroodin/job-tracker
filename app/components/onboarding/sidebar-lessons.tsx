@@ -1,4 +1,5 @@
-import { Check, X } from "lucide-react";
+import { Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { motion } from "motion/react";
 import { Link } from "react-router";
 import { cn } from "~/lib/cn";
@@ -35,7 +36,7 @@ export function SidebarLessons({ gmailConnected, collapsed }: { gmailConnected: 
           title="Hide"
           aria-label="Hide getting started"
         >
-          <X className="size-3.5" />
+          <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={1.5} />
         </button>
       </header>
       <p className="mt-0.5 text-[12px] text-text-tertiary">
@@ -56,7 +57,7 @@ export function SidebarLessons({ gmailConnected, collapsed }: { gmailConnected: 
               )}
             >
               {finished(id) ? (
-                <Check className="size-3.5 shrink-0 text-green-primary" strokeWidth={2.5} />
+                <HugeiconsIcon icon={Tick02Icon} size={14} strokeWidth={1.5} className="shrink-0 text-green-primary" />
               ) : (
                 <span aria-hidden className={cn("size-3.5 shrink-0 rounded-full border", id === next ? "border-brand" : "border-stroke-primary")} />
               )}

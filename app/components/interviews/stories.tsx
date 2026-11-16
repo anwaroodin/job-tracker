@@ -91,7 +91,7 @@ export function DraftStories({ request, onDrafted }: { request: TailorRequest | 
           type="button"
           variant="secondary"
           size="small"
-          className="h-9 gap-2 border-stroke-secondary bg-bg-primary px-3 text-[13.5px] text-text-primary hover:border-stroke-primary hover:bg-bg-primary"
+          className="h-9 gap-2 px-3 text-[13.5px]"
           disabled={running || runner !== "ready"}
           onClick={draft}
         >

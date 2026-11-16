@@ -120,7 +120,7 @@ export function ApplicationRowItem(props: ApplicationRowItemProps) {
               {app.company}
             </Link>
             {app.starred && <FlagMark status={app.status} />}
-            {Boolean(app.unread) && <NewBadge count={app.unread} className="normal-case tracking-normal" />}
+            {Boolean(app.unread) && <NewBadge count={app.unread} />}
           </div>
           <p title={subtitle} className="truncate text-[12.5px] text-text-tertiary">
             {subtitle || "—"}

@@ -1,10 +1,10 @@
 import {
+  Logout01Icon,
   Search01Icon,
   SidebarLeftIcon,
   UnfoldMoreIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { LogOut } from "lucide-react";
 import { motion } from "motion/react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { useApplicationViews } from "~/components/applications/view-tabs";
@@ -24,6 +24,7 @@ import type { GmailStatus } from "~/types/gmail";
 import { usePersisted } from "~/hooks/use-persisted";
 import { useShortcutLabel } from "~/hooks/use-shortcut-label";
 import { cn } from "~/lib/cn";
+import { Avatar } from "./avatar";
 import { NAV, NAV_ICONS } from "./nav";
 import { Mark, Wordmark } from "./wordmark";
 import { SidebarLessons } from "~/components/onboarding/sidebar-lessons";
@@ -159,13 +160,7 @@ export function Sidebar({ user, gmail, unread }: SidebarProps) {
                 collapsed ? "justify-center p-1.5" : "p-2",
               )}
             >
-              {user.image ? (
-                <img src={user.image} alt="" referrerPolicy="no-referrer" className="size-8 shrink-0 rounded-full" />
-              ) : (
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-semibold text-white">
-                  {(user.name ?? user.email).slice(0, 1).toUpperCase()}
-                </div>
-              )}
+              <Avatar user={user} />
               {!collapsed && (
                 <>
                   <div className="min-w-0 flex-1">
@@ -177,11 +172,14 @@ export function Sidebar({ user, gmail, unread }: SidebarProps) {
               )}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-52">
-            <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+          <DropdownMenuContent side="top" align="start" className="w-60">
+            <DropdownMenuLabel className="flex flex-col gap-0.5 px-2.5 pb-2 pt-1.5 font-normal">
+              <span className="truncate text-[13.5px] font-medium text-text-primary">{user.name ?? user.email}</span>
+              {user.name && <span className="truncate text-[12.5px] text-text-tertiary">{user.email}</span>}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={signOut}>
-              <LogOut />
+              <HugeiconsIcon icon={Logout01Icon} size={16} strokeWidth={1.5} />
               Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -1,4 +1,5 @@
-import { ArrowUpRight, CalendarClock, Check } from "lucide-react";
+import { ArrowUpRight01Icon, Calendar03Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useFetcher } from "react-router";
 import type { TimelineEmail } from "~/types/timeline";
 import { Button } from "~/components/ui/button";
@@ -76,7 +77,7 @@ function EmailDetails({ email }: { email: TimelineEmail }) {
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[12.5px]">
       {email.eventAt && (
         <span className="flex items-center gap-1.5 text-text-primary" title={email.eventText ?? undefined}>
-          <CalendarClock className="size-3.5 text-text-tertiary" />
+          <HugeiconsIcon icon={Calendar03Icon} size={14} strokeWidth={1.5} className="text-text-tertiary" />
           <span className="text-text-tertiary">{eventLabel(email.category ?? "")}</span>
           {formatEventAt(email.eventAt)}
         </span>
@@ -85,7 +86,7 @@ function EmailDetails({ email }: { email: TimelineEmail }) {
         <Button asChild variant="secondary" size="tiny">
           <a href={email.actionUrl} target="_blank" rel="noopener noreferrer" title={email.actionText ?? email.actionUrl}>
             {actionLabel(email.actionUrl, email.category ?? "")}
-            <ArrowUpRight />
+            <HugeiconsIcon icon={ArrowUpRight01Icon} size={16} strokeWidth={1.5} />
           </a>
         </Button>
       )}
@@ -96,7 +97,7 @@ function EmailDetails({ email }: { email: TimelineEmail }) {
           size="tiny"
           onClick={() => fetcher.submit({ intent: "replied", id: email.id }, { method: "post" })}
         >
-          <Check />
+          <HugeiconsIcon icon={Tick02Icon} size={16} strokeWidth={1.5} />
           Mark replied
         </Button>
       )}

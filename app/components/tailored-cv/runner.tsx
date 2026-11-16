@@ -14,7 +14,7 @@ export function useRunnerStatus() {
 export function RunnerOffline() {
   return (
     <>
-      Start the runner on this computer with <code className="font-mono text-text-secondary">npm run runner</code>, then reload.
+      Start the runner on this computer with <code className="bg-ink/[0.06] px-1 font-mono text-[12.5px] text-text-primary">npm run runner</code>, then reload this page.
     </>
   );
 }

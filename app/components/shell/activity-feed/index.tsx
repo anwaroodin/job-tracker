@@ -66,7 +66,7 @@ export function ActivityBell({ initial }: { initial: GmailStatus }) {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.4, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 26 }}
-                className="absolute -right-1 -top-1 min-w-4 bg-green-primary px-1 text-center font-mono text-[9.5px] leading-4 tabular-nums text-text-inverse"
+                className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-green-primary px-1 text-center font-sans text-[10.5px] font-medium leading-4 tabular-nums text-text-inverse"
               >
                 {unseen > 99 ? "99+" : unseen}
               </motion.span>

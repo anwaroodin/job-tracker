@@ -140,12 +140,18 @@ export interface InterviewPrep {
   preparedAt: string;
 }
 
+export interface ResearchPoint {
+  title: string;
+  detail: string;
+}
+
 export interface CompanyResearch {
   summary: string;
-  values: string[];
-  lookingFor: string[];
-  culture: string[];
-  news: string[];
+  facts: { label: string; value: string }[];
+  values: ResearchPoint[];
+  lookingFor: ResearchPoint[];
+  culture: ResearchPoint[];
+  news: (ResearchPoint & { date: string })[];
   sources: { title: string; url: string }[];
   researchedAt: string;
 }

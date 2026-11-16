@@ -23,7 +23,7 @@ export function UnsureEmailsBanner({ emails }: { emails: UnsureEmail[] }) {
         <span className="text-text-secondary">
           {emails.length} {emails.length === 1 ? "email" : "emails"} might not be about jobs. Kept until you decide.
         </span>
-        <Button type="button" variant="ghost" size="tiny" className="uppercase" onClick={() => setOpen((o) => !o)}>
+        <Button type="button" variant="ghost" size="tiny" onClick={() => setOpen((o) => !o)}>
           {open ? "[Hide ▲]" : "[Review ▼]"}
         </Button>
       </div>
@@ -56,7 +56,7 @@ export function UnsureEmailRow({ email }: { email: UnsureEmail }) {
           type="button"
           variant="ghost"
           size="small"
-          className="font-sans text-[13px] normal-case tracking-normal"
+          className="text-[13px]"
           onClick={() => submit({ intent: "not-job" })}
         >
           <HugeiconsIcon icon={Delete02Icon} size={15} strokeWidth={1.5} />

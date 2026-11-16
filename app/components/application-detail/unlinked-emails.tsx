@@ -1,4 +1,5 @@
-import { Link2 } from "lucide-react";
+import { Link01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
 import type { TimelineEmail } from "~/types/timeline";
@@ -42,7 +43,7 @@ function UnlinkedEmail({ email }: { email: TimelineEmail }) {
         onClick={() => fetcher.submit({ intent: "relink", id: email.id }, { method: "post" })}
         className="flex shrink-0 items-center gap-1.5 text-[12.5px] text-text-tertiary transition-colors hover:text-text-primary disabled:opacity-40"
       >
-        <Link2 className="size-3.5" />
+        <HugeiconsIcon icon={Link01Icon} size={14} strokeWidth={1.5} />
         Relink
       </button>
     </li>

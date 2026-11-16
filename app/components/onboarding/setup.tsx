@@ -1,20 +1,23 @@
+import { ArrowRight01Icon, BookOpen01Icon, CheckmarkCircle02Icon, Mail01Icon, UserIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { Form, Link, useNavigation } from "react-router";
 import { GmailConnectButton } from "~/components/gmail/gmail-connect";
 import { Field, FieldGrid } from "~/components/profile/field";
+import { Wordmark } from "~/components/shell/wordmark";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { stagger, two } from "~/components/ui/terminal";
-import { TextScramble } from "~/components/ui/text-scramble";
+import { SANS_PAGE } from "~/components/ui/page-section";
+import { stagger } from "~/components/ui/terminal";
 import { cn } from "~/lib/cn";
 import type { GmailStatus } from "~/types/gmail";
 import type { ProfileForm } from "~/types/profile";
-import logo from "~/assets/job-tracker.png";
 import { LESSON_IDS, LESSONS } from "./lessons";
 
 export const SETUP_STEPS = ["intro", "details", "gmail", "done"] as const;
 export type SetupStep = (typeof SETUP_STEPS)[number];
-const LABELS: Record<SetupStep, string> = { intro: "Welcome", details: "You", gmail: "Gmail", done: "Ready" };
+const LABELS: Record<SetupStep, string> = { intro: "Welcome", details: "Your details", gmail: "Gmail", done: "Ready" };
+
 
 interface Props {
   step: SetupStep;
@@ -23,43 +26,57 @@ interface Props {
   gmail: GmailStatus;
 }
 
+function Stages({ at }: { at: number }) {
+  return (
+    <ol aria-label={`Step ${at + 1} of ${SETUP_STEPS.length}`} className="grid" style={{ gridTemplateColumns: `repeat(${SETUP_STEPS.length}, minmax(0, 1fr))` }}>
+      {SETUP_STEPS.map((s, i) => {
+        const reached = i <= at;
+        return (
+          <li key={s} className="flex min-w-0 flex-col gap-2.5" aria-current={i === at ? "step" : undefined}>
+            <span aria-hidden className="flex items-center">
+              <span
+                className={cn(
+                  "size-3 shrink-0 rounded-full border-2",
+                  i < at ? "border-green-primary bg-green-primary" : i === at ? "border-text-primary bg-text-primary ring-4 ring-ink/[0.07]" : "border-stroke-primary bg-bg-primary",
+                )}
+              />
+              {i < SETUP_STEPS.length - 1 && <span className={cn("mx-1.5 h-0.5 flex-1", i < at ? "bg-green-primary" : "bg-stroke-secondary")} />}
+            </span>
+            <span
+              className={cn(
+                "truncate pr-2 text-[13.5px]",
+                i === at ? "font-medium text-text-primary" : reached ? "text-text-secondary" : "text-text-tertiary",
+                i !== at && "max-sm:hidden",
+              )}
+            >
+              {LABELS[s]}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function SetupScreen({ step, user, personal, gmail }: Props) {
   const at = SETUP_STEPS.indexOf(step);
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-bg-primary font-mono text-[12.5px] uppercase tracking-[0.04em]">
+    <div className={cn("fixed inset-0 z-[60] overflow-y-auto bg-bg-primary", SANS_PAGE)}>
       <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-4 py-8 sm:px-6">
         <header className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-2.5 normal-case">
-            <img src={logo} className="size-7 mix-blend-difference" alt="" />
-            <span className="text-[15px] font-medium tracking-[-0.03em] text-text-primary">job-tracker</span>
-          </span>
+          <Wordmark className="h-7 w-auto" />
           {step !== "done" && (
             <Form method="post">
-              <Button type="submit" name="intent" value="skip" variant="ghost" size="tiny">
+              <Button type="submit" name="intent" value="skip" variant="ghost" className="text-text-tertiary">
                 Skip setup
               </Button>
             </Form>
           )}
         </header>
 
-        <ol className="mt-10 grid grid-cols-4 gap-2 text-[10.5px] tracking-[0.1em]">
-          {SETUP_STEPS.map((s, i) => (
-            <li key={s} className={cn("flex flex-col gap-2", i <= at ? "text-text-primary" : "text-text-tertiary")}>
-              <span className="relative h-px bg-stroke-primary">
-                <motion.span
-                  className="absolute inset-y-0 left-0 bg-accent-primary"
-                  initial={false}
-                  animate={{ width: i <= at ? "100%" : "0%" }}
-                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                />
-              </span>
-              <span>
-                <b className="mr-1.5 font-semibold">[{two(i + 1)}]</b>
-                <span className={cn(i !== at && "max-sm:hidden")}>{LABELS[s]}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
+        <div className="mt-10">
+          <Stages at={at} />
+        </div>
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
@@ -81,40 +98,52 @@ export function SetupScreen({ step, user, personal, gmail }: Props) {
   );
 }
 
-function Heading({ eyebrow, children }: { eyebrow: string; children: string }) {
+function Heading({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <>
-      <p className="text-[11px] tracking-[0.12em] text-text-tertiary">{eyebrow}</p>
-      <TextScramble as="h1" className="mt-5 text-[26px] font-light normal-case leading-[1.2] tracking-tight text-text-primary sm:text-[32px]">
-        {children}
-      </TextScramble>
-    </>
+    <div className="max-w-lg">
+      <h1 className="text-[26px] font-medium leading-tight text-text-primary sm:text-[30px]">{title}</h1>
+      <p className="mt-2.5 text-[14.5px] leading-relaxed text-text-secondary">{children}</p>
+    </div>
   );
 }
 
-function Copy({ children }: { children: React.ReactNode }) {
-  return <p className="mt-4 font-sans text-[14px] normal-case leading-relaxed tracking-normal text-text-secondary">{children}</p>;
+function Tile({ icon }: { icon: IconSvgElement }) {
+  return (
+    <span className="grid size-9 shrink-0 place-items-center bg-ink/[0.05] text-text-secondary">
+      <HugeiconsIcon icon={icon} size={18} strokeWidth={1.5} />
+    </span>
+  );
 }
+
+const PLAN: { icon: IconSvgElement; title: string; text: string }[] = [
+  { icon: UserIcon, title: "Your details", text: "Used to fill in application forms" },
+  { icon: Mail01Icon, title: "Gmail", text: "So job emails update your applications" },
+  { icon: BookOpen01Icon, title: "Short lessons", text: "Whenever you want them" },
+];
 
 function Intro({ name }: { name: string }) {
   return (
     <div>
-      <Heading eyebrow="Setup · 2 minutes">{name ? `Welcome, ${name}.` : "Welcome."}</Heading>
-      <Copy>
-        job-tracker keeps every application in one place and updates it from your inbox. Two quick things and you're in:
-        your details, then Gmail. Both can be changed or skipped.
-      </Copy>
-      <ul className="mt-8 flex flex-col gap-2 text-text-secondary">
-        {["Your details, used to fill in applications", "Gmail, so job emails update the tracker", "Short lessons, whenever you want them"].map((t, i) => (
-          <li key={t} className="rise flex gap-3" style={stagger(4 + i * 3)}>
-            <span className="text-text-accent">▸</span>
-            {t}
+      <Heading title={name ? `Welcome, ${name}` : "Welcome"}>
+        j*b keeps every application in one place and updates it from your inbox. Two quick things and you're in. Both can be changed or skipped.
+      </Heading>
+      <ul className="mt-8 flex flex-col border border-stroke-secondary">
+        {PLAN.map(({ icon, title, text }, i) => (
+          <li key={title} className="rise flex items-center gap-3 border-b border-stroke-secondary px-3 py-3 last:border-b-0" style={stagger(3 + i * 2)}>
+            <Tile icon={icon} />
+            <div className="min-w-0">
+              <p className="font-medium text-text-primary">{title}</p>
+              <p className="text-[12.5px] text-text-tertiary">{text}</p>
+            </div>
           </li>
         ))}
       </ul>
-      <div className="mt-10">
-        <Button asChild size="large">
-          <Link to="?step=details">Let's go</Link>
+      <div className="mt-8">
+        <Button asChild>
+          <Link to="?step=details">
+            Let's go
+            <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={1.5} />
+          </Link>
         </Button>
       </div>
     </div>
@@ -126,35 +155,34 @@ function Details({ user, personal }: Pick<Props, "user" | "personal">) {
   const [first = "", ...rest] = (user.name ?? "").split(" ");
   return (
     <Form method="post">
-      <Heading eyebrow="About you">The basics.</Heading>
-      <Copy>The extension uses these to fill in application forms. The rest of your profile can wait.</Copy>
-      <div className="mt-8 flex flex-col gap-4">
+      <Heading title="The basics">The extension uses these to fill in application forms. The rest of your profile can wait.</Heading>
+      <div className="mt-8">
         <FieldGrid cols={2}>
           <Field label="First name">
-            <Input name="firstName" defaultValue={personal.firstName || first} autoComplete="given-name" autoFocus />
+            <Input name="firstName" defaultValue={personal.firstName || first} autoComplete="given-name" autoFocus className="h-9 text-[14px]" />
           </Field>
           <Field label="Last name">
-            <Input name="lastName" defaultValue={personal.lastName || rest.join(" ")} autoComplete="family-name" />
+            <Input name="lastName" defaultValue={personal.lastName || rest.join(" ")} autoComplete="family-name" className="h-9 text-[14px]" />
           </Field>
           <Field label="Contact email">
-            <Input name="email" type="email" defaultValue={personal.email || user.email} autoComplete="email" />
+            <Input name="email" type="email" defaultValue={personal.email || user.email} autoComplete="email" className="h-9 text-[14px]" />
           </Field>
           <Field label="Phone">
-            <Input name="phone" type="tel" defaultValue={personal.phone} autoComplete="tel" />
+            <Input name="phone" type="tel" defaultValue={personal.phone} autoComplete="tel" className="h-9 text-[14px]" />
           </Field>
           <Field label="City">
-            <Input name="city" defaultValue={personal.address.city} autoComplete="address-level2" />
+            <Input name="city" defaultValue={personal.address.city} autoComplete="address-level2" className="h-9 text-[14px]" />
           </Field>
           <Field label="Country">
-            <Input name="country" defaultValue={personal.address.country} autoComplete="country-name" />
+            <Input name="country" defaultValue={personal.address.country} autoComplete="country-name" className="h-9 text-[14px]" />
           </Field>
         </FieldGrid>
       </div>
-      <div className="mt-10 flex items-center gap-3">
-        <Button type="submit" name="intent" value="details" size="large" disabled={saving}>
+      <div className="mt-8 flex items-center gap-2">
+        <Button type="submit" name="intent" value="details" disabled={saving}>
           {saving ? "Saving…" : "Continue"}
         </Button>
-        <Button asChild variant="ghost" size="large">
+        <Button asChild variant="ghost">
           <Link to="?step=gmail">Skip</Link>
         </Button>
       </div>
@@ -165,27 +193,38 @@ function Details({ user, personal }: Pick<Props, "user" | "personal">) {
 function Gmail({ gmail }: { gmail: GmailStatus }) {
   return (
     <div>
-      <Heading eyebrow="Connect Gmail">Let your inbox do the logging.</Heading>
-      <Copy>
-        job-tracker reads job emails, matches each one to its application and moves the status along: applied, interview,
-        offer, rejected. Access is read-only, and emails it isn't sure about wait for you to confirm.
-      </Copy>
-      <div className="mt-8 flex items-center justify-between gap-4 border border-stroke-secondary bg-bg-secondary px-4 py-3">
-        <span className="flex items-center gap-3">
-          <span className="flex size-8 items-center justify-center bg-bg-primary text-[12px] font-semibold text-text-primary [box-shadow:inset_0_0_0_1px_var(--stroke-secondary)]">
-            G
+      <Heading title="Let your inbox do the logging">
+        j*b reads job emails, matches each one to its application and moves the status along: applied, interview, offer, rejected.
+      </Heading>
+      <div className="mt-8 flex items-center gap-3 border border-stroke-secondary px-3 py-3">
+        <Tile icon={Mail01Icon} />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-text-primary">Gmail</p>
+          <p className="text-[12.5px] text-text-tertiary">Read-only. Emails it isn't sure about wait for you to confirm.</p>
+        </div>
+        {gmail.connected ? (
+          <span className="flex shrink-0 items-center gap-1.5 text-[13px] font-medium text-green-primary">
+            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} strokeWidth={1.5} />
+            Connected
           </span>
-          <span className="text-text-primary">Gmail · read-only</span>
-        </span>
-        <GmailConnectButton connected={gmail.connected} broken={!!gmail.lastError} callbackURL="/welcome?step=done" />
+        ) : (
+          <GmailConnectButton connected={false} broken={!!gmail.lastError} callbackURL="/welcome?step=done" className="h-9 px-3.5 text-[13.5px]" />
+        )}
       </div>
-      <div className="mt-10 flex items-center gap-3">
-        <Button asChild variant="ghost" size="large">
+      <div className="mt-8 flex items-center gap-2">
+        {gmail.connected && (
+          <Button asChild>
+            <Link to="?step=done">Continue</Link>
+          </Button>
+        )}
+        <Button asChild variant="ghost">
           <Link to="?step=details">Back</Link>
         </Button>
-        <Button asChild variant="ghost" size="large">
-          <Link to="?step=done">Not now</Link>
-        </Button>
+        {!gmail.connected && (
+          <Button asChild variant="ghost">
+            <Link to="?step=done">Not now</Link>
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -196,13 +235,13 @@ function Done({ connected }: { connected: boolean }) {
   return (
     <Form method="post">
       <input type="hidden" name="intent" value="finish" />
-      <Heading eyebrow="Ready">You're set.</Heading>
-      <Copy>
+      <Heading title="You're set">
         {connected
           ? "Gmail is connected, so applications show up as the sync finds them. Want a quick lesson in the meantime?"
-          : "Gmail isn't connected yet: the Connect Gmail lesson shows where to do it. Pick a lesson, or go straight in."}
-      </Copy>
-      <div className="mt-8 flex flex-col">
+          : "Gmail isn't connected yet. The Connect Gmail lesson shows where to do it. Pick a lesson, or go straight in."}
+      </Heading>
+      <div className="mt-8 flex flex-col border border-stroke-secondary">
+        <p className="border-b border-stroke-secondary px-3 py-2 text-[12px] font-medium text-text-tertiary">Lessons</p>
         {LESSON_IDS.filter((id) => !(connected && id === "gmail")).map((id, i) => (
           <button
             key={id}
@@ -211,19 +250,20 @@ function Done({ connected }: { connected: boolean }) {
             value={id}
             disabled={submitting}
             style={stagger(3 + i * 2)}
-            className="rise group flex cursor-pointer items-baseline gap-3 border-t border-dashed border-ink/15 px-1 py-3 text-left uppercase transition-colors hover:bg-text-primary hover:text-text-inverse"
+            className="rise flex cursor-pointer items-center gap-3 border-b border-stroke-secondary px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-ink/[0.04] disabled:opacity-60"
           >
-            <span className="text-text-tertiary group-hover:text-text-inverse/70">{two(i + 1)}</span>
-            <span className="text-text-primary group-hover:text-text-inverse">{LESSONS[id].title}</span>
-            <span className="ml-auto hidden font-sans text-[12px] normal-case tracking-normal text-text-tertiary group-hover:text-text-inverse/70 sm:block">
-              {LESSONS[id].blurb}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium text-text-primary">{LESSONS[id].title}</span>
+              <span className="block truncate text-[12.5px] text-text-tertiary">{LESSONS[id].blurb}</span>
             </span>
+            <span className="shrink-0 text-[12.5px] tabular-nums text-text-tertiary">{LESSONS[id].steps.length} steps</span>
+            <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
           </button>
         ))}
       </div>
-      <div className="mt-10">
-        <Button type="submit" size="large" disabled={submitting}>
-          Go to dashboard
+      <div className="mt-8">
+        <Button type="submit" disabled={submitting}>
+          Go to j*b
         </Button>
       </div>
     </Form>

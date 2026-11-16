@@ -47,10 +47,21 @@ const usage = new Map<string, { stages: RunnerUsage[]; before: PlanUsage | null 
 export const sessionId = (target: TailorTarget) => ("applicationId" in target ? `job:${target.applicationId}` : `role:${target.roleId}`);
 export const isActive = (s: TailoringSession | undefined) => !!s && (s.status === "queued" || s.status === "running");
 
+const ERRORS: Record<string, string> = {
+  not_authenticated: "You've been signed out. Sign in again, then tailor again.",
+  too_large: "The reply from Claude was too large to save. Try again, or pick a different model.",
+  invalid_json: "The request couldn't be read. Reload the page and tailor again.",
+  no_job_description: "This application has no job description. Add one in Edit details, then tailor again.",
+  no_cv: "Your CV is empty. Add your experience on the CV page, then tailor again.",
+  invalid_stage: "Tailoring got out of step. Tailor again to start over.",
+};
+
 async function postStep(body: object): Promise<Step> {
   const res = await fetch("/api/cv/tailor", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(`Tailoring failed (${res.status})`);
-  return res.json();
+  if (res.ok) return res.json();
+  const reply = (await res.json().catch(() => null)) as { error?: unknown } | null;
+  const code = typeof reply?.error === "string" ? reply.error : null;
+  throw new Error((code && ERRORS[code]) ?? `The server couldn't finish this step (error ${res.status}). Try again in a moment.`);
 }
 
 async function run(id: string) {

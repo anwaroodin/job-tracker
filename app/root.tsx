@@ -13,12 +13,14 @@ import { NotFound } from "~/components/shell/not-found";
 import appCss from "./app.css?url";
 import { COLOR_SCHEMES, THEME_FROM_COOKIE_SCRIPT, themeFromCookie } from "~/lib/theme";
 
-export const meta: Route.MetaFunction = () => [{ title: "job-tracker" }];
+export const meta: Route.MetaFunction = () => [{ title: "j*b" }];
 
 export const links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: appCss },
   { rel: "stylesheet", href: "/webfonts.css" },
   { rel: "manifest", href: "/manifest.webmanifest" },
+  { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
+  { rel: "icon", type: "image/png", href: "/favicon-64x64.png" },
   { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 ];
 
@@ -45,8 +47,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="job-tracker" />
+        <meta name="apple-mobile-web-app-status-bar-style" content={theme === "dark" ? "black-translucent" : "default"} />
+        <meta name="apple-mobile-web-app-title" content="j*b" />
         <Meta />
         <Links />
       </head>

@@ -41,7 +41,7 @@ export function listingFacts(job: {
   location: string;
   workType: string;
   employmentType?: string;
-  salary: string;
+  salary?: string;
   postedAt?: string | null;
   applicants?: string;
 }): Fact[] {
@@ -49,7 +49,7 @@ export function listingFacts(job: {
     { key: "location", text: job.location },
     { key: "workType", text: job.workType },
     { key: "employment", text: job.employmentType ?? "" },
-    { key: "salary", text: job.salary, tone: "salary" },
+    { key: "salary", text: job.salary ?? "", tone: "salary" },
     { key: "posted", text: job.postedAt ? postedAgo(job.postedAt) : "" },
     { key: "applicants", text: job.applicants ?? "", tone: "applicants" },
   ];
