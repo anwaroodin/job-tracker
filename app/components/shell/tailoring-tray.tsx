@@ -1,60 +1,65 @@
+import { Cancel01Icon, MinusSignIcon, RefreshIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { useSelector } from "@legendapp/state/react";
-import { Minus, X } from "lucide-react";
 import { Link } from "react-router";
 import { CompanyLogo } from "~/components/applications/company-logo";
-import { Button } from "~/components/ui/button";
+import { Meter } from "~/components/ui/meter";
 import { usePersisted } from "~/hooks/use-persisted";
 import { cn } from "~/lib/cn";
-import { removeSession, stageIndex, STAGES, tailoring$, type SessionStatus, type TailoringSession } from "~/lib/state/tailoring";
+import { removeSession, stageIndex, STAGES, startSession, tailoring$, type SessionStatus, type TailoringSession } from "~/lib/state/tailoring";
 import { tailoringTray$ } from "~/lib/state/tailoring-tray";
 
-const TONES: Record<SessionStatus, string> = {
-  running: "text-accent-primary",
-  queued: "text-text-tertiary",
-  questions: "text-red-primary",
-  done: "text-green-primary",
-  failed: "text-red-primary",
+const TONES: Record<SessionStatus, { text: string; bar: string }> = {
+  running: { text: "text-text-secondary", bar: "bg-accent-primary" },
+  queued: { text: "text-text-tertiary", bar: "bg-text-tertiary" },
+  questions: { text: "text-accent-primary", bar: "bg-accent-primary" },
+  done: { text: "text-green-primary", bar: "bg-green-primary" },
+  failed: { text: "text-red-primary", bar: "bg-red-primary" },
 };
 
-const CELLS = 14;
+const SURFACE = "border border-stroke-primary bg-sidebar-active font-sans text-[14px] normal-case tracking-normal shadow-[0_24px_64px_rgba(0,0,0,0.22)]";
 
 function statusText(s: TailoringSession) {
-  if (s.status === "running") return STAGES[stageIndex(s.stage)]?.doing.replace("…", "") ?? "Starting";
-  if (s.status === "questions") return `Needs ${s.questions?.length ?? 0} answers`;
-  if (s.status === "failed") return "Failed";
-  return s.status === "done" ? "Done" : "Queued";
+  if (s.status === "running") return STAGES[stageIndex(s.stage)]?.doing ?? "Starting…";
+  if (s.status === "questions") return `${s.questions?.length ?? 0} questions need your answers`;
+  if (s.status === "failed") return s.error ?? "Tailoring stopped";
+  return s.status === "done" ? "Done. Open it to review" : "Queued";
 }
 
-function progressBar(s: TailoringSession) {
-  const share = s.status === "done" ? 1 : Math.max(0, stageIndex(s.stage)) / STAGES.length;
-  const filled = Math.round(share * CELLS);
-  return "█".repeat(filled) + "░".repeat(CELLS - filled);
+const share = (s: TailoringSession) => (s.status === "done" ? 100 : (Math.max(0, stageIndex(s.stage)) / STAGES.length) * 100);
+
+function IconButton({ icon, label, onClick }: { icon: IconSvgElement; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="grid size-7 shrink-0 cursor-pointer place-items-center text-text-tertiary transition-colors hover:bg-ink/[0.05] hover:text-text-primary"
+    >
+      <HugeiconsIcon icon={icon} size={15} strokeWidth={1.5} />
+    </button>
+  );
 }
 
 function Row({ session }: { session: TailoringSession }) {
+  const tone = TONES[session.status];
+  const retry = () => startSession({ company: session.company, role: session.role, href: session.href, target: session.target, model: session.model, letter: session.letter });
   return (
-    <li className="group flex items-center gap-3 border-b border-stroke-secondary px-3.5 py-2.5 last:border-b-0">
-      <CompanyLogo company={"applicationId" in session.target ? session.company : ""} className="size-6 text-[11px]" />
-      <Link to={session.href} className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="truncate font-sans text-[13px] normal-case tracking-normal text-text-primary group-hover:text-accent-primary">
-          {session.company}
-          <span className="text-text-tertiary"> · {session.role}</span>
+    <li className="flex items-start gap-3 px-3 py-2.5 hover:bg-ink/[0.04]">
+      <CompanyLogo company={"applicationId" in session.target ? session.company : ""} className="mt-0.5 size-8 text-[13px]" />
+      <Link to={session.href} className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span className="min-w-0">
+          <span className="block truncate font-medium text-text-primary">{session.company}</span>
+          <span className="block truncate text-[12.5px] text-text-tertiary">{session.role}</span>
         </span>
-        <span className={cn("flex items-center gap-2 text-[10px] tracking-[0.06em]", TONES[session.status])}>
-          <span className="tracking-normal">{progressBar(session)}</span>
-          <span className="truncate">{statusText(session)}</span>
+        {session.status !== "failed" && <Meter share={share(session)} className={tone.bar} />}
+        <span className={cn("text-[12.5px] leading-snug", tone.text, session.status === "failed" ? "line-clamp-3" : "truncate")} title={statusText(session)}>
+          {statusText(session)}
         </span>
       </Link>
-      {session.status !== "running" && (
-        <button
-          type="button"
-          onClick={() => removeSession(session.id)}
-          aria-label={`Remove ${session.company}`}
-          className="cursor-pointer p-1 text-text-tertiary transition-colors hover:text-text-primary"
-        >
-          <X className="size-3.5" />
-        </button>
-      )}
+      {session.status === "failed" && <IconButton icon={RefreshIcon} label={`Try ${session.company} again`} onClick={retry} />}
+      {session.status !== "running" && <IconButton icon={Cancel01Icon} label={`Remove ${session.company}`} onClick={() => removeSession(session.id)} />}
     </li>
   );
 }
@@ -67,34 +72,41 @@ export function TailoringTray() {
   const count = (status: SessionStatus) => sessions.filter((s) => s.status === status).length;
   const running = count("running") + count("queued");
   const asking = count("questions");
+  const failed = count("failed");
   const done = count("done");
+  const dot = failed ? "bg-red-primary" : asking ? "bg-accent-primary" : running ? "bg-accent-primary animate-pulse" : "bg-green-primary";
+  const summary = [
+    running > 0 && `${running} running`,
+    asking > 0 && `${asking} need you`,
+    failed > 0 && `${failed} stopped`,
+    done > 0 && `${done} done`,
+  ].filter(Boolean);
 
   return (
-    <section
-      aria-label="Tailoring sessions"
-      className="fixed bottom-[calc(var(--bottom-nav)+1rem)] right-4 z-40 font-mono uppercase lg:bottom-6 lg:right-6"
-    >
+    <section aria-label="Tailoring" className="fixed bottom-[calc(var(--bottom-nav)+1rem)] right-4 z-40 lg:bottom-6 lg:right-6">
       {minimised ? (
-        <Button type="button" variant="secondary" size="small" className="uppercase" onClick={() => tailoringTray$.minimised.set(false)}>
-          <span className={cn("size-1.5 rounded-full", running ? "bg-accent-primary" : "bg-text-tertiary")} />
-          Tailoring {running}
-          {asking > 0 && <span className="text-red-primary">· {asking} need you</span>}
-          {done > 0 && <span className="text-green-primary">· {done} done</span>}
-        </Button>
+        <button
+          type="button"
+          onClick={() => tailoringTray$.minimised.set(false)}
+          className={cn(SURFACE, "flex h-10 cursor-pointer items-center gap-2 px-3.5 text-[13.5px] transition-colors hover:bg-sidebar")}
+        >
+          <span aria-hidden className={cn("size-2 rounded-full", dot)} />
+          <span className="font-medium text-text-primary">Tailoring</span>
+          <span className="text-text-tertiary">{summary.join(" · ")}</span>
+        </button>
       ) : (
-        <div className="w-[360px] max-w-[calc(100vw-2rem)] border border-stroke-primary bg-bg-secondary">
-          <div className="flex items-center justify-between border-b border-stroke-secondary py-1.5 pl-3.5 pr-1.5 text-[10.5px] tracking-[0.12em] text-text-tertiary">
-            Tailoring · {sessions.length} {sessions.length === 1 ? "session" : "sessions"}
-            <button
-              type="button"
-              onClick={() => tailoringTray$.minimised.set(true)}
-              aria-label="Minimise"
-              className="cursor-pointer p-1.5 transition-colors hover:text-text-primary"
-            >
-              <Minus className="size-3.5" />
-            </button>
+        <div className={cn(SURFACE, "w-[360px] max-w-[calc(100vw-2rem)]")}>
+          <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-3">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 font-medium text-text-primary">
+                <span aria-hidden className={cn("size-2 rounded-full", dot)} />
+                Tailoring
+              </p>
+              <p className="truncate pl-4 text-[12.5px] text-text-tertiary">{summary.join(" · ")}. Keeps going while you browse.</p>
+            </div>
+            <IconButton icon={MinusSignIcon} label="Minimise" onClick={() => tailoringTray$.minimised.set(true)} />
           </div>
-          <ul className="max-h-[50vh] overflow-y-auto">
+          <ul className="max-h-[50vh] overflow-y-auto border-t border-stroke-secondary px-1 py-1">
             {sessions.map((s) => (
               <Row key={s.id} session={s} />
             ))}

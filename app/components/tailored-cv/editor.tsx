@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { AddButton, ListField, RemoveButton, removeAt, updateAt } from "~/components/cv/entries";
 import { Button } from "~/components/ui/button";
@@ -7,11 +7,12 @@ import { Textarea } from "~/components/ui/textarea";
 import type { CoverLetter, TailoredCv } from "~/types/cv";
 import { BoldBullets, BoldText } from "./bold-text";
 
+
 function Group({ title, onRemove, children }: { title: string; onRemove?: () => void; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-3 border border-stroke-secondary bg-bg-grouped-primary p-4">
+    <div className="flex flex-col gap-3 border-b border-stroke-secondary px-4 py-4 last:border-b-0">
       <div className="flex items-center justify-between gap-3">
-        <span className="truncate text-[11px] tracking-[0.12em] text-text-secondary">{title}</span>
+        <span className="truncate text-[14px] font-medium text-text-primary">{title}</span>
         {onRemove && <RemoveButton label={`Remove ${title}`} onClick={onRemove} />}
       </div>
       {children}
@@ -20,19 +21,22 @@ function Group({ title, onRemove, children }: { title: string; onRemove?: () => 
 }
 
 export function TailoredCvEditor({ value, onDone }: { value: TailoredCv; onDone: () => void }) {
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<{ ok?: boolean }>();
   const [cv, setCv] = useState(value);
   const set = (patch: Partial<TailoredCv>) => setCv((c) => ({ ...c, ...patch }));
   const setLetter = (patch: Partial<CoverLetter>) => set({ coverLetter: { ...cv.coverLetter, ...patch } });
   const saving = fetcher.state !== "idle";
 
-  const save = () => {
-    fetcher.submit({ intent: "edit", cv: JSON.stringify(cv) }, { method: "post" });
-    onDone();
-  };
+  const failed = fetcher.state === "idle" && fetcher.data !== undefined && !fetcher.data.ok;
+  const save = () => fetcher.submit({ intent: "edit", cv: JSON.stringify(cv) }, { method: "post" });
+
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.ok) onDone();
+  }, [fetcher.state, fetcher.data]);
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col border border-stroke-secondary">
       <Group title="Summary">
         <BoldText
           text={cv.summary}
@@ -102,12 +106,19 @@ export function TailoredCvEditor({ value, onDone }: { value: TailoredCv; onDone:
         <Input value={cv.coverLetter.signOff} onChange={(e) => setLetter({ signOff: e.target.value })} />
       </Group>
 
-      <div className="flex gap-2">
-        <Button type="button" size="small" className="uppercase" disabled={saving} onClick={save}>
-          Save as new version
-        </Button>
-        <Button type="button" variant="ghost" size="small" className="uppercase" onClick={onDone}>
+      </div>
+
+      {failed && (
+        <p role="alert" className="text-[13px] text-red-primary">
+          Couldn't save your edits. Check your connection and try again.
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" disabled={saving} onClick={onDone}>
           Cancel
+        </Button>
+        <Button type="button" disabled={saving} onClick={save}>
+          {saving ? "Saving…" : "Save as new version"}
         </Button>
       </div>
     </div>

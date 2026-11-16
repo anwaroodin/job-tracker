@@ -2,11 +2,11 @@ import { RichText } from "~/components/ui/rich-text";
 import { wordDiff } from "~/lib/word-diff";
 import type { ResumeChange, TailoredCv } from "~/types/cv";
 
-const KINDS: Record<ResumeChange["action"], { tag: string; color: string }> = {
-  replace: { tag: "reworded", color: "text-accent-primary" },
-  append: { tag: "new bullet", color: "text-green-primary" },
-  add_skill: { tag: "new skill", color: "text-green-primary" },
-  reorder: { tag: "reordered", color: "text-text-tertiary" },
+const KINDS: Record<ResumeChange["action"], { tag: string; dot: string }> = {
+  replace: { tag: "Reworded", dot: "bg-accent-primary" },
+  append: { tag: "New bullet", dot: "bg-green-primary" },
+  add_skill: { tag: "New skill", dot: "bg-green-primary" },
+  reorder: { tag: "Reordered", dot: "bg-text-tertiary" },
 };
 
 const KEYWORD = "underline decoration-dotted decoration-1 underline-offset-[5px]";
@@ -72,14 +72,19 @@ export function EditsView({ cv, keywords }: { cv: TailoredCv; keywords: string[]
   return (
     <div className="flex flex-col gap-5">
       {cv.flags.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
-          {cv.flags.map((flag) => (
-            <li key={flag} className="flex items-baseline gap-3">
-              <span className="shrink-0 text-[11px] tracking-[0.08em] text-accent-primary">[!]</span>
-              <span className="font-sans text-[13px] normal-case tracking-normal text-text-secondary">{flag}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="border border-stroke-secondary px-4 py-3">
+          <p className="flex items-center gap-2 text-[13.5px] font-medium text-text-primary">
+            <span aria-hidden className="size-2 rounded-full bg-accent-primary" />
+            {cv.flags.length === 1 ? "1 thing to check" : `${cv.flags.length} things to check`}
+          </p>
+          <ul className="mt-1.5 flex flex-col gap-1 pl-4">
+            {cv.flags.map((flag) => (
+              <li key={flag} className="text-[13.5px] leading-relaxed text-text-secondary">
+                {flag}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {cv.changes.map((note) => (
         <RichText key={note} text={note} className="text-[13px]" />
@@ -87,28 +92,29 @@ export function EditsView({ cv, keywords }: { cv: TailoredCv; keywords: string[]
 
       {edits.length > 0 && (
         <div>
-          <p className="flex flex-wrap gap-x-4 gap-y-1 border-b border-stroke-secondary pb-3 text-[10.5px] tracking-[0.1em] text-text-tertiary">
+          <p className="flex flex-wrap gap-x-4 gap-y-1 border-b border-stroke-secondary pb-3 text-[12.5px] text-text-tertiary">
             <span>
-              <span className="text-green-primary">green</span> added
+              <span className="text-green-primary">Green</span> added
             </span>
             <span>
-              <span className="line-through">struck</span> removed
+              <span className="line-through">Struck</span> removed
             </span>
             <span>
-              <span className={KEYWORD}>dotted</span> job keyword
+              <span className={KEYWORD}>Dotted</span> job keyword
             </span>
           </p>
           <ol>
             {edits.map((edit, i) => (
-              <li key={i} className="border-b border-stroke-secondary py-4">
-                <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[11px] tracking-[0.08em]">
-                  <span className={KINDS[edit.action].color}>[{KINDS[edit.action].tag}]</span>
-                  <span className="text-text-tertiary">{place(edit.path, cv)}</span>
+              <li key={i} className="border-b border-stroke-secondary py-4 last:border-b-0">
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-text-tertiary">
+                  <span aria-hidden className={`size-1.5 rounded-full ${KINDS[edit.action].dot}`} />
+                  <span className="font-medium text-text-secondary">{KINDS[edit.action].tag}</span>
+                  <span>· {place(edit.path, cv)}</span>
                 </p>
-                <p className={"mt-1.5 font-sans text-[14px] normal-case leading-relaxed tracking-normal text-text-primary"}>
+                <p className="mt-1.5 text-[14px] leading-relaxed text-text-primary">
                   <Diff edit={edit} pattern={pattern} />
                 </p>
-                {edit.reason && <p className="mt-1.5 font-sans text-[12.5px] normal-case tracking-normal text-text-tertiary">{edit.reason}</p>}
+                {edit.reason && <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-tertiary">{edit.reason}</p>}
               </li>
             ))}
           </ol>
@@ -116,8 +122,8 @@ export function EditsView({ cv, keywords }: { cv: TailoredCv; keywords: string[]
       )}
 
       {!!cv.rejectedEdits && (
-        <p className="font-sans text-[12.5px] normal-case tracking-normal text-text-tertiary">
-          {cv.rejectedEdits} proposed change(s) failed verification and weren't applied.
+        <p className="text-[12.5px] text-text-tertiary">
+          {cv.rejectedEdits === 1 ? "1 proposed change" : `${cv.rejectedEdits} proposed changes`} failed verification and weren't applied.
         </p>
       )}
     </div>

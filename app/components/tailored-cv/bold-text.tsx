@@ -1,4 +1,5 @@
-import { X } from "lucide-react";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useRef } from "react";
 import { AddButton, RemoveButton, removeAt, updateAt } from "~/components/cv/entries";
 import { Button } from "~/components/ui/button";
@@ -40,11 +41,11 @@ export function BoldText({
           >
             {phrase}
             <Button type="button" variant="ghost" size="icon-sm" className="size-5" aria-label={`Unbold ${phrase}`} onClick={() => onChange({ bold: bold.filter((p) => p !== phrase) })}>
-              <X />
+              <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={1.5} />
             </Button>
           </span>
         ))}
-        <Button type="button" variant="ghost" size="tiny" className="uppercase" onMouseDown={(e) => e.preventDefault()} onClick={boldSelection}>
+        <Button type="button" variant="ghost" size="tiny" className="text-[12.5px]" onMouseDown={(e) => e.preventDefault()} onClick={boldSelection}>
           Bold selection
         </Button>
       </div>

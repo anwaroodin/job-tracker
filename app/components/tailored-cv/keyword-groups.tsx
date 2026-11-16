@@ -1,4 +1,4 @@
-import { BarRow } from "~/components/ui/terminal";
+import { Meter } from "~/components/ui/meter";
 import { cn } from "~/lib/cn";
 import type { AtsScore } from "~/types/cv";
 
@@ -11,11 +11,11 @@ const GROUPS: { kind: Keyword["kind"]; label: string }[] = [
   { kind: "keyword", label: "Keywords" },
 ];
 
-const STATUS: Record<Status, { order: number; className: string; title: string }> = {
-  missing: { order: 0, className: "text-red-primary", title: "Not in your CV or the tailored CV" },
-  dropped: { order: 1, className: "text-accent-primary", title: "In your CV but not in the tailored CV" },
-  added: { order: 2, className: "text-green-primary", title: "Brought in by tailoring" },
-  match: { order: 3, className: "text-text-tertiary", title: "In your CV" },
+const STATUS: Record<Status, { order: number; label: string; dot: string; title: string }> = {
+  missing: { order: 0, label: "Missing", dot: "bg-red-primary", title: "Not in your CV or the tailored CV" },
+  dropped: { order: 1, label: "Dropped", dot: "bg-accent-primary", title: "In your CV but not in the tailored CV" },
+  added: { order: 2, label: "Added", dot: "bg-green-primary", title: "Brought in by tailoring" },
+  match: { order: 3, label: "In your CV", dot: "bg-text-tertiary", title: "In your CV" },
 };
 
 function status(inCv: boolean, inTailored: boolean | undefined): Status {
@@ -28,7 +28,7 @@ export function KeywordGroups({ before, after }: { before: AtsScore; after?: Ats
   const tailored = after && new Map(after.keywords.map((k) => [k.term, k.found]));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {GROUPS.map(({ kind, label }) => {
         const terms = before.keywords
           .filter((k) => k.kind === kind)
@@ -38,28 +38,29 @@ export function KeywordGroups({ before, after }: { before: AtsScore; after?: Ats
         const covered = terms.filter((t) => t.status === "match" || t.status === "added").length;
         const was = terms.filter((t) => t.status === "match" || t.status === "dropped").length;
         return (
-          <div key={kind}>
-            <BarRow
-              label={label}
-              value={`${covered}/${terms.length}`}
-              share={(covered / terms.length) * 100}
-              color={covered === terms.length ? "var(--color-green-primary)" : "var(--color-text-secondary)"}
-              cells={28}
-              valueClass="w-12"
-              noteClass="w-20"
-              note={after && was !== covered ? `was ${was}/${terms.length}` : undefined}
-            />
-            <ul className="mt-1 grid grid-cols-1 gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
+          <section key={kind} className="flex flex-col gap-2">
+            <header className="flex items-center gap-3">
+              <h3 className="w-24 shrink-0 text-[14px] font-medium text-text-primary">{label}</h3>
+              <Meter share={(covered / terms.length) * 100} className={covered === terms.length ? "bg-green-primary" : undefined} />
+              <span className="shrink-0 text-[13px] tabular-nums text-text-tertiary">
+                <span className="font-medium text-text-primary">
+                  {covered} of {terms.length}
+                </span>
+                {after && was !== covered && ` · was ${was}`}
+              </span>
+            </header>
+            <ul className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
               {terms.map(({ term, status }) => (
-                <li key={term} className="flex items-baseline justify-between gap-3 border-b border-stroke-secondary py-1.5" title={STATUS[status].title}>
-                  <span className={cn("min-w-0 truncate font-sans text-[13px] normal-case tracking-normal", status === "missing" ? "text-text-secondary" : "text-text-primary")}>
-                    {term}
+                <li key={term} className="flex items-center justify-between gap-3 border-b border-stroke-secondary py-2" title={STATUS[status].title}>
+                  <span className={cn("min-w-0 truncate text-[13.5px]", status === "missing" ? "text-text-secondary" : "text-text-primary")}>{term}</span>
+                  <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] text-text-tertiary">
+                    <span aria-hidden className={cn("size-1.5 rounded-full", STATUS[status].dot)} />
+                    {STATUS[status].label}
                   </span>
-                  <span className={cn("shrink-0 text-[10.5px] tracking-[0.08em]", STATUS[status].className)}>[{status}]</span>
                 </li>
               ))}
             </ul>
-          </div>
+          </section>
         );
       })}
     </div>
