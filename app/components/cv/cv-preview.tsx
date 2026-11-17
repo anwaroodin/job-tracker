@@ -97,7 +97,7 @@ function Viewer({ cv, pages, filename, onClose }: { cv: PdfCv; pages: string[]; 
       <DialogPrimitive.Content
         aria-describedby={undefined}
         onClick={closeOnBackdrop}
-        className="no-scrollbar fixed inset-0 z-50 overflow-y-auto px-4 pb-24 font-sans text-[14px] normal-case tracking-normal outline-none duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 sm:px-8"
+        className="no-scrollbar fixed inset-0 z-50 overflow-y-auto px-4 pb-24 font-sans text-[14px] normal-case tracking-normal outline-none anim-fade sm:px-8"
       >
         <DialogTitle className="sr-only">{cv.author.name ? `${cv.author.name}'s CV` : "Your CV"}</DialogTitle>
         <div className="mx-auto mt-8 flex max-w-[816px] flex-col gap-6">

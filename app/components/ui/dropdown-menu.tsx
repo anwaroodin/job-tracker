@@ -16,7 +16,7 @@ export const DropdownMenuContent = forwardRef<
         sideOffset={sideOffset}
         className={cn(
           "z-50 min-w-40 overflow-hidden border border-stroke-primary bg-sidebar-active p-1 font-sans text-[13.5px] normal-case tracking-normal shadow-[0_24px_64px_rgba(0,0,0,0.22)]",
-          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "anim-menu",
           className,
         )}
         {...props}
