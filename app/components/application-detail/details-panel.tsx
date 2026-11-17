@@ -94,6 +94,22 @@ export function CvPanel({ applicationId, tailored }: { applicationId: string; ta
   );
 }
 
+export function PrepPanel({ applicationId, prepared }: { applicationId: string; prepared: boolean }) {
+  return (
+    <SideBlock title="Interview prep" aside={prepared ? "Prepared" : undefined}>
+      <p className="text-[13.5px] leading-relaxed text-text-secondary">
+        {prepared ? "Your questions and STAR answers are ready." : "Likely questions with STAR answers from your stories and CV."}
+      </p>
+      <Button asChild variant="secondary" className="h-9 self-start border-stroke-secondary bg-bg-primary px-3.5 font-sans text-[13.5px] normal-case tracking-normal text-text-primary hover:border-stroke-primary hover:bg-bg-primary">
+        <Link to={`/applications/${applicationId}/prep`}>
+          <HugeiconsIcon icon={ArrowUpRight01Icon} size={16} strokeWidth={1.5} />
+          {prepared ? "Open interview prep" : "Prepare for the interview"}
+        </Link>
+      </Button>
+    </SideBlock>
+  );
+}
+
 export function NotesPanel({ notes }: { notes: string }) {
   return (
     <SideBlock title="Notes">

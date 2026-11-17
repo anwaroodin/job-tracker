@@ -23,15 +23,7 @@ import { useArrivals } from "~/hooks/use-arrivals";
 import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
-import { jsonField } from "~/server/form.server";
-import { createApplication, deleteApplication, savePrep, updateApplication } from "~/server/db/queries/applications.server";
-import { getCv, getStories } from "~/server/db/queries/profile.server";
-import { latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
-import { cleanPrep, prepRequest, storedPrep, storedStories } from "~/server/cv/prep";
-import { storedResearch } from "~/server/cv/research";
-import { cvContent } from "~/lib/cv";
-import type { Db } from "~/server/db/client.server";
-import type { Application } from "~/types/application";
+import { createApplication, deleteApplication, updateApplication } from "~/server/db/queries/applications.server";
 import { applicationsFor } from "~/server/db/queries/status.server";
 import { shareLinkFor } from "~/server/db/queries/share-links.server";
 import { tailoredApplicationIds } from "~/server/db/queries/tailored-cv.server";
@@ -47,12 +39,11 @@ import { EmailItem } from "~/components/application-detail/email-item";
 import { UnlinkedEmails } from "~/components/application-detail/unlinked-emails";
 import { useNewOnArrival } from "~/components/application-detail/use-new-on-arrival";
 import { Journey } from "~/components/application-detail/journey";
-import { CvPanel, DetailsPanel, NotesPanel } from "~/components/application-detail/details-panel";
+import { CvPanel, DetailsPanel, NotesPanel, PrepPanel } from "~/components/application-detail/details-panel";
 import { JobDescription } from "~/components/application-detail/job-description";
 import { storedJobKeywords } from "~/server/cv/tailoring/cache";
 import { allKeywords } from "~/server/cv/tailoring/keywords";
 import { FollowUp } from "~/components/application-detail/follow-up";
-import { InterviewPrep } from "~/components/application-detail/interview-prep";
 import { followUpDraft, followUpRecipient, quietDays } from "~/server/services/follow-up/rules";
 import { BrandWord, statusWord } from "~/components/shell/brand-word";
 
@@ -77,18 +68,10 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     .filter((a) => a.id !== row.id && a.status !== "saved")
     .map(({ id, company, role, appliedAt }) => ({ id, company, role, appliedAt }));
   const share = { applicationId: row.id, link: shareLink, hasTailoredCv: tailored.has(row.id) };
-  const [prep, keywords] = await Promise.all([prepFor(db, user.id, row), storedJobKeywords(row)]);
+  const keywords = await storedJobKeywords(row);
+  const prep = row.prepJson || PREP_STATUSES.has(row.status) ? { prepared: !!row.prepJson } : null;
   const highlights = keywords ? allKeywords(keywords) : [];
   return { row, emails, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user), prep, highlights };
-}
-
-async function prepFor(db: Db, userId: string, row: Application) {
-  const prep = storedPrep(row.prepJson);
-  if (!prep && !PREP_STATUSES.has(row.status)) return null;
-  if (!row.description) return { prep, request: null };
-  const [cv, tailored, stories] = await Promise.all([getCv(db, userId), latestTailoredCv(db, userId, row.id), getStories(db, userId)]);
-  const request = prepRequest(row, tailored?.cv ?? cvContent(cv), cv.confirmed, storedResearch(row.researchJson), storedStories(stories));
-  return { prep, request };
 }
 
 function followUpFor(
@@ -144,10 +127,6 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     if (!(await deleteApplication(db, user.id, params.id))) throw data("Not found", { status: 404 });
     return redirect("/applications");
   }
-  if (intent === "prep") {
-    await savePrep(db, user.id, params.id, JSON.stringify(cleanPrep(jsonField(form, "result", "{}"))));
-    return { ok: true };
-  }
   if (intent === "followed-up") {
     await updateApplication(db, user.id, params.id, { followedUpAt: new Date().toISOString() });
     return { ok: true };
@@ -201,6 +180,7 @@ export default function ApplicationDetail({ loaderData }: Route.ComponentProps) 
 function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
   const { row, accountEmail } = loaderData;
   const saved = row.status === "saved";
+  const hasLead = !saved || !!loaderData.followUp;
   const gmail = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!.gmail;
   const isNew = useNewOnArrival(row.id, loaderData.emails);
   const isArrival = useArrivals(
@@ -248,10 +228,9 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
       </header>
 
       <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-14">
-        <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
+        {hasLead && <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
           {loaderData.followUp && <FollowUp {...loaderData.followUp} />}
           {!saved && <Journey status={row.status} appliedAt={row.appliedAt} updatedAt={row.updatedAt} emails={emails} />}
-          {loaderData.prep && <InterviewPrep {...loaderData.prep} />}
 
           {!saved && <PageSection
             id="timeline"
@@ -291,7 +270,7 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
               </p>
             )}
           </PageSection>}
-        </div>
+        </div>}
 
         <aside
           className={cn(
@@ -301,6 +280,7 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
         >
           <DetailsPanel row={row} />
           <CvPanel applicationId={row.id} tailored={loaderData.share.hasTailoredCv} />
+          {loaderData.prep && <PrepPanel applicationId={row.id} prepared={loaderData.prep.prepared} />}
           {row.notes && <NotesPanel notes={row.notes} />}
           {contacts.length > 0 && (
             <SideBlock title="People to reach out to" aside={contacts.length}>
@@ -310,7 +290,7 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
         </aside>
 
         {row.description && (
-          <div className="lg:col-start-1 lg:row-start-2">
+          <div className={cn("lg:col-start-1", hasLead ? "lg:row-start-2" : "lg:row-start-1")}>
             <JobDescription text={row.description} source={source} highlights={loaderData.highlights} />
           </div>
         )}

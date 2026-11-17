@@ -15,6 +15,7 @@ import { NAV } from "./nav";
 import { Sidebar } from "./sidebar";
 import { Wordmark } from "./wordmark";
 import { MilestoneToast } from "./milestone-toast";
+import { NavProgress, PageTransition } from "./page-transition";
 import { TailoringTray } from "./tailoring-tray";
 
 interface AppShellProps {
@@ -32,10 +33,11 @@ export function AppShell({ user, gmail, unread, children }: AppShellProps) {
         <main className="@container min-w-0 flex-1">
           <PathBar gmail={gmail} />
           <div className="mx-auto w-full max-w-[1200px] px-4 pb-[calc(var(--bottom-nav)+2.5rem)] pt-4 sm:px-6 lg:px-8 lg:pb-20">
-            {children}
+            <PageTransition>{children}</PageTransition>
           </div>
         </main>
       </div>
+      <NavProgress />
       <BottomNav user={user} unread={unread} />
       <ActivityToasts initial={gmail} />
       <MilestoneToast />

@@ -57,7 +57,7 @@ export function Sidebar({ user, gmail, unread }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "sticky top-0 hidden h-dvh w-[244px] shrink-0 flex-col self-start overflow-y-auto bg-sidebar px-3 pb-3 pt-4 font-sans normal-case tracking-normal lg:flex",
+        "shell-in sticky top-0 hidden h-dvh w-[244px] shrink-0 flex-col self-start overflow-y-auto bg-sidebar px-3 pb-3 pt-4 font-sans normal-case tracking-normal lg:flex",
         collapsed && "w-[68px] px-2.5",
       )}
     >
