@@ -201,6 +201,7 @@ export default function ApplicationDetail({ loaderData }: Route.ComponentProps) 
 function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
   const { row, accountEmail } = loaderData;
   const saved = row.status === "saved";
+  const hasLead = !saved || !!loaderData.followUp || !!loaderData.prep;
   const gmail = useRouteLoaderData<typeof layoutLoader>("routes/app/layout")!.gmail;
   const isNew = useNewOnArrival(row.id, loaderData.emails);
   const isArrival = useArrivals(
@@ -248,7 +249,7 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
       </header>
 
       <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-14">
-        <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
+        {hasLead && <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
           {loaderData.followUp && <FollowUp {...loaderData.followUp} />}
           {!saved && <Journey status={row.status} appliedAt={row.appliedAt} updatedAt={row.updatedAt} emails={emails} />}
           {loaderData.prep && <InterviewPrep {...loaderData.prep} />}
@@ -291,7 +292,7 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
               </p>
             )}
           </PageSection>}
-        </div>
+        </div>}
 
         <aside
           className={cn(
@@ -310,7 +311,7 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
         </aside>
 
         {row.description && (
-          <div className="lg:col-start-1 lg:row-start-2">
+          <div className={cn("lg:col-start-1", hasLead ? "lg:row-start-2" : "lg:row-start-1")}>
             <JobDescription text={row.description} source={source} highlights={loaderData.highlights} />
           </div>
         )}
