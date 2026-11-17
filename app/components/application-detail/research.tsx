@@ -4,23 +4,6 @@ import { shortDate } from "~/components/ui/terminal";
 import { hostOf } from "~/lib/format/url";
 import type { CompanyResearch, ResearchPoint } from "~/types/cv";
 
-export function Points({ title, items }: { title: string; items: string[] }) {
-  if (!items.length) return null;
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-[12px] font-medium text-text-tertiary">{title}</span>
-      <ul className="flex flex-col gap-1 text-[13px] leading-relaxed text-text-secondary">
-        {items.map((item) => (
-          <li key={item} className="flex gap-2">
-            <span aria-hidden className="mt-[9px] size-1 shrink-0 rounded-full bg-text-tertiary" />
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function Group({ title, items }: { title: string; items: (ResearchPoint & { date?: string })[] }) {
   return (
     <div className="flex flex-col gap-3">
