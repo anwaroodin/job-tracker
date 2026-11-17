@@ -228,9 +228,77 @@ html body[data-scroll-locked] {
   animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   animation-delay: calc(var(--i, 0) * 40ms);
 }
+@keyframes shell-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+.shell-in {
+  animation: shell-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
 @media (prefers-reduced-motion: reduce) {
-  .rise {
+  .rise,
+  .shell-in {
     animation: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--pop-scale, 0.96)) translateY(var(--pop-y, 0));
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: scale(var(--pop-scale, 0.96)) translateY(var(--pop-y, 0));
+  }
+}
+.anim-fade[data-state="open"] {
+  animation: fade-in 180ms ease-out;
+}
+.anim-fade[data-state="closed"] {
+  animation: fade-out 140ms ease-in forwards;
+}
+.anim-dialog {
+  --pop-scale: 0.97;
+  --pop-y: 8px;
+}
+.anim-menu {
+  --pop-scale: 0.96;
+  --pop-y: -4px;
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+}
+.anim-menu[data-side="top"] {
+  --pop-y: 4px;
+}
+.anim-dialog[data-state="open"] {
+  animation: pop-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.anim-menu[data-state="open"] {
+  animation: pop-in 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.anim-dialog[data-state="closed"],
+.anim-menu[data-state="closed"] {
+  animation: pop-out 120ms ease-in forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-dialog,
+  .anim-menu {
+    --pop-scale: 1;
+    --pop-y: 0;
   }
 }
 
