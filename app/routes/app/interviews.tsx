@@ -86,7 +86,7 @@ export default function InterviewsPage({ loaderData, actionData }: Route.Compone
           <ul className={cn("flex flex-col", INSET_SEPARATORS)}>
             {loaderData.upcoming.map((a) => (
               <li key={a.id} className="relative">
-                <Link to={`/applications/${a.id}#prep`} className="flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-ink/[0.04]">
+                <Link to={`/applications/${a.id}/prep`} className="flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-ink/[0.04]">
                   <CompanyLogo company={a.company} className="size-9 text-[14px]" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-text-primary">{a.company}</span>

@@ -11,7 +11,7 @@ import { milestone$, type Milestone } from "~/lib/state/milestone";
 const TOAST_MS = 7000;
 
 function nextStep(m: Milestone) {
-  if (m.status === "interview") return { label: "Prepare for it", to: `/applications/${m.applicationId}#prep` };
+  if (m.status === "interview") return { label: "Prepare for it", to: `/applications/${m.applicationId}/prep` };
   return { label: m.status === "accepted" ? "See your overview" : "See your offers", to: "/overview" };
 }
 
