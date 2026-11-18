@@ -1,7 +1,16 @@
+export type EmailStatus = "valid" | "accept_all" | "likely" | "not_found" | "blocked" | "unknown";
+
+const EMAIL_STATUSES: readonly string[] = ["valid", "accept_all", "likely", "not_found", "blocked", "unknown"] satisfies EmailStatus[];
+
+export type EmailSource = "checker" | "format" | "guess" | "generect";
+
+export const isEmailStatus = (value: unknown): value is EmailStatus =>
+  typeof value === "string" && EMAIL_STATUSES.includes(value);
+
 /**
  * A person the listing suggests reaching out to, captured by the extension
  * from LinkedIn's "People you can reach out to" / "Meet the hiring team".
- * Stored as JSON in `application.contacts_json`.
+ * Stored in the `contact` table.
  */
 export interface Contact {
   name: string;
@@ -51,13 +60,4 @@ export function cleanContacts(value: unknown): Contact[] {
     if (contacts.length === MAX_CONTACTS) break;
   }
   return contacts;
-}
-
-/** An application's stored contacts; [] for bad or missing JSON. */
-export function parseContacts(json: string | null | undefined): Contact[] {
-  try {
-    return cleanContacts(JSON.parse(json || "[]"));
-  } catch {
-    return [];
-  }
 }

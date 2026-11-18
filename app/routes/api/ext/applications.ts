@@ -4,7 +4,8 @@ import { getDb } from "~/server/db/client.server";
 import { findRecentDuplicate } from "~/server/db/queries/applications.server";
 import { trackPosting } from "~/server/services/applications/track.server";
 import { extUser, guarded, json, preflight, readJsonBody } from "~/server/extension/http.server";
-import { applicationStatus, cleanUrl, jobDetails, text } from "~/server/extension/input.server";
+import { applicationStatus, cleanUrl, jobContacts, jobDetails, text } from "~/server/extension/input.server";
+import { withContactsJson } from "~/server/services/applications/contacts.server";
 
 /** POST /api/ext/applications: tracks a posting (see trackPosting). */
 export const action = (args: Route.ActionArgs) => guarded(args.request, () => track(args));
@@ -25,15 +26,17 @@ async function track({ request, context }: Route.ActionArgs) {
   if (!company || !role) return json(request, { error: "company and role are required" }, { status: 400 });
 
   const db = getDb(env.DB);
-  const { duplicate, application } = await trackPosting(db, user.id, {
+  const { duplicate, application: tracked } = await trackPosting(db, user.id, {
     company,
     role,
     url: cleanUrl(body.url),
     status: applicationStatus(body.status),
     details: jobDetails(body),
+    contacts: jobContacts(body),
     starred: typeof body.starred === "boolean" ? body.starred : undefined,
     autoFilled: body.auto_filled !== false,
   });
+  const application = await withContactsJson(db, user.id, tracked);
   return duplicate
     ? json(request, { success: true, duplicate: true, application })
     : json(request, { success: true, duplicate: false, application }, { status: 201 });
@@ -59,6 +62,7 @@ async function lookup({ request, context }: Route.LoaderArgs) {
   };
   if (!match.url && !(match.company && match.role)) return json(request, { application: null });
   // A year, not 30 days: saved postings and old applications should still show on their listing.
-  const application = await findRecentDuplicate(getDb(env.DB), user.id, match, 365);
+  const db = getDb(env.DB);
+  const application = await withContactsJson(db, user.id, await findRecentDuplicate(db, user.id, match, 365));
   return json(request, { application });
 }

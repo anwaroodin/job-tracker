@@ -15,7 +15,6 @@ import { PageSection, SANS_PAGE } from "~/components/ui/page-section";
 import { SideBlock } from "~/components/ui/side-block";
 import { cn } from "~/lib/cn";
 import { PREP_STATUSES } from "~/lib/status";
-import { parseContacts } from "~/lib/contacts";
 import { isEmailCategory } from "~/lib/email";
 import { gmailComposeUrl, gmailThreadUrl } from "~/lib/gmail";
 import { hostOf } from "~/lib/format/url";
@@ -25,6 +24,7 @@ import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { createApplication, deleteApplication, updateApplication } from "~/server/db/queries/applications.server";
 import { applicationsFor } from "~/server/db/queries/status.server";
+import { contactsFor } from "~/server/db/queries/contacts.server";
 import { shareLinkFor } from "~/server/db/queries/share-links.server";
 import { tailoredApplicationIds } from "~/server/db/queries/tailored-cv.server";
 import { detailsFromForm } from "~/server/services/applications/details.server";
@@ -55,11 +55,12 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
-  const [{ row, emails }, apps, shareLink, tailored] = await Promise.all([
+  const [{ row, emails }, apps, shareLink, tailored, contacts] = await Promise.all([
     applicationTimeline(db, user.id, params.id),
     applicationsFor(db, user.id),
     shareLinkFor(db, user.id, params.id, new Date().toISOString()),
     tailoredApplicationIds(db, user.id),
+    contactsFor(db, user.id, params.id),
   ]);
   if (!row) throw data("Not found", { status: 404 });
   const unseen = emails.filter((e) => !e.viewedAt && !e.dismissedAt).map((e) => e.id);
@@ -71,7 +72,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const keywords = await storedJobKeywords(row);
   const prep = row.prepJson || PREP_STATUSES.has(row.status) ? { prepared: !!row.prepJson } : null;
   const highlights = keywords ? allKeywords(keywords) : [];
-  return { row, emails, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user), prep, highlights };
+  return { row, emails, contacts, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user), prep, highlights };
 }
 
 function followUpFor(
@@ -191,7 +192,7 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
   const unlinked = loaderData.emails.filter((e) => e.dismissedAt);
   const latest = emails.at(-1)?.id;
   const source = hostOf(row.url) || undefined;
-  const contacts = parseContacts(row.contactsJson);
+  const { contacts } = loaderData;
   const move = { company: row.company, applications: loaderData.otherApplications };
 
   return (

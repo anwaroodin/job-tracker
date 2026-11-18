@@ -1,3 +1,4 @@
+import type { Contact } from "~/lib/contacts";
 import type { NewApplication } from "~/types/application";
 import type { Db } from "../../db/client.server";
 import {
@@ -7,6 +8,7 @@ import {
 } from "../../db/queries/applications.server";
 import type { JobDetails } from "../../extension/input.server";
 import { setByHand } from "../status/manual";
+import { addContacts } from "./contacts.server";
 import { clearBookmarkOnApply } from "../status/rules";
 
 interface Posting {
@@ -15,6 +17,7 @@ interface Posting {
   url: string;
   status: string;
   details: Partial<JobDetails>;
+  contacts: Contact[];
   starred: boolean | undefined;
   autoFilled: boolean;
 }
@@ -25,7 +28,7 @@ interface Posting {
  * is updated and returned instead.
  */
 export async function trackPosting(db: Db, userId: string, posting: Posting) {
-  const { company, role, url, status, details, starred } = posting;
+  const { company, role, url, status, details, contacts, starred } = posting;
   const existing = await findRecentDuplicate(db, userId, { url, company, role });
   if (existing) {
     // Fill in details that loaded after the first save (LinkedIn renders
@@ -40,6 +43,7 @@ export async function trackPosting(db: Db, userId: string, posting: Posting) {
     if (starred !== undefined) patch.starred = starred;
     clearBookmarkOnApply(existing.status, patch);
     const application = Object.keys(patch).length ? await updateApplication(db, userId, existing.id, patch) : existing;
+    await addContacts(db, userId, existing.id, contacts, "linkedin");
     return { duplicate: true, application };
   }
 
@@ -56,5 +60,6 @@ export async function trackPosting(db: Db, userId: string, posting: Posting) {
     starred: starred === true,
     autoFilled: posting.autoFilled,
   });
+  await addContacts(db, userId, application.id, contacts, "linkedin");
   return { duplicate: false, application };
 }

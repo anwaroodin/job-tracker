@@ -16,3 +16,4 @@ export * from "./activity";
 export * from "./tailored-cv";
 export * from "./role-cv";
 export * from "./share-link";
+export * from "./contact";

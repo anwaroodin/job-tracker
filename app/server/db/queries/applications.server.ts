@@ -5,7 +5,7 @@ import { application, emailLink, emailMessage, type NewApplication } from "../sc
 
 const nowIso = () => new Date().toISOString();
 
-const { description: _description, notes: _notes, contactsJson: _contacts, jdKeywordsJson: _keywords, researchJson: _research, prepJson: _prep, ...listColumns } = getTableColumns(application);
+const { description: _description, notes: _notes, jdKeywordsJson: _keywords, researchJson: _research, prepJson: _prep, ...listColumns } = getTableColumns(application);
 
 export function applicationRows(db: Db, userId: string) {
   return db
