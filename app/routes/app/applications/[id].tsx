@@ -1,7 +1,7 @@
 import { data, redirect, useRouteLoaderData } from "react-router";
 import type { Route } from "./+types/[id]";
 import type { loader as layoutLoader } from "../layout";
-import { ContactList } from "~/components/application-detail/contact-list";
+import { PeoplePanel } from "~/components/application-detail/people";
 import { CompanyLogo } from "~/components/applications/company-logo";
 import { FactChips, listingFacts } from "~/components/application-detail/fact-chips";
 import { FlagToggle } from "~/components/applications/flag-toggle";
@@ -12,7 +12,6 @@ import { StatusPicker } from "~/components/application-detail/status-picker";
 import { BackToSaved, SavedActions } from "~/components/application-detail/saved-actions";
 import { stagger, PageTitle } from "~/components/ui/terminal";
 import { PageSection, SANS_PAGE } from "~/components/ui/page-section";
-import { SideBlock } from "~/components/ui/side-block";
 import { cn } from "~/lib/cn";
 import { PREP_STATUSES } from "~/lib/status";
 import { isEmailCategory } from "~/lib/email";
@@ -25,6 +24,10 @@ import { getDb } from "~/server/db/client.server";
 import { createApplication, deleteApplication, updateApplication } from "~/server/db/queries/applications.server";
 import { applicationsFor } from "~/server/db/queries/status.server";
 import { contactsFor } from "~/server/db/queries/contacts.server";
+import { findContactEmail } from "~/server/services/outreach/find-email.server";
+import { findPeople } from "~/server/services/outreach/find-people.server";
+import { cleanDomain, companyDomain } from "~/lib/email-pattern";
+import { peopleWhoEmailed, senderAddresses } from "~/lib/outreach";
 import { shareLinkFor } from "~/server/db/queries/share-links.server";
 import { tailoredApplicationIds } from "~/server/db/queries/tailored-cv.server";
 import { detailsFromForm } from "~/server/services/applications/details.server";
@@ -72,7 +75,16 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   const keywords = await storedJobKeywords(row);
   const prep = row.prepJson || PREP_STATUSES.has(row.status) ? { prepared: !!row.prepJson } : null;
   const highlights = keywords ? allKeywords(keywords) : [];
-  return { row, emails, contacts, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user), prep, highlights };
+  const outreach = {
+    applicationId: row.id,
+    accountEmail: user.email,
+    senderName: user.name ?? "",
+    company: row.company,
+    role: row.role,
+    domain: companyDomain(row.emailDomain, row.url, senderAddresses(emails)),
+  };
+  const senders = peopleWhoEmailed(emails, user.email);
+  return { row, emails, contacts, senders, outreach, otherApplications, accountEmail: user.email, share, followUp: followUpFor(row, emails, user), prep, highlights };
 }
 
 function followUpFor(
@@ -108,6 +120,14 @@ export async function action({ request, context, params }: Route.ActionArgs) {
   if (intent === "flag") {
     // The star, shown as a bookmark while the posting is only saved.
     await updateApplication(db, user.id, params.id, { starred: form.get("flagged") === "true" });
+    return { ok: true };
+  }
+  if (intent === "find-people") return findPeople(env, db, user.id, params.id);
+  if (intent === "find-email") return findContactEmail(env, db, user.id, params.id, String(form.get("contactId") ?? ""));
+  if (intent === "email-domain") {
+    const emailDomain = cleanDomain(form.get("domain"));
+    if (!emailDomain) return { error: "Enter a domain like acme.com" };
+    await updateApplication(db, user.id, params.id, { emailDomain });
     return { ok: true };
   }
   if (intent === "saved-applied") {
@@ -192,109 +212,102 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
   const unlinked = loaderData.emails.filter((e) => e.dismissedAt);
   const latest = emails.at(-1)?.id;
   const source = hostOf(row.url) || undefined;
-  const { contacts } = loaderData;
+  const { contacts, senders } = loaderData;
   const move = { company: row.company, applications: loaderData.otherApplications };
 
   return (
     <div className={`flex flex-col gap-10 ${SANS_PAGE}`}>
-      <header className="rise flex flex-col gap-5" style={stagger(0)}>
-        <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-          <div className="flex min-w-0 items-start gap-4">
-            <CompanyLogo company={row.company} logoUrl={row.logoUrl} className="mt-0.5 size-12 text-[18px]" />
-            <PageTitle className="min-w-0 gap-0.5" title={row.company} sub={row.role} />
-          </div>
-          {saved ? (
-            <SavedActions url={row.url} />
-          ) : (
-            <div className="flex items-center gap-4">
-              {statusWord(row.status) && <BrandWord word={statusWord(row.status)!} size={22} />}
-              <StatusPicker id={row.id} status={row.status} company={row.company} role={row.role} />
+      <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-x-14">
+        <div className="flex min-w-0 flex-col gap-12 lg:col-start-1 lg:row-start-1">
+          <header className="rise flex flex-col gap-5" style={stagger(0)}>
+            <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+              <div className="flex min-w-0 items-start gap-4">
+                <CompanyLogo company={row.company} logoUrl={row.logoUrl} className="mt-0.5 size-12 text-[18px]" />
+                <PageTitle className="min-w-0 gap-0.5" title={row.company} sub={row.role} />
+              </div>
+              {saved ? (
+                <SavedActions url={row.url} />
+              ) : (
+                <div className="flex items-center gap-4">
+                  {statusWord(row.status) && <BrandWord word={statusWord(row.status)!} size={22} />}
+                  <StatusPicker id={row.id} status={row.status} company={row.company} role={row.role} />
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        <FactChips facts={listingFacts(row)} />
+            <FactChips facts={listingFacts(row)} />
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-y border-stroke-secondary py-1.5">
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="inline-flex h-8 items-center px-3 text-[13px]">
-              <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
-            </span>
-            <EditDetails job={row} />
-            <ShareLink {...loaderData.share} />
-            {!saved && emails.length === 0 && <BackToSaved />}
-          </div>
-          <DeleteApplication company={row.company} role={row.role} />
-        </div>
-      </header>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-y border-stroke-secondary py-1.5">
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="inline-flex h-8 items-center px-3 text-[13px]">
+                  <FlagToggle id={row.id} status={row.status} flagged={row.starred} />
+                </span>
+                <EditDetails job={row} />
+                <ShareLink {...loaderData.share} />
+                {!saved && emails.length === 0 && <BackToSaved />}
+              </div>
+              <DeleteApplication company={row.company} role={row.role} />
+            </div>
+          </header>
+          {hasLead && <div className="flex flex-col gap-12">
+            {loaderData.followUp && <FollowUp {...loaderData.followUp} />}
+            {!saved && <Journey status={row.status} appliedAt={row.appliedAt} updatedAt={row.updatedAt} emails={emails} />}
 
-      <div className="flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-14">
-        {hasLead && <div className="flex flex-col gap-12 lg:col-start-1 lg:row-start-1">
-          {loaderData.followUp && <FollowUp {...loaderData.followUp} />}
-          {!saved && <Journey status={row.status} appliedAt={row.appliedAt} updatedAt={row.updatedAt} emails={emails} />}
-
-          {!saved && <PageSection
-            id="timeline"
-            title="Timeline"
-            description={
-              emails.length
-                ? `${emails.length} ${emails.length === 1 ? "email" : "emails"} from Gmail, oldest first.`
-                : "Emails about this application show up here."
-            }
-          >
-            <ol className="flex flex-col">
-              <TimelineItem
-                date={row.appliedAt}
-                category="applied"
-                title="Application logged"
-                meta={row.url ? "Open job posting" : undefined}
-                href={row.url || undefined}
-              />
-              {emails.map((e) => (
-                <EmailItem
-                  key={e.id}
-                  email={e}
-                  isNew={isNew(e)}
-                  arrived={isArrival(e.id)}
-                  defaultOpen={e.id === latest}
-                  href={gmailThreadUrl(accountEmail, e.threadId || e.id)}
-                  move={move}
+            {!saved && <PageSection
+              id="timeline"
+              title="Timeline"
+              description={
+                emails.length
+                  ? `${emails.length} ${emails.length === 1 ? "email" : "emails"} from Gmail, oldest first.`
+                  : "Emails about this application show up here."
+              }
+            >
+              <ol className="flex flex-col">
+                <TimelineItem
+                  date={row.appliedAt}
+                  category="applied"
+                  title="Application logged"
+                  meta={row.url ? "Open job posting" : undefined}
+                  href={row.url || undefined}
                 />
-              ))}
-            </ol>
-            {unlinked.length > 0 && <UnlinkedEmails emails={unlinked} />}
-            {emails.length === 0 && (
-              <p className="mt-4 text-[13.5px] text-text-tertiary">
-                {gmail.connected
-                  ? `No emails matched yet. An email is matched when its sender or subject mentions “${row.company}”.`
-                  : "Connect Gmail in your profile to pull in emails for this application."}
-              </p>
-            )}
-          </PageSection>}
-        </div>}
+                {emails.map((e) => (
+                  <EmailItem
+                    key={e.id}
+                    email={e}
+                    isNew={isNew(e)}
+                    arrived={isArrival(e.id)}
+                    defaultOpen={e.id === latest}
+                    href={gmailThreadUrl(accountEmail, e.threadId || e.id)}
+                    move={move}
+                  />
+                ))}
+              </ol>
+              {unlinked.length > 0 && <UnlinkedEmails emails={unlinked} />}
+              {emails.length === 0 && (
+                <p className="mt-4 text-[13.5px] text-text-tertiary">
+                  {gmail.connected
+                    ? `No emails matched yet. An email is matched when its sender or subject mentions “${row.company}”.`
+                    : "Connect Gmail in your profile to pull in emails for this application."}
+                </p>
+              )}
+            </PageSection>}
+          </div>}
+
+          {row.description && <JobDescription text={row.description} source={source} highlights={loaderData.highlights} />}
+        </div>
 
         <aside
           className={cn(
-            "flex w-full flex-col gap-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start lg:border-l lg:border-stroke-secondary lg:pl-8",
-            contacts.length === 0 && !row.notes && "lg:sticky lg:top-16",
+            "flex w-full flex-col gap-5 lg:col-start-2 lg:row-start-1 lg:self-start lg:border-l lg:border-stroke-secondary lg:pl-8",
+            contacts.length + senders.length === 0 && !row.notes && "lg:sticky lg:top-16",
           )}
         >
           <DetailsPanel row={row} />
           <CvPanel applicationId={row.id} tailored={loaderData.share.hasTailoredCv} />
           {loaderData.prep && <PrepPanel applicationId={row.id} prepared={loaderData.prep.prepared} />}
           {row.notes && <NotesPanel notes={row.notes} />}
-          {contacts.length > 0 && (
-            <SideBlock title="People to reach out to" aside={contacts.length}>
-              <ContactList contacts={contacts} />
-            </SideBlock>
-          )}
+          <PeoplePanel contacts={contacts} senders={senders} outreach={loaderData.outreach} />
         </aside>
-
-        {row.description && (
-          <div className={cn("lg:col-start-1", hasLead ? "lg:row-start-2" : "lg:row-start-1")}>
-            <JobDescription text={row.description} source={source} highlights={loaderData.highlights} />
-          </div>
-        )}
       </div>
     </div>
   );
