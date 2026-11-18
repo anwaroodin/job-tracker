@@ -8,7 +8,7 @@ import { clearBookmarkOnApply } from "~/server/services/status/rules";
 import { settleSavedJob } from "~/server/services/status/saved.server";
 import type { NewApplication } from "~/types/application";
 import { extUser, guarded, json, preflight, readJsonBody } from "~/server/extension/http.server";
-import { applicationStatus, jobContacts, jobDetails } from "~/server/extension/input.server";
+import { applicationStatus, jobContacts, jobDetails, pickedPeople } from "~/server/extension/input.server";
 import { addContacts, withContactsJson } from "~/server/services/applications/contacts.server";
 
 /**
@@ -44,13 +44,15 @@ async function update({ request, params, context }: Route.ActionArgs) {
   }
   if (typeof body.starred === "boolean") patch.starred = body.starred;
   const contacts = jobContacts(body);
-  if (!Object.keys(patch).length && !contacts.length) return json(request, { error: "nothing_to_update" }, { status: 400 });
+  const people = pickedPeople(body);
+  if (!Object.keys(patch).length && !contacts.length && !people.length) return json(request, { error: "nothing_to_update" }, { status: 400 });
 
   const db = getDb(env.DB);
   const current = await getApplication(db, user.id, params.id);
   if (!current) return json(request, { error: "not_found" }, { status: 404 });
   const updated = Object.keys(patch).length ? await updateApplication(db, user.id, params.id, clearBookmarkOnApply(current.status, patch)) : current;
   await addContacts(db, user.id, params.id, contacts, "linkedin");
+  await addContacts(db, user.id, params.id, people, "people");
   return json(request, { success: true, application: await withContactsJson(db, user.id, updated) });
 }
 

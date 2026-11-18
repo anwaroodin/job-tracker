@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "j*b",
-  "version": "3.4.1",
+  "version": "3.5.0",
   "description": "Capture job details, autofill applications and track them in job-tracker.",
   "minimum_chrome_version": "123",
   "permissions": ["activeTab", "scripting", "storage"],
@@ -23,6 +23,7 @@
         "src/content/ui.js",
         "src/content/autofill.js",
         "src/content/bar.js",
+        "src/content/people.js",
         "src/content/main.js"
       ],
       "all_frames": true,

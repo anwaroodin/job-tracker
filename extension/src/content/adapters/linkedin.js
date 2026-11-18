@@ -201,6 +201,21 @@
     return Array.from(people.values());
   }
 
+  function peopleOnPage(max) {
+    const scope = document.querySelector("main") ?? document.body;
+    const people = new Map();
+    for (const link of scope.querySelectorAll(SEL.profileLink)) {
+      const key = profileKey(link);
+      if (people.has(key) || !link.getClientRects().length) continue;
+      const person = readPerson(personCard(link, scope));
+      if (person) people.set(key, { ...person, profileUrl: key });
+      if (people.size === max) break;
+    }
+    return Array.from(people.values());
+  }
+
+  JT.linkedinPeople = peopleOnPage;
+
   /**
    * The element holding one person's lines. The SDUI profile link holds them
    * all itself; the classic layout's name link doesn't, so climb to the
