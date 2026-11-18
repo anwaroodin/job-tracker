@@ -1,9 +1,9 @@
+import { AUTOMATED_SENDER } from "~/lib/email-pattern";
 import { ACTIVE_STATUSES } from "~/lib/status";
 
 const DAY_MS = 86_400_000;
 const FOLLOW_UP_AFTER_DAYS = 14;
 const STOP_AFTER_DAYS = 60;
-const AUTOMATED_SENDER = /no-?reply|do-?not-?reply|notifications?@|mailer-daemon|alerts?@/i;
 
 export interface FollowUpApp {
   status: string;
