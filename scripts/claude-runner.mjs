@@ -82,6 +82,16 @@ function runClaude({ system, schema, input, model, effort, web }) {
   });
 }
 
+function jsonObject(text) {
+  const body = String(text ?? "").trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
+  try {
+    const value = JSON.parse(body);
+    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 async function runAntigravity({ system, schema, input, effort }) {
   const dir = await mkdtemp(join(tmpdir(), "job-tracker-agy-"));
   const args = [
@@ -97,13 +107,14 @@ async function runAntigravity({ system, schema, input, effort }) {
   try {
     const { stdout, stderr } = await run("agy", args, { cwd: dir, timeout: TIMEOUT_MS, maxBuffer: 20 * 1024 * 1024 });
     const reply = JSON.parse(stdout);
-    if (reply.status !== "SUCCESS" || !reply.structured_output) {
+    const result = reply.structured_output ?? jsonObject(reply.response);
+    if (!result) {
       const denied = (reply.denied_actions ?? []).map((a) => a.action).join(", ");
       throw new Error(`Antigravity returned no result${denied ? ` (denied: ${denied})` : ""}. ${stderr.trim() || reply.response || ""}`.trim());
     }
     const u = reply.usage ?? {};
     const usage = { costUsd: 0, inputTokens: u.input_tokens ?? 0, cachedTokens: u.cache_read_tokens ?? 0, outputTokens: (u.output_tokens ?? 0) + (u.thinking_tokens ?? 0) };
-    return { result: reply.structured_output, usage };
+    return { result, usage };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
