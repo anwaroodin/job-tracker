@@ -10,7 +10,7 @@ import { roleDescription } from "~/server/cv/tailoring/role";
 import { verifyEmphasis } from "~/server/cv/tailoring/emphasis";
 import { confirmedForPrompt, gapsRequest, skillGaps, sortGaps, withAnswers } from "~/server/cv/tailoring/questions";
 import { alignWithMaster, matchFullStops, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
-import { applyDiffs, chooseProjects, resumeView, verifyDiffResult } from "~/server/cv/tailoring/resume";
+import { applyDiffs, chooseProjects, resumeView, revertChange, verifyDiffResult } from "~/server/cv/tailoring/resume";
 import { pdfCv } from "~/lib/cv";
 import type { CvContent, ResumeChange, SkillTarget } from "~/types/cv";
 
@@ -49,6 +49,28 @@ const KEYWORDS = cleanJobKeywords({
 const PERSON = { name: "Sam Example", phone: "", location: "", email: "", linkedin: "", github: "", website: "" };
 const change = (over: Partial<ResumeChange>): ResumeChange => ({ path: "summary", action: "replace", original: CV.summary, value: "New", reason: "", ...over });
 const TARGETS: SkillTarget[] = [{ skill: "Kubernetes", source: "jd_added", reason: "" }];
+
+describe("revertChange", () => {
+  const reword = change({ path: "workExperience[0].description[0]", original: CV.experience[0].bullets[0].text, value: "Built Go REST APIs for billing" });
+  const append = change({ path: "workExperience[0].description", action: "append", original: null, value: "Mentored two engineers" });
+  const skill = change({ path: "skills[0].items", action: "add_skill", original: null, value: "Kubernetes" });
+
+  it("puts back the original wording, and removes added bullets and skills", () => {
+    const { result } = applyDiffs(CV, [reword, append, skill], TARGETS, true);
+    result.experience[0].bullets[0].bold = ["Go REST APIs", "billing"];
+
+    expect(revertChange(result, reword)?.experience[0].bullets[0]).toEqual({ id: "b1", text: CV.experience[0].bullets[0].text, bold: ["billing"] });
+    expect(revertChange(result, append)?.experience[0].bullets.map((b) => b.text)).toEqual([reword.value, CV.experience[0].bullets[1].text]);
+    expect(revertChange(result, skill)?.skills[0].items).toEqual(CV.skills[0].items);
+    expect(result.experience[0].bullets).toHaveLength(3);
+  });
+
+  it("won't revert a line that was edited after tailoring", () => {
+    const { result } = applyDiffs(CV, [reword], [], false);
+    result.experience[0].bullets[0].text = "Something I wrote myself";
+    expect(revertChange(result, reword)).toBeNull();
+  });
+});
 
 describe("applyDiffs", () => {
   it("applies a replace only when the original text matches", () => {

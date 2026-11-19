@@ -13,13 +13,14 @@ import { cleanResearch, researchRequest, storedResearch } from "~/server/cv/rese
 import { applyEdits } from "~/server/cv/tailored";
 import { storedJobKeywords } from "~/server/cv/tailoring/cache";
 import { atsScore } from "~/server/cv/tailoring/keywords";
+import { revertChange } from "~/server/cv/tailoring/resume";
 import { evidenceText, impliedTerms, scoreBefore } from "~/server/cv/tailoring/questions";
 import { getDb } from "~/server/db/client.server";
 import { jsonField } from "~/server/form.server";
 import { getApplication, saveResearch } from "~/server/db/queries/applications.server";
 import { getCv, getCvDesign, getProfile } from "~/server/db/queries/profile.server";
 import { insertTailoredCv, latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
-import type { AtsScore } from "~/types/cv";
+import type { AtsScore, TailoredCv } from "~/types/cv";
 
 export const handle = { title: () => "Tailored CV" };
 
@@ -73,12 +74,20 @@ export async function action({ request, context, params }: Route.ActionArgs) {
     return { ok: true };
   }
 
-  if (intent !== "edit" || !latest) throw data("Unknown action", { status: 400 });
-  const edited = applyEdits(latest.cv, jsonField(form, "cv", "{}"));
-  const keywords = await storedJobKeywords(row);
-  if (keywords && edited.score) edited.score = { ...edited.score, after: atsScore(edited, keywords, evidenceText(cvContent(cv), cv.confirmed), impliedTerms(cv.confirmed)) };
-  await insertTailoredCv(db, user.id, row.id, latest.version + 1, edited);
-  return { ok: true };
+  if ((intent !== "edit" && intent !== "revert") || !latest) throw data("Unknown action", { status: 400 });
+  const saveVersion = async (edited: TailoredCv) => {
+    const keywords = await storedJobKeywords(row);
+    if (keywords && edited.score) edited.score = { ...edited.score, after: atsScore(edited, keywords, evidenceText(cvContent(cv), cv.confirmed), impliedTerms(cv.confirmed)) };
+    await insertTailoredCv(db, user.id, row.id, latest.version + 1, edited);
+    return { ok: true };
+  };
+
+  if (intent === "edit") return saveVersion(applyEdits(latest.cv, jsonField(form, "cv", "{}")));
+  const index = Number(form.get("index"));
+  const change = latest.cv.edits?.[index];
+  const reverted = change && revertChange(latest.cv, change);
+  if (!reverted) return { error: "This line has been edited since, so it can't be put back automatically. Change it in Edit." };
+  return saveVersion({ ...reverted, edits: latest.cv.edits?.filter((_, i) => i !== index) });
 }
 
 export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
