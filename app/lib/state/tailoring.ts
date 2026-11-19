@@ -1,7 +1,7 @@
 import { observable } from "@legendapp/state";
-import { planUsage, runOnRunner } from "~/lib/runner";
+import { finishRun, type LoggedRun, runStage, startRun } from "~/lib/run-log";
 import { recordRunCost } from "~/lib/state/run-costs";
-import type { Confirmation, JobQuestion, PlanUsage, RunnerUsage, TailorRequest } from "~/types/cv";
+import type { Confirmation, JobQuestion, RunnerUsage, TailorRequest } from "~/types/cv";
 
 export type TailorTarget = { applicationId: string } | { roleId: string };
 export type SessionStatus = "queued" | "running" | "questions" | "done" | "failed";
@@ -42,7 +42,7 @@ export const stageIndex = (id: string | null) => STAGES.findIndex((s) => s.id ==
 
 export const tailoring$ = observable<Record<string, TailoringSession>>({});
 
-const usage = new Map<string, { stages: RunnerUsage[]; before: PlanUsage | null }>();
+const usage = new Map<string, { stages: RunnerUsage[]; run: LoggedRun }>();
 
 export const sessionId = (target: TailorTarget) => ("applicationId" in target ? `job:${target.applicationId}` : `role:${target.roleId}`);
 export const isActive = (s: TailoringSession | undefined) => !!s && (s.status === "queued" || s.status === "running");
@@ -68,9 +68,9 @@ async function run(id: string) {
   const session$ = tailoring$[id];
   const { target, model, letter, answers } = session$.peek();
   session$.assign({ status: "running", stage: null, error: null, answers: null });
+  const spent = usage.get(id) ?? { stages: [], run: await startRun({ kind: "tailor", model, letter, ...target }) };
+  usage.set(id, spent);
   try {
-    const spent = usage.get(id) ?? { stages: [], before: await planUsage() };
-    usage.set(id, spent);
     let step = await postStep({ ...target, letter, ...(answers && { answered: true, answers }) });
     while (!("done" in step)) {
       if (!session$.peek()) return;
@@ -80,17 +80,18 @@ async function run(id: string) {
       }
       const startedAt = Date.now();
       session$.assign({ stage: step.stage, stageStartedAt: startedAt });
-      const { result, usage: stageUsage } = await runOnRunner({ ...step.request, model });
+      const { result, usage: stageUsage } = await runStage(spent.run, step.stage, { ...step.request, model });
       spent.stages.push(stageUsage);
       const stage = step.stage;
       step = await postStep({ ...target, letter, stage, result, state: step.state });
       if (session$.peek()) session$.durations[stage].set(Date.now() - startedAt);
     }
     usage.delete(id);
-    recordRunCost(model, "tailor", { ...spent, after: await planUsage() });
+    recordRunCost(model, "tailor", { stages: spent.stages, before: spent.run.before, after: await finishRun(spent.run) });
     if (session$.peek()) session$.assign({ status: "done", stage: null });
   } catch (e) {
     usage.delete(id);
+    await finishRun(spent.run, e);
     if (session$.peek()) session$.assign({ status: "failed", stage: null, error: e instanceof Error ? e.message : String(e) });
   }
 }

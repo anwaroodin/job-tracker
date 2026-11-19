@@ -17,7 +17,7 @@ export interface Run {
 
 const WINDOWS: LimitWindow[] = ["fiveHour", "sevenDay"];
 
-export const totalOf = (stages: RunnerUsage[], key: keyof RunnerUsage) => stages.reduce((n, s) => n + s[key], 0);
+export const totalOf = (stages: RunnerUsage[], key: Exclude<keyof RunnerUsage, "model">) => stages.reduce((n, s) => n + s[key], 0);
 
 export function usedPct(run: Run, window: LimitWindow) {
   const before = run.before?.[window];

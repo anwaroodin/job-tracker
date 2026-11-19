@@ -8,7 +8,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Button } from "~/components/ui/button";
 import { newId } from "~/lib/cv";
 import { RunnerOffline, useRunnerStatus } from "~/components/tailored-cv/runner";
-import { runOnRunner } from "~/lib/runner";
+import { runOnce } from "~/lib/run-log";
 import type { StarStory, TailorRequest } from "~/types/cv";
 
 const blank = (): StarStory => ({ id: newId(), title: "", text: "" });
@@ -73,7 +73,7 @@ export function DraftStories({ request, onDrafted }: { request: TailorRequest | 
     setError(null);
     setRunning(true);
     try {
-      const stories = drafted((await runOnRunner(request)).result);
+      const stories = drafted((await runOnce({ kind: "stories", model: request.model ?? "default" }, request)).result);
       if (stories.length) onDrafted(stories);
       else setError("No stories came back. Try again.");
     } catch (e) {

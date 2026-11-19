@@ -160,6 +160,7 @@ const server = createServer(async (req, res) => {
     const model = onAntigravity ? `Antigravity ${AGY_MODEL}` : MODEL_NAME.test(request.model ?? "") ? request.model : MODEL;
     console.log(`Running ${request.web ? "research" : "tailoring"} with ${model} (${request.effort ?? "default"} effort)…`);
     const { result, usage } = await (onAntigravity ? runAntigravity(request) : runClaude(request));
+    usage.model = model;
     console.log(`Done in ${Math.round((Date.now() - started) / 1000)}s: $${usage.costUsd.toFixed(3)} at API prices, ${usage.inputTokens} tokens in, ${usage.cachedTokens} cached, ${usage.outputTokens} out`);
     send(200, { result, usage });
   } catch (e) {

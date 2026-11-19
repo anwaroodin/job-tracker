@@ -6,7 +6,8 @@ import { useFetcher, useLocation, useRevalidator } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Switch } from "~/components/ui/switch";
 import { cn } from "~/lib/cn";
-import { planUsage, runOnRunner } from "~/lib/runner";
+import { planUsage } from "~/lib/runner";
+import { runOnce } from "~/lib/run-log";
 import { RunnerOffline, useRunnerStatus } from "./runner";
 import { recordRunCost, runCosts$ } from "~/lib/state/run-costs";
 import { answerSession, isActive, sessionId, startSession, tailoring$, type TailorTarget } from "~/lib/state/tailoring";
@@ -103,13 +104,9 @@ export function TailorPanel({
     setError(null);
     setProgress("Searching the web for the company's values and what it looks for…");
     try {
-      const before = await planUsage();
-      const { result, usage } = await runOnRunner({ model, ...research });
-      recordRunCost(research.model ?? model, "research", {
-        stages: [usage],
-        before,
-        after: await planUsage(),
-      });
+      const request = { model, ...research };
+      const { result, usage, before, after } = await runOnce({ kind: "research", model: request.model, ...target }, request);
+      recordRunCost(request.model, "research", { stages: [usage], before, after });
       fetcher.submit({ intent: "research", result: JSON.stringify(result) }, { method: "post" });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
