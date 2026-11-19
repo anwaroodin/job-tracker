@@ -1,4 +1,4 @@
-import type { CompanyResearch, Confirmation, CvContent, JobKeywords, ResumeChange, SkillTarget, TailoredCv, TailorRequest } from "~/types/cv";
+import type { CompanyResearch, Confirmation, CvContent, JobKeywords, PipelineVersion, ResumeChange, SkillTarget, TailoredCv, TailorRequest } from "~/types/cv";
 import { cleanCv, list, obj, str, strings } from "../clean";
 import { coverLetterFrom } from "../tailored";
 import { applyEmphasis, cleanEmphasis, EMPHASIS_PROMPT, type Emphasis, emphasisSlots, verifyEmphasis } from "./emphasis";
@@ -16,10 +16,12 @@ import {
   type Strategy,
 } from "./prompts";
 import { confirmedForPrompt, evidenceText, impliedTerms, scoreBefore } from "./questions";
-import { alignWithMaster, matchFullStops, MAX_NOTE_CHARS, mergeInjected, removeAiPhrases, verifySkillPlan, withInjectedEdits } from "./refine";
+import { alignWithMaster, matchFullStops, MAX_NOTE_CHARS, mergeInjected, removeAiPhrases, textSlots, verifySkillPlan, withInjectedEdits } from "./refine";
 import { applyDiffs, chooseProjects, resumeView, verifyDiffResult, withProjects } from "./resume";
 import { rolePosting } from "./role";
-import { DIFFS_SCHEMA, EMPHASIS_SCHEMA, INJECT_SCHEMA, KEYWORDS_SCHEMA, LETTER_SCHEMA, PLAN_SCHEMA } from "./schemas";
+import { DIFFS_SCHEMA, DIFFS_V2_SCHEMA, EMPHASIS_SCHEMA, INJECT_SCHEMA, KEYWORDS_SCHEMA, LETTER_SCHEMA, PLAN_SCHEMA } from "./schemas";
+import { resumeLines, writingAudit } from "./audit";
+import { DIFF_V2_PROMPT, INJECT_CHANGES_PROMPT, V2_JOB_CHARS, V2_MODEL_CAPS } from "./v2";
 
 export type Stage = "keywords" | "plan" | "diffs" | "inject" | "emphasis" | "letter";
 
@@ -43,6 +45,7 @@ export interface TailorContext {
   confirmed: Confirmation[];
   title?: string;
   letter?: boolean;
+  pipeline?: PipelineVersion;
 }
 
 export type Step = { stage: Stage; request: TailorRequest; state: TailorState } | { keywords: JobKeywords } | { done: TailoredCv };
@@ -62,10 +65,13 @@ const EFFORT: Record<Stage, TailorRequest["effort"]> = {
   letter: "medium",
 };
 
-function request(stage: Stage, prompt: string, schema: object): TailorRequest {
+function request(ctx: TailorContext, stage: Stage, prompt: string, schema: object): TailorRequest {
   const provider = stage === "keywords" ? "antigravity" : "claude";
-  return { system: SYSTEM_PROMPTS[stage], schema, input: prompt, effort: EFFORT[stage], provider };
+  const model = ctx.pipeline === "v2" ? V2_MODEL_CAPS[stage] : undefined;
+  return { system: SYSTEM_PROMPTS[stage], schema, input: prompt, effort: EFFORT[stage], provider, ...(model && { model }) };
 }
+
+const jobText = (ctx: TailorContext) => (ctx.pipeline === "v2" ? sanitise(ctx.jobDescription).slice(0, V2_JOB_CHARS) : sanitise(ctx.jobDescription));
 
 const evidence = (ctx: TailorContext) => evidenceText(ctx.master, ctx.confirmed);
 
@@ -76,16 +82,17 @@ function researchFor(ctx: TailorContext) {
 
 function keywordsRequest(ctx: TailorContext) {
   const posting = ctx.title ? rolePosting(sanitise(ctx.title)) : sanitise(ctx.jobDescription);
-  return request("keywords", fill(EXTRACT_KEYWORDS_PROMPT, { job_description: posting }), KEYWORDS_SCHEMA);
+  return request(ctx, "keywords", fill(EXTRACT_KEYWORDS_PROMPT, { job_description: posting }), KEYWORDS_SCHEMA);
 }
 
 function planRequest(ctx: TailorContext, jk: JobKeywords) {
   return request(
+    ctx,
     "plan",
     fill(SKILL_TARGET_PLAN_PROMPT, {
       existing_skills: ctx.master.skills.flatMap((g) => g.items).join(", ") || "None",
       job_keywords: keywordsForPrompt(jk),
-      job_description: sanitise(ctx.jobDescription),
+      job_description: jobText(ctx),
       company_research: researchFor(ctx),
       confirmed: confirmedForPrompt(ctx.confirmed),
       original_resume: json(resumeView(ctx.master)),
@@ -94,35 +101,45 @@ function planRequest(ctx: TailorContext, jk: JobKeywords) {
   );
 }
 
+function withOriginals(changes: ResumeChange[], cv: CvContent) {
+  const slots = textSlots(cv);
+  return changes.map((change) => (change.action === "replace" ? { ...change, original: slots.get(change.path) ?? null } : change));
+}
+
 const base = (ctx: TailorContext, state: TailorState) => withProjects(ctx.master, state.projects);
 
 function diffsRequest(ctx: TailorContext, jk: JobKeywords, state: TailorState) {
   const targets = state.targets.map((t) => `- ${t.skill} (${t.source}): ${t.reason}`).join("\n") || "No verified skill targets.";
+  const resume = base(ctx, state);
+  const v2 = ctx.pipeline === "v2";
   return request(
+    ctx,
     "diffs",
-    fill(DIFF_IMPROVE_PROMPT, {
+    fill(v2 ? DIFF_V2_PROMPT : DIFF_IMPROVE_PROMPT, {
       strategy_instruction: DIFF_STRATEGY_INSTRUCTIONS[state.strategy],
       job_keywords: keywordsForPrompt(jk),
       skill_targets: targets,
-      job_description: sanitise(ctx.jobDescription),
+      job_description: jobText(ctx),
       company_research: researchFor(ctx),
       confirmed: confirmedForPrompt(ctx.confirmed),
-      original_resume: json(resumeView(base(ctx, state))),
+      original_resume: v2 ? resumeLines(resume) : json(resumeView(resume)),
+      writing_audit: v2 ? writingAudit(resume) : "",
     }),
-    DIFFS_SCHEMA,
+    v2 ? DIFFS_V2_SCHEMA : DIFFS_SCHEMA,
   );
 }
 
-function emphasisStep(jk: JobKeywords, state: TailorState): Step {
+function emphasisStep(ctx: TailorContext, jk: JobKeywords, state: TailorState): Step {
   const lines = emphasisSlots(state.tailored!).map(([path, text]) => `${path}: ${text}`).join("\n");
-  return { stage: "emphasis", request: request("emphasis", fill(EMPHASIS_PROMPT, { job_keywords: keywordsForPrompt(jk), lines }), EMPHASIS_SCHEMA), state };
+  return { stage: "emphasis", request: request(ctx, "emphasis", fill(EMPHASIS_PROMPT, { job_keywords: keywordsForPrompt(jk), lines }), EMPHASIS_SCHEMA), state };
 }
 
 function letterRequest(ctx: TailorContext, tailored: CvContent) {
   return request(
+    ctx,
     "letter",
     fill(COVER_LETTER_PROMPT, {
-      job_description: sanitise(ctx.jobDescription),
+      job_description: jobText(ctx),
       resume_data: json(resumeView(tailored)),
       company_research: researchFor(ctx),
     }),
@@ -159,8 +176,8 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
   }
 
   if (stage === "diffs") {
-    const changes = cleanChanges(obj(result).changes);
     const start = base(ctx, state);
+    const changes = ctx.pipeline === "v2" ? withOriginals(cleanChanges(obj(result).changes), start) : cleanChanges(obj(result).changes);
     const { result: tailored, applied, rejected } = applyDiffs(start, changes, state.targets, state.strategy === "full");
     const warnings = [...state.warnings, ...verifyDiffResult(start, tailored, applied, evidence(ctx), allKeywords(jk).map((k) => k.term))];
     if (rejected.length) warnings.push(`${rejected.length} change(s) rejected during verification.`);
@@ -169,21 +186,22 @@ export function continueTailoring(ctx: TailorContext, stage: Stage, result: unkn
     const skills = new Set([...jk.requiredSkills, ...jk.preferredSkills]);
     const injectable = keywordGaps(jk, contentText(tailored), evidence(ctx)).injectable.filter((term) => skills.has(term));
     if (!injectable.length) {
-      return emphasisStep(jk, polished(ctx, next, tailored));
+      return emphasisStep(ctx, jk, polished(ctx, next, tailored));
     }
-    const prompt = fill(KEYWORD_INJECTION_PROMPT, {
+    const v2 = ctx.pipeline === "v2";
+    const prompt = fill(v2 ? INJECT_CHANGES_PROMPT : KEYWORD_INJECTION_PROMPT, {
       keywords_to_inject: json(injectable),
       current_resume: json(resumeView(tailored)),
       master_resume: json({ ...resumeView(ctx.master), confirmedByCandidate: ctx.confirmed.filter((c) => c.has) }),
       job_description: sanitise(ctx.jobDescription).slice(0, 2000),
     });
-    return { stage: "inject", request: request("inject", prompt, INJECT_SCHEMA), state: next };
+    return { stage: "inject", request: request(ctx, "inject", prompt, v2 ? DIFFS_SCHEMA : INJECT_SCHEMA), state: next };
   }
 
   const tailored = state.tailored ?? base(ctx, state);
   if (stage === "inject") {
-    const merged = mergeInjected(tailored, result);
-    return emphasisStep(jk, polished(ctx, { ...state, edits: withInjectedEdits(state.edits, base(ctx, state), tailored, merged) }, merged));
+    const merged = ctx.pipeline === "v2" ? applyDiffs(tailored, injectedLines(result), [], false).result : mergeInjected(tailored, result);
+    return emphasisStep(ctx, jk, polished(ctx, { ...state, edits: withInjectedEdits(state.edits, base(ctx, state), tailored, merged) }, merged));
   }
 
   if (stage === "emphasis") {
@@ -205,9 +223,12 @@ function finished(ctx: TailorContext, state: TailorState, tailored: CvContent, l
       rejectedEdits: state.rejected,
       score: { before: scoreBefore(ctx.master, ctx.confirmed, jk), after: atsScore(tailored, jk, evidence(ctx), impliedTerms(ctx.confirmed)) },
       strategy: state.strategy,
+      ...(ctx.pipeline && ctx.pipeline !== "v1" && { pipeline: ctx.pipeline }),
     },
   };
 }
+
+const injectedLines = (result: unknown) => cleanChanges(obj(result).changes).filter((change) => change.action === "replace");
 
 function cleanChanges(raw: unknown): ResumeChange[] {
   const actions = new Set(["replace", "append", "reorder", "add_skill"]);

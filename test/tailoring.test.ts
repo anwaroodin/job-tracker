@@ -8,6 +8,7 @@ import { atsScore, cleanJobKeywords, contentText, keywordGaps, keywordInText } f
 import { cleanState, continueTailoring, startTailoring, type TailorContext } from "~/server/cv/tailoring/pipeline";
 import { roleDescription } from "~/server/cv/tailoring/role";
 import { verifyEmphasis } from "~/server/cv/tailoring/emphasis";
+import { writingAudit } from "~/server/cv/tailoring/audit";
 import { confirmedForPrompt, gapsRequest, skillGaps, sortGaps, withAnswers } from "~/server/cv/tailoring/questions";
 import { alignWithMaster, matchFullStops, removeAiPhrases, verifySkillPlan } from "~/server/cv/tailoring/refine";
 import { applyDiffs, chooseProjects, resumeView, revertChange, verifyDiffResult } from "~/server/cv/tailoring/resume";
@@ -213,6 +214,88 @@ describe("questions", () => {
     const diffs = continueTailoring(ctx, "plan", { target_skills: [{ skill: "Kubernetes" }, { skill: "PostgreSQL" }] }, plan.state);
     if (!("request" in diffs)) throw new Error("expected a request");
     expect(diffs.state.targets.map((t) => t.skill)).toEqual(["Kubernetes"]);
+  });
+});
+
+describe("pipeline v2", () => {
+  const confirmed = [{ term: "Kubernetes", has: true, detail: "Ran clusters at Acme" }];
+  const ctx: TailorContext = { master: CV, jobDescription: `${JOB} ${"x".repeat(10_000)}`, keywords: KEYWORDS, research: null, confirmed, pipeline: "v2" };
+  const bullet = CV.experience[0].bullets[0].text;
+
+  it("caps the light stages' models, trims the job description and keeps diffs on the chosen model", () => {
+    const plan = startTailoring(ctx, "keywords");
+    if (!("request" in plan)) throw new Error("expected a request");
+    expect(plan.request.model).toBe("claude-sonnet-5-5");
+    const diffsInput = (pipeline: TailorContext["pipeline"]) => {
+      const start = startTailoring({ ...ctx, pipeline }, "keywords");
+      if (!("state" in start)) throw new Error("expected a request");
+      const diffs = continueTailoring({ ...ctx, pipeline }, "plan", { target_skills: [] }, start.state);
+      if (!("request" in diffs)) throw new Error("expected a request");
+      expect(diffs.request.model).toBeUndefined();
+      return diffs.request.input;
+    };
+    expect(diffsInput("v1").length - diffsInput("v2").length).toBeGreaterThan(3000);
+    const v1 = startTailoring({ ...ctx, pipeline: "v1" }, "keywords");
+    expect("request" in v1 && v1.request.model).toBeUndefined();
+  });
+
+  it("works missing keywords in as checked line changes instead of a whole new CV", () => {
+    const plan = startTailoring(ctx, "keywords");
+    if (!("state" in plan)) throw new Error("expected a request");
+    const diffs = continueTailoring(ctx, "plan", { target_skills: [] }, plan.state);
+    if (!("request" in diffs)) throw new Error("expected a request");
+    const inject = continueTailoring(ctx, "diffs", { changes: [] }, diffs.state);
+    if (!("request" in inject) || inject.stage !== "inject") throw new Error("expected the inject stage");
+    expect(inject.request.schema).toHaveProperty("properties.changes");
+
+    const rewritten = "Built REST APIs in Go for the billing service on Kubernetes";
+    const emphasis = continueTailoring(ctx, "inject", {
+      changes: [
+        { path: "workExperience[0].description[0]", action: "replace", original: bullet, value: rewritten, reason: "" },
+        { path: "workExperience[0].description[1]", action: "replace", original: "not the current text", value: "Made up", reason: "" },
+        { path: "workExperience[0].description", action: "append", original: null, value: "New bullet", reason: "" },
+      ],
+    }, inject.state);
+    if (!("request" in emphasis)) throw new Error("expected the emphasis stage");
+    expect(emphasis.request.model).toBe("claude-haiku-5-5");
+    expect(emphasis.state.tailored?.experience[0].bullets.map((b) => b.text)).toEqual([rewritten, CV.experience[0].bullets[1].text]);
+    expect(emphasis.state.edits).toContainEqual(expect.objectContaining({ path: "workExperience[0].description[0]", original: bullet, value: rewritten }));
+  });
+});
+
+describe("v2 diffs", () => {
+  const ctx: TailorContext = { master: CV, jobDescription: JOB, keywords: KEYWORDS, research: null, confirmed: [], pipeline: "v2" };
+  const diffsStep = () => {
+    const start = startTailoring(ctx, "keywords");
+    if (!("state" in start)) throw new Error("expected a request");
+    const diffs = continueTailoring(ctx, "plan", { target_skills: [] }, start.state);
+    if (!("request" in diffs)) throw new Error("expected a request");
+    return diffs;
+  };
+
+  it("asks for changes by path with the rule breaks code found, and no copied originals", () => {
+    const { request } = diffsStep();
+    expect(request.input).toContain("MECHANICAL ISSUES");
+    expect(request.input).toContain(`workExperience[0].description[0]: ${CV.experience[0].bullets[0].text}`);
+    expect(request.input).not.toContain('"original"');
+    expect(request.schema).not.toHaveProperty("properties.changes.items.properties.original");
+  });
+
+  it("looks up each change's original text from its path", () => {
+    const diffs = diffsStep();
+    const value = "Built REST APIs in Go for billing service handling 2 million requests daily";
+    const next = continueTailoring(ctx, "diffs", { changes: [{ path: "workExperience[0].description[0]", action: "replace", value, reason: "" }] }, diffs.state);
+    if (!("state" in next)) throw new Error("expected the next stage");
+    expect(next.state.edits).toContainEqual(expect.objectContaining({ original: CV.experience[0].bullets[0].text, value }));
+  });
+
+  it("flags pronouns, articles, overused openers and repeated numbers", () => {
+    const bullets = ["Built the API for 20 clients", "Built services for payments team at scale", "Built tooling that we used for 20 clients"];
+    const cv = { ...CV, experience: [{ ...CV.experience[0], bullets: bullets.map((text, i) => ({ id: String(i), text })) }], projects: [] };
+    const audit = writingAudit(cv);
+    expect(audit).toContain('workExperience[0].description[0]: article "the"');
+    expect(audit).toMatch(/description\[1\]: .*no number/);
+    expect(audit).toMatch(/description\[2\]: opens with "built", already used 2 times; pronoun "we"; repeats "20" from workExperience\[0\]\.description\[0\]/);
   });
 });
 
