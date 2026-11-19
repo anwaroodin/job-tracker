@@ -71,6 +71,11 @@ export interface CoverLetter {
   signOff: string;
 }
 
+export const PIPELINE_VERSIONS = ["v1", "v2", "v3"] as const;
+export type PipelineVersion = (typeof PIPELINE_VERSIONS)[number];
+
+export const isPipelineVersion = (value: unknown): value is PipelineVersion => PIPELINE_VERSIONS.includes(value as PipelineVersion);
+
 export interface CvContent {
   summary: string;
   summaryBold?: string[];
@@ -102,6 +107,7 @@ export interface TailorRequest {
 }
 
 export interface RunnerUsage {
+  model?: string;
   costUsd: number;
   inputTokens: number;
   cachedTokens: number;
