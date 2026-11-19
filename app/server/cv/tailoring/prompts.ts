@@ -114,7 +114,7 @@ The bad one could describe anyone. The good one could only describe this person.
 
 `;
 
-const WRITING_RULES = `CV WRITING RULES (every line you write must follow these):
+export const WRITING_RULES = `CV WRITING RULES (every line you write must follow these):
 - Start each bullet with a strong past-tense action verb (present tense only for a current role whose bullets already use it).
 - One idea per bullet, about 12 to 25 words. Cut filler.
 - Structure every bullet as action verb + task or project + outcome, for example "Added Redis caching to the payments service, cutting average API latency by ~34%". Put a number in as many bullets as the CV honestly allows: use any number from the CV or the candidate's answers that belongs to that work (including one stated in the summary or another line), and otherwise quantify scope the CV supports, such as how many users, clients, services or people. Never invent a percentage, revenue figure or result the CV and answers don't give.
