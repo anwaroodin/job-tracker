@@ -6,7 +6,7 @@ import { useFetcher, useLocation, useRevalidator } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Switch } from "~/components/ui/switch";
 import { cn } from "~/lib/cn";
-import { planUsage } from "~/lib/runner";
+import { costKey, planUsage } from "~/lib/runner";
 import { runOnce } from "~/lib/run-log";
 import { RunnerOffline, useRunnerStatus } from "./runner";
 import { recordRunCost, runCosts$ } from "~/lib/state/run-costs";
@@ -22,40 +22,26 @@ const MODELS = [
   { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
   { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
 ];
-const MODEL_KEY = "job-tracker/claude-model";
-const LETTER_KEY = "job-tracker/cover-letter";
+const PIPELINES = [
+  { id: "v1", label: "v1 (current)" },
+  { id: "v2", label: "v2 (lower cost)" },
+] as const;
 
-function useModel() {
-  const [model, setModel] = useState(MODELS[0].id);
+function useSavedChoice<T extends string>(key: string, options: readonly T[]) {
+  const [value, setValue] = useState<T>(options[0]);
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(MODEL_KEY);
-      if (saved && MODELS.some((m) => m.id === saved)) setModel(saved);
+      const saved = localStorage.getItem(key);
+      if (saved && options.includes(saved as T)) setValue(saved as T);
     } catch {}
-  }, []);
-  const choose = (id: string) => {
-    setModel(id);
+  }, [key]);
+  const choose = (next: T) => {
+    setValue(next);
     try {
-      localStorage.setItem(MODEL_KEY, id);
+      localStorage.setItem(key, next);
     } catch {}
   };
-  return [model, choose] as const;
-}
-
-function useLetter() {
-  const [letter, setLetter] = useState(true);
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(LETTER_KEY) === "off") setLetter(false);
-    } catch {}
-  }, []);
-  const choose = (on: boolean) => {
-    setLetter(on);
-    try {
-      localStorage.setItem(LETTER_KEY, on ? "on" : "off");
-    } catch {}
-  };
-  return [letter, choose] as const;
+  return [value, choose] as const;
 }
 
 export function TailorPanel({
@@ -79,8 +65,11 @@ export function TailorPanel({
   const runner = useRunnerStatus();
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [model, setModel] = useModel();
-  const [letter, setLetter] = useLetter();
+  const [model, setModel] = useSavedChoice("job-tracker/claude-model", MODELS.map((m) => m.id));
+  const [letterChoice, setLetterChoice] = useSavedChoice("job-tracker/cover-letter", ["on", "off"] as const);
+  const letter = letterChoice === "on";
+  const setLetter = (on: boolean) => setLetterChoice(on ? "on" : "off");
+  const [pipeline, setPipeline] = useSavedChoice("job-tracker/tailor-pipeline", PIPELINES.map((p) => p.id));
   const forJob = "applicationId" in target;
   const costs = useRunCosts();
   const id = sessionId(target);
@@ -97,7 +86,7 @@ export function TailorPanel({
     status.current = session?.status;
   }, [session?.status]);
 
-  const tailor = () => startSession({ company, role, href: pathname, target, model, letter });
+  const tailor = () => startSession({ company, role, href: pathname, target, model, letter, pipeline });
 
   const runResearch = async () => {
     if (!research) return;
@@ -135,6 +124,21 @@ export function TailorPanel({
             {MODELS.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-[12.5px] text-text-tertiary">
+          Pipeline
+          <select
+            value={pipeline}
+            onChange={(e) => setPipeline(e.target.value as (typeof PIPELINES)[number]["id"])}
+            disabled={busy}
+            className="h-9 border border-stroke-secondary bg-bg-primary px-2 text-[13.5px] text-text-primary hover:border-stroke-primary disabled:opacity-40"
+          >
+            {PIPELINES.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
               </option>
             ))}
           </select>
@@ -187,7 +191,7 @@ export function TailorPanel({
       )}
       {costs.now && (
         <div className="border-t border-stroke-secondary bg-sidebar px-4 py-2.5">
-          <RunCost calibrations={costs.calibrations} model={model} now={costs.now} last={costs.last} />
+          <RunCost calibrations={costs.calibrations} model={costKey(model, pipeline)} now={costs.now} last={costs.last} />
         </div>
       )}
     </div>

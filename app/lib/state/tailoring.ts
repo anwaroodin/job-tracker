@@ -1,7 +1,8 @@
 import { observable } from "@legendapp/state";
+import { cheaperModel, costKey } from "~/lib/runner";
 import { finishRun, type LoggedRun, runStage, startRun } from "~/lib/run-log";
 import { recordRunCost } from "~/lib/state/run-costs";
-import type { Confirmation, JobQuestion, RunnerUsage, TailorRequest } from "~/types/cv";
+import type { Confirmation, JobQuestion, PipelineVersion, RunnerUsage, TailorRequest } from "~/types/cv";
 
 export type TailorTarget = { applicationId: string } | { roleId: string };
 export type SessionStatus = "queued" | "running" | "questions" | "done" | "failed";
@@ -14,6 +15,7 @@ export interface TailoringSession {
   target: TailorTarget;
   model: string;
   letter: boolean;
+  pipeline: PipelineVersion;
   status: SessionStatus;
   stage: string | null;
   stageStartedAt: number | null;
@@ -24,7 +26,7 @@ export interface TailoringSession {
   createdAt: number;
 }
 
-export type NewSession = Pick<TailoringSession, "company" | "role" | "href" | "target" | "model" | "letter">;
+export type NewSession = Pick<TailoringSession, "company" | "role" | "href" | "target" | "model" | "letter" | "pipeline">;
 
 type Step = { stage: string; request: TailorRequest; state: unknown } | { questions: JobQuestion[] } | { done: true };
 
@@ -66,12 +68,12 @@ async function postStep(body: object): Promise<Step> {
 
 async function run(id: string) {
   const session$ = tailoring$[id];
-  const { target, model, letter, answers } = session$.peek();
+  const { target, model, letter, pipeline, answers } = session$.peek();
   session$.assign({ status: "running", stage: null, error: null, answers: null });
-  const spent = usage.get(id) ?? { stages: [], run: await startRun({ kind: "tailor", model, letter, ...target }) };
+  const spent = usage.get(id) ?? { stages: [], run: await startRun({ kind: "tailor", model, pipeline, letter, ...target }) };
   usage.set(id, spent);
   try {
-    let step = await postStep({ ...target, letter, ...(answers && { answered: true, answers }) });
+    let step = await postStep({ ...target, letter, pipeline, ...(answers && { answered: true, answers }) });
     while (!("done" in step)) {
       if (!session$.peek()) return;
       if ("questions" in step) {
@@ -80,14 +82,14 @@ async function run(id: string) {
       }
       const startedAt = Date.now();
       session$.assign({ stage: step.stage, stageStartedAt: startedAt });
-      const { result, usage: stageUsage } = await runStage(spent.run, step.stage, { ...step.request, model });
+      const { result, usage: stageUsage } = await runStage(spent.run, step.stage, { ...step.request, model: cheaperModel(step.request.model, model) });
       spent.stages.push(stageUsage);
       const stage = step.stage;
-      step = await postStep({ ...target, letter, stage, result, state: step.state });
+      step = await postStep({ ...target, letter, pipeline, stage, result, state: step.state });
       if (session$.peek()) session$.durations[stage].set(Date.now() - startedAt);
     }
     usage.delete(id);
-    recordRunCost(model, "tailor", { stages: spent.stages, before: spent.run.before, after: await finishRun(spent.run) });
+    recordRunCost(costKey(model, pipeline), "tailor", { stages: spent.stages, before: spent.run.before, after: await finishRun(spent.run) });
     if (session$.peek()) session$.assign({ status: "done", stage: null });
   } catch (e) {
     usage.delete(id);

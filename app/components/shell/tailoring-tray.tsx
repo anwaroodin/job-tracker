@@ -44,7 +44,7 @@ function IconButton({ icon, label, onClick }: { icon: IconSvgElement; label: str
 
 function Row({ session }: { session: TailoringSession }) {
   const tone = TONES[session.status];
-  const retry = () => startSession({ company: session.company, role: session.role, href: session.href, target: session.target, model: session.model, letter: session.letter });
+  const retry = () => startSession({ company: session.company, role: session.role, href: session.href, target: session.target, model: session.model, letter: session.letter, pipeline: session.pipeline ?? "v1" });
   return (
     <li className="flex items-start gap-3 px-3 py-2.5 hover:bg-ink/[0.04]">
       <CompanyLogo company={"applicationId" in session.target ? session.company : ""} className="mt-0.5 size-8 text-[13px]" />

@@ -151,7 +151,7 @@ export default function TailoredCvPage({ loaderData }: Route.ComponentProps) {
           )}
           <SideBlock title="This CV">
             <p className="text-[13.5px] text-text-secondary">
-              {tailored ? `Version ${tailored.version} · tailored ${shortDate(tailored.createdAt)}` : "Not tailored yet"}
+              {tailored ? `Version ${tailored.version}${tailored.cv.pipeline ? ` (${tailored.cv.pipeline})` : ""} · tailored ${shortDate(tailored.createdAt)}` : "Not tailored yet"}
             </p>
             <Link to={`/applications/${application.id}`} className="text-[13px] text-text-secondary underline-offset-4 hover:text-text-primary hover:underline">
               Back to the application
