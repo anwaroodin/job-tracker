@@ -80,7 +80,7 @@ export function ActivityToasts({ initial }: { initial: GmailStatus }) {
               ) : (
                 <span className="flex items-center gap-2 font-medium text-text-primary">
                   <span aria-hidden className="size-2 rounded-full bg-green-primary" />
-                  {toast.length} {toast.length === 1 ? "update" : "updates"} from Gmail
+                  {toast.every((item) => item.kind === "goal") ? "Weekly goal" : `${toast.length} ${toast.length === 1 ? "update" : "updates"}`}
                 </span>
               )}
               <button

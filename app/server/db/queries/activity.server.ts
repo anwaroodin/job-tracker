@@ -8,6 +8,7 @@ const UNSEEN_CAP = 100;
 
 const isLive = sql`(case ${activity.kind}
   when 'status' then 1
+  when 'goal' then 1
   when 'suggestion' then exists (
     select 1 from ${emailMessage}
     where ${emailMessage.userId} = ${activity.userId} and ${emailMessage.id} = ${activity.emailId}
@@ -76,6 +77,13 @@ export async function recentActivity(db: Db, userId: string): Promise<ActivityIt
     seen: seenAt !== null,
     detail: detail ? (JSON.parse(detail) as Record<string, string | null>) : {},
   }));
+}
+
+export function insertActivityOnce(db: Db, userId: string, id: string, item: NewActivity) {
+  return db
+    .insert(activity)
+    .values({ id, userId, createdAt: new Date().toISOString(), kind: item.kind, applicationId: null, emailId: null, detail: item.detail ? JSON.stringify(item.detail) : null })
+    .onConflictDoNothing();
 }
 
 export async function markActivitySeen(db: Db, userId: string) {

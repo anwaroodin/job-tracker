@@ -1,6 +1,6 @@
 import { eventLabel, formatEventAt } from "./email";
 
-export type ActivityKind = "email" | "status" | "reply" | "event" | "suggestion";
+export type ActivityKind = "email" | "status" | "reply" | "event" | "suggestion" | "goal";
 
 export interface ActivityItem {
   id: string;
@@ -17,6 +17,8 @@ export function describeActivity(item: ActivityItem) {
   const company = item.company ?? item.detail.company ?? "An application";
   const href = item.applicationId ? `/applications/${item.applicationId}` : "/applications";
   switch (item.kind) {
+    case "goal":
+      return { tag: "goal", title: item.detail.title ?? "Weekly goal", body: item.detail.body, href: item.detail.href ?? "/overview" };
     case "status":
       return { tag: item.detail.to ?? "status", title: `${company} moved to ${item.detail.to}`, body: null, href };
     case "reply":
@@ -47,7 +49,7 @@ export type ActivityTab = (typeof ACTIVITY_TABS)[number]["id"];
 
 export function activityTab(item: ActivityItem): Exclude<ActivityTab, "all"> {
   if (item.kind === "suggestion") return "suggestions";
-  if (item.kind === "reply" || item.kind === "event") return "todo";
+  if (item.kind === "reply" || item.kind === "event" || item.kind === "goal") return "todo";
   const rejected = item.kind === "status" ? item.detail.to === "rejected" : item.detail.category === "rejected";
   return rejected ? "rejections" : "updates";
 }

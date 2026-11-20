@@ -1,4 +1,4 @@
-import { Mail01Icon } from "@hugeicons/core-free-icons";
+import { Mail01Icon, Target02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CompanyLogo } from "~/components/applications/company-logo";
 import { StatusBadge } from "~/components/ui/status-badge";
@@ -14,14 +14,20 @@ export function ActivityRow({ item, fresh, now }: { item: ActivityItem; fresh: b
         <CompanyLogo company={company} className="size-8 text-[13px]" />
       ) : (
         <span className="grid size-8 shrink-0 place-items-center bg-ink/[0.05] text-text-secondary">
-          <HugeiconsIcon icon={Mail01Icon} size={17} strokeWidth={1.5} />
+          <HugeiconsIcon icon={item.kind === "goal" ? Target02Icon : Mail01Icon} size={17} strokeWidth={1.5} />
         </span>
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-text-primary">{title}</p>
         <p className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-text-tertiary">
-          <StatusBadge status={tag} variant="dot" className="shrink-0 text-[12.5px]" />
-          {body && <span className="truncate">· {body}</span>}
+          {item.kind === "goal" ? (
+            <span className="truncate">{body}</span>
+          ) : (
+            <>
+              <StatusBadge status={tag} variant="dot" className="shrink-0 text-[12.5px]" />
+              {body && <span className="truncate">· {body}</span>}
+            </>
+          )}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2 self-start pt-0.5 text-[12.5px] text-text-tertiary">
