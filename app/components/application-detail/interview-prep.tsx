@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button";
 import { SideBlock } from "~/components/ui/side-block";
 import { shortDate } from "~/components/ui/terminal";
 import { RunnerOffline, useRunnerStatus } from "~/components/tailored-cv/runner";
-import { runOnRunner } from "~/lib/runner";
+import { runOnce } from "~/lib/run-log";
 import type { InterviewPrep as Prep, InterviewQuestion, TailorRequest } from "~/types/cv";
 
 export function PrepareBlock({ prep, request }: { prep: Prep | null; request: TailorRequest | null }) {
@@ -20,7 +20,7 @@ export function PrepareBlock({ prep, request }: { prep: Prep | null; request: Ta
     setError(null);
     setRunning(true);
     try {
-      const { result } = await runOnRunner(request);
+      const { result } = await runOnce({ kind: "prep", model: request.model ?? "default" }, request);
       fetcher.submit({ intent: "prep", result: JSON.stringify(result) }, { method: "post" });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

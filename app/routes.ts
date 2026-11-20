@@ -22,6 +22,7 @@ export default [
   route("api/activity", "routes/api/activity.ts"),
   route("api/search", "routes/api/search.ts"),
   route("api/cv/tailor", "routes/api/cv/tailor.ts"),
+  route("api/runs", "routes/api/runs.ts"),
   
   route("s/:token", "routes/share/index.tsx"),
   route("s/:token/cv.pdf", "routes/share/pdf.ts"),
