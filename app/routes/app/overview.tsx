@@ -19,6 +19,8 @@ import { Figures, Verdict } from "~/components/overview/summary";
 import { UpNextSection } from "~/components/overview/up-next";
 import { OffersBanner } from "~/components/applications/offers-banner";
 import { WeeklyGoal } from "~/components/overview/weekly-goal";
+import { WeeklyReview } from "~/components/overview/weekly-review";
+import { weeklyReview } from "~/server/services/overview/goal.server";
 import { cleanWeeklyGoal, goalProgress } from "~/lib/goal";
 import { setWeeklyGoal, weeklyGoalFor } from "~/server/db/queries/settings.server";
 
@@ -27,7 +29,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const user = context.get(userContext);
   const db = getDb(env.DB);
   const [analytics, next, goal] = await Promise.all([analyticsFor(db, user.id), upNext(db, user.id), weeklyGoalFor(db, user.id)]);
-  return { analytics, next, goal, progress: goal ? goalProgress(analytics.weekly, goal) : null };
+  const review = await weeklyReview(db, user.id, analytics, goal);
+  return { analytics, next, goal, review, progress: goal ? goalProgress(analytics.weekly, goal) : null };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -56,6 +59,7 @@ export default function Overview({ loaderData }: Route.ComponentProps) {
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
         <div className="flex min-w-0 flex-col gap-10">
+          {loaderData.review && <WeeklyReview review={loaderData.review} />}
           <WeeklyGoal progress={loaderData.progress} goal={loaderData.goal} />
           <OffersBanner offers={a.offers ?? []} />
           {upNextTotal > 0 && <UpNextSection next={loaderData.next} />}

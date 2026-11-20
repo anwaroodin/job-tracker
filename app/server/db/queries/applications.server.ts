@@ -91,6 +91,14 @@ export async function deleteApplication(db: Db, userId: string, id: string) {
   return deleted.length > 0;
 }
 
+export function savedJobs(db: Db, userId: string) {
+  return db
+    .select({ id: application.id, company: application.company, role: application.role, url: application.url, location: application.location, description: application.description, savedAt: application.appliedAt })
+    .from(application)
+    .where(and(eq(application.userId, userId), eq(application.status, "saved")))
+    .orderBy(application.appliedAt);
+}
+
 export function deleteSavedApplication(db: Db, userId: string, id: string) {
   return db
     .delete(application)

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import type { ActivityItem, ActivityKind } from "~/lib/activity";
 import type { Db } from "../client.server";
 import { activity, application, emailLink, emailMessage } from "../schema";
@@ -84,6 +84,13 @@ export function insertActivityOnce(db: Db, userId: string, id: string, item: New
     .insert(activity)
     .values({ id, userId, createdAt: new Date().toISOString(), kind: item.kind, applicationId: null, emailId: null, detail: item.detail ? JSON.stringify(item.detail) : null })
     .onConflictDoNothing();
+}
+
+export function statusChangesBetween(db: Db, userId: string, from: string, to: string) {
+  return db
+    .select({ applicationId: activity.applicationId, detail: activity.detail })
+    .from(activity)
+    .where(and(eq(activity.userId, userId), eq(activity.kind, "status"), gte(activity.createdAt, from), lt(activity.createdAt, to)));
 }
 
 export async function markActivitySeen(db: Db, userId: string) {
