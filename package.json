@@ -16,6 +16,7 @@
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "runner": "node --env-file-if-exists=.env scripts/claude-runner.mjs",
+    "smtp-checker": "node --env-file-if-exists=smtp-checker/.env smtp-checker/server.mjs",
     "extension:zip": "node scripts/zip-extension.mjs",
     "extension:publish": "node scripts/zip-extension.mjs --publish"
   },

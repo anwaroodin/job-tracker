@@ -1,3 +1,5 @@
+import { JOB_BOARD_DOMAINS } from "~/lib/email-pattern";
+
 const MAX_CANDIDATES = 12;
 const MAX_ROLE_WORDS = 8;
 
@@ -7,8 +9,6 @@ export const MIN_APPLICATION_PROBABILITY = 0.5;
 const NAME = String.raw`[A-Z0-9][\w&.'’+-]*(?:[ \t]+(?:of|and|&|[A-Z0-9][\w&.'’+-]*)){0,4}`;
 const ROLE_END = String.raw`(?=\s*(?:[.!,;(|·•]|\s[–—-]\s|$|\s(?:at|with|in)\s[A-Z]))`;
 
-const JOB_BOARD_DOMAINS =
-  /(^|\.)(myworkday(jobs)?|greenhouse(-mail)?|lever|workable(mail)?|ashbyhq|smartrecruiters|icims|successfactors|taleo|jobvite|teamtailor|recruitee|bamboohr|pinpointhq|indeed|linkedin|cv-library|reed|totaljobs|glassdoor|hirevue|oraclecloud|beapplied|applytojob|gmail|outlook|hotmail)\./i;
 const JOB_BOARD_WORDS =
   /\b(linked ?in|indeed|cv-?library|glassdoor|reed\.co|totaljobs|workday|greenhouse|lever\.co|ashby|smartrecruiters|workable|hirevue|monster|jobsite|otta|welcome to the jungle)\b/i;
 const SENDER_NOISE =

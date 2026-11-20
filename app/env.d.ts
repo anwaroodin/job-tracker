@@ -16,6 +16,12 @@ declare global {
     EMAIL_CLASSIFIER?: "jev" | "regex";
     // Optional: Logo.dev publishable key, looks up company logos by name
     LOGO_DEV_TOKEN?: string;
+    SMTP_CHECKER_URL?: string;
+    SMTP_CHECKER_SECRET?: string;
+    GENERECT_API_KEY?: string;
+    BRAVE_SEARCH_API_KEY?: string;
+    BRAVE_MONTHLY_BUDGET_USD?: string;
+    GENERECT_MONTHLY_BUDGET_USD?: string;
     SYNC_HOURS?: string;
     SYNC_TIMEZONE?: string;
   }

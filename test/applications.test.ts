@@ -19,6 +19,7 @@ const posting = (over: Partial<Parameters<typeof trackPosting>[2]> = {}) => ({
   url: "https://jobs.acme.com/1",
   status: "",
   details: {},
+  contacts: [],
   starred: undefined,
   autoFilled: true,
   ...over,

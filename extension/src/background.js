@@ -174,6 +174,11 @@ async function updateJob({ applicationId, patch }) {
   return { application: summary(application) };
 }
 
+async function savePeople({ applicationId, people }) {
+  await updateApplication(applicationId, { people });
+  return { saved: people.length };
+}
+
 /** Un-bookmarks a saved job, which removes it: saved and bookmarked are the same thing. */
 async function removeJob({ applicationId, url }) {
   await removeSavedApplication(applicationId);
@@ -298,6 +303,7 @@ const HANDLERS = {
   "job:save": saveJob,
   "job:update": updateJob,
   "job:remove": removeJob,
+  "people:save": savePeople,
   "job:apply": applyToJob,
   "fill:get": fillValues,
   "fill:stop": stopFill,

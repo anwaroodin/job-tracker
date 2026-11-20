@@ -30,7 +30,6 @@ export type JobDetails = Pick<
   | "postedAt"
   | "applicants"
   | "logoUrl"
-  | "contactsJson"
   | "cvType"
   | "category"
 >;
@@ -57,9 +56,6 @@ export function jobDetails(body: Record<string, unknown>): Partial<JobDetails> {
   set("applicants", text(body.applicants, 60));
   set("logoUrl", cleanUrl(body.logo_url).slice(0, 1000));
 
-  const contacts = cleanContacts(body.contacts);
-  if (contacts.length) details.contactsJson = JSON.stringify(contacts);
-
   const cvType = text(body.cv_type, 20);
   if (CV_TYPES.has(cvType)) details.cvType = cvType;
   const category = text(body.category, 20);
@@ -67,6 +63,10 @@ export function jobDetails(body: Record<string, unknown>): Partial<JobDetails> {
 
   return details;
 }
+
+export const jobContacts = (body: Record<string, unknown>) => cleanContacts(body.contacts);
+
+export const pickedPeople = (body: Record<string, unknown>) => cleanContacts(body.people);
 
 /**
  * A date as an ISO string, or "" when it doesn't parse or is in the future

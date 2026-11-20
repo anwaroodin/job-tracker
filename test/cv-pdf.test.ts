@@ -68,7 +68,7 @@ describe("cvPdf", () => {
     let tag = "";
     const textTags = new Set<string>();
     for (const item of items) {
-      if ("type" in item && item.type.startsWith("beginMarkedContent")) tag = item.tag ?? "";
+      if ("type" in item && item.type.startsWith("beginMarkedContent")) tag = "tag" in item && typeof item.tag === "string" ? item.tag : "";
       else if ("type" in item && item.type === "endMarkedContent") tag = "";
       else if ("str" in item && item.str.trim()) textTags.add(tag);
     }

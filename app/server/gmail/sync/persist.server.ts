@@ -1,8 +1,10 @@
 import { chunk } from "~/lib/array";
+import { detectPattern, domainOf, isCompanyDomain } from "~/lib/email-pattern";
 import { ANALYTICS_CACHE, invalidate, UNREAD_COUNTS_CACHE } from "../../cache.server";
 import { asBatch, MAX_IDS_PER_STATEMENT } from "../../db/batch.server";
 import type { Db } from "../../db/client.server";
 import { markThreadsForRefetch, saveEmail } from "../../db/queries/email-retention.server";
+import { type LearnedPattern, recordPatterns } from "../../db/queries/email-patterns.server";
 import { linkEmail, setCategory, unlinkedStageEmails } from "../../db/queries/email-sync.server";
 import { updateSyncState } from "../../db/queries/gmail-sync.server";
 import { applicationsFor, latestStageEmailPerApplication, setApplicationStatus } from "../../db/queries/status.server";
@@ -22,6 +24,8 @@ export function changedCategories(stored: ReclassifiableEmail[], classifications
   });
 }
 
+const PATTERNS_PER_STATEMENT = 20;
+
 export async function saveAndLoadForMatching(
   db: Db,
   run: Run,
@@ -30,9 +34,11 @@ export async function saveAndLoadForMatching(
   categoryChanges: CategoryChange[],
 ) {
   const rows = toEmailRows(run.userId, fetched.messages, fetched.missing, classifications);
+  const learned = learnedPatterns(fetched.messages, classifications);
   const writes = [
     ...rows.map((row) => saveEmail(db, row)),
     ...categoryChanges.map((change) => setCategory(db, run.userId, change)),
+    ...chunk(learned, PATTERNS_PER_STATEMENT).map((part) => recordPatterns(db, part)),
   ];
   const matched = run.applicationsChanged || writes.length > 0;
   if (!matched) return { matched, unlinked: [], applications: [], latestStages: [] };
@@ -96,6 +102,17 @@ export async function finishRun(
   );
   if (plan.links.length) await invalidate(UNREAD_COUNTS_CACHE, run.userId);
   if (plan.statusChanges.length) await invalidate(ANALYTICS_CACHE, run.userId);
+}
+
+function learnedPatterns(messages: GmailMessage[], classifications: Map<string, Classification>) {
+  const learned = new Map<string, LearnedPattern>();
+  for (const message of messages) {
+    const domain = domainOf(message.fromAddress);
+    if (classifications.get(message.id)?.category === "other" || !isCompanyDomain(domain)) continue;
+    const pattern = detectPattern(message.fromName, message.fromAddress);
+    if (pattern) learned.set(`${domain} ${pattern}`, { domain, pattern });
+  }
+  return [...learned.values()];
 }
 
 function toEmailRows(
