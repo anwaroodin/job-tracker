@@ -33,6 +33,8 @@ export function refreshedStatus(app: TrackedStatus, evidenceAt: string | undefin
 
 export function clearBookmarkOnApply(currentStatus: string, patch: Partial<NewApplication>) {
   const leavingSaved = currentStatus === "saved" && patch.status !== undefined && patch.status !== "saved";
-  if (leavingSaved && patch.starred === undefined) patch.starred = false;
+  if (!leavingSaved) return patch;
+  if (patch.starred === undefined) patch.starred = false;
+  patch.appliedAt ??= patch.manualStatusAt ?? patch.updatedAt ?? new Date().toISOString();
   return patch;
 }

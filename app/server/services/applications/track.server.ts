@@ -37,8 +37,7 @@ export async function trackPosting(db: Db, userId: string, posting: Posting) {
     const patch: Partial<NewApplication> = rest;
     // Applying to a saved posting turns the bookmark into the application.
     if (existing.status === "saved" && status && status !== "saved") {
-      const now = new Date().toISOString();
-      Object.assign(patch, { ...setByHand(status, now), appliedAt: now });
+      Object.assign(patch, setByHand(status));
     }
     if (starred !== undefined) patch.starred = starred;
     clearBookmarkOnApply(existing.status, patch);

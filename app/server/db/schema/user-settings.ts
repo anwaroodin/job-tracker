@@ -11,6 +11,7 @@ export const userSettings = sqliteTable("user_settings", {
   extractDetails: integer("extract_details", { mode: "boolean" }).notNull().default(true),
   suggestApplications: integer("suggest_applications", { mode: "boolean" }).notNull().default(true),
   monthlyBudget: real("monthly_budget"),
+  weeklyGoal: integer("weekly_goal"),
   autoSync: integer("auto_sync", { mode: "boolean" }).notNull().default(true),
   onboardedAt: text("onboarded_at"),
   updatedAt: text("updated_at"),

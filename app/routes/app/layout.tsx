@@ -8,6 +8,7 @@ import { getDb } from "~/server/db/client.server";
 import { unreadEmailCounts } from "~/server/db/queries/emails.server";
 import { isOnboarded } from "~/server/db/queries/settings.server";
 import { getGmailStatus } from "~/server/gmail/sync/schedule.server";
+import { ensureGoalNotice } from "~/server/services/overview/goal.server";
 
 export const middleware: Route.MiddlewareFunction[] = [
   async ({ request, context }) => {
@@ -19,6 +20,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.get(envContext);
   const user = context.get(userContext);
   const db = getDb(env.DB);
+  await ensureGoalNotice(db, user.id);
   const [gmail, unread] = await Promise.all([getGmailStatus(db, user.id), unreadEmailCounts(db, user.id)]);
   const path = new URL(request.url).pathname.replace(/\.data$/, "");
   if (!gmail.connected && path !== "/welcome" && !(await isOnboarded(db, user.id))) throw redirect("/welcome");
