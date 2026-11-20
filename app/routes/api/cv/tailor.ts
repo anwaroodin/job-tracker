@@ -15,7 +15,7 @@ import { getApplication, saveJdKeywords } from "~/server/db/queries/applications
 import { getCv, saveCv } from "~/server/db/queries/profile.server";
 import { getRoleCv, saveRoleCv, saveRoleKeywords } from "~/server/db/queries/role-cv.server";
 import { insertTailoredCv, latestTailoredCv } from "~/server/db/queries/tailored-cv.server";
-import type { JobKeywords, TailoredCv } from "~/types/cv";
+import { isPipelineVersion, type JobKeywords, type TailoredCv } from "~/types/cv";
 
 const STAGES = new Set<Stage>(["keywords", "plan", "diffs", "inject", "emphasis", "letter"]);
 const MAX_BODY_CHARS = 400_000;
@@ -62,6 +62,7 @@ function parsed(text: string) {
       strategy: body.strategy,
       answered: body.answered === true,
       letter: body.letter !== false,
+      pipeline: isPipelineVersion(body.pipeline) ? body.pipeline : "v1",
       answers: cleanConfirmations(body.answers),
     };
   } catch {
@@ -99,6 +100,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     confirmed: cv.confirmed,
     title: target.title,
     letter: body.letter,
+    pipeline: body.pipeline,
   };
   const begin = (c: TailorContext, strategy: Strategy) => {
     const gaps = c.keywords && !body.answered ? skillGaps(c.keywords, master, c.confirmed) : [];

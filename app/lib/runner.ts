@@ -2,6 +2,16 @@ import type { PlanUsage, RunnerUsage, TailorRequest } from "~/types/cv";
 
 const RUNNER_URL = "http://127.0.0.1:4317";
 
+const MODEL_RANK = [/haiku/i, /sonnet/i];
+const rank = (model: string) => {
+  const i = MODEL_RANK.findIndex((pattern) => pattern.test(model));
+  return i === -1 ? MODEL_RANK.length : i;
+};
+
+export const cheaperModel = (cap: string | undefined, chosen: string) => (cap && rank(cap) < rank(chosen) ? cap : chosen);
+
+export const costKey = (model: string, pipeline: string) => (pipeline === "v1" ? model : `${model} · ${pipeline}`);
+
 export async function runnerAvailable() {
   try {
     const res = await fetch(`${RUNNER_URL}/health`, { signal: AbortSignal.timeout(2000) });

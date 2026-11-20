@@ -43,6 +43,19 @@ export const DIFFS_SCHEMA = object({
 
 const ENTRY = object({ description: STRINGS });
 
+export const DIFFS_V2_SCHEMA = object({
+  changes: {
+    type: "array",
+    items: object({
+      path: { type: "string" },
+      action: { type: "string", enum: ["replace", "append", "reorder", "add_skill"] },
+      value: { anyOf: [{ type: "string" }, STRINGS] },
+      reason: { type: "string" },
+    }),
+  },
+  strategy_notes: { type: "string" },
+});
+
 export const INJECT_SCHEMA = object({
   summary: { type: "string" },
   workExperience: { type: "array", items: ENTRY },

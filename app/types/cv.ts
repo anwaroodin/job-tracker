@@ -71,7 +71,7 @@ export interface CoverLetter {
   signOff: string;
 }
 
-export const PIPELINE_VERSIONS = ["v1", "v2", "v3"] as const;
+export const PIPELINE_VERSIONS = ["v1", "v2"] as const;
 export type PipelineVersion = (typeof PIPELINE_VERSIONS)[number];
 
 export const isPipelineVersion = (value: unknown): value is PipelineVersion => PIPELINE_VERSIONS.includes(value as PipelineVersion);
@@ -92,6 +92,7 @@ export interface TailoredCv extends CvContent {
   rejectedEdits?: number;
   score?: { before: AtsScore; after: AtsScore };
   strategy?: string;
+  pipeline?: Exclude<PipelineVersion, "v1">;
   changes: string[];
   flags: string[];
 }

@@ -1,3 +1,7 @@
+import { ArrowTurnBackwardIcon, Loading03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { useFetcher } from "react-router";
+import { Button } from "~/components/ui/button";
 import { RichText } from "~/components/ui/rich-text";
 import { wordDiff } from "~/lib/word-diff";
 import type { ResumeChange, TailoredCv } from "~/types/cv";
@@ -65,6 +69,28 @@ function place(path: string, cv: TailoredCv) {
   return entry[3] === undefined ? name || "Entry" : `${name || "Entry"} · bullet ${Number(entry[3]) + 1}`;
 }
 
+const canRevert = (edit: ResumeChange) => typeof edit.value === "string" && (edit.action !== "replace" || edit.original !== null);
+
+function RevertButton({ index }: { index: number }) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const reverting = fetcher.state !== "idle";
+  return (
+    <span className="ml-auto flex items-center gap-2">
+      {!reverting && fetcher.data?.error && <span className="text-red-primary">{fetcher.data.error}</span>}
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={reverting}
+        onClick={() => fetcher.submit({ intent: "revert", index: String(index) }, { method: "post" })}
+        className="h-7 gap-1.5 px-2 font-sans text-[12.5px] normal-case tracking-normal text-text-secondary hover:bg-ink/[0.04] hover:text-text-primary"
+      >
+        <HugeiconsIcon icon={reverting ? Loading03Icon : ArrowTurnBackwardIcon} size={14} strokeWidth={1.5} className={reverting ? "animate-spin" : undefined} />
+        {reverting ? "Reverting…" : "Revert"}
+      </Button>
+    </span>
+  );
+}
+
 export function EditsView({ cv, keywords }: { cv: TailoredCv; keywords: string[] }) {
   const pattern = keywordPattern(keywords);
   const edits = cv.edits ?? [];
@@ -110,6 +136,7 @@ export function EditsView({ cv, keywords }: { cv: TailoredCv; keywords: string[]
                   <span aria-hidden className={`size-1.5 rounded-full ${KINDS[edit.action].dot}`} />
                   <span className="font-medium text-text-secondary">{KINDS[edit.action].tag}</span>
                   <span>· {place(edit.path, cv)}</span>
+                  {canRevert(edit) && <RevertButton index={i} />}
                 </p>
                 <p className="mt-1.5 text-[14px] leading-relaxed text-text-primary">
                   <Diff edit={edit} pattern={pattern} />

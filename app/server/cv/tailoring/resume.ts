@@ -47,14 +47,30 @@ export function withProjects(cv: CvContent, indices: number[]): CvContent {
 
 type Slot =
   | { kind: "text"; get: () => string; set: (value: string) => void }
-  | { kind: "list"; items: string[]; append: (value: string) => void; set: (items: string[]) => void };
+  | { kind: "list"; items: string[]; append: (value: string) => void; remove: (value: string) => void; set: (items: string[]) => void };
+
+const keptBold = (bold: string[] | undefined, text: string) => bold?.filter((phrase) => text.includes(phrase));
+
+function withoutLast<T>(items: T[], matches: (item: T) => boolean) {
+  const last = items.map(matches).lastIndexOf(true);
+  return items.filter((_, i) => i !== last);
+}
 
 const SECTIONS = { workExperience: "experience", personalProjects: "projects" } as const;
 
 function slot(cv: CvContent, path: string): Slot | null {
-  if (path === "summary") return { kind: "text", get: () => cv.summary, set: (v) => (cv.summary = v) };
+  if (path === "summary") {
+    return {
+      kind: "text",
+      get: () => cv.summary,
+      set: (v) => {
+        cv.summary = v;
+        cv.summaryBold = keptBold(cv.summaryBold, v);
+      },
+    };
+  }
   if (path === "certifications") {
-    return { kind: "list", items: cv.certifications, append: () => {}, set: (items) => (cv.certifications = items) };
+    return { kind: "list", items: cv.certifications, append: () => {}, remove: () => {}, set: (items) => (cv.certifications = items) };
   }
 
   const bullet = /^(workExperience|personalProjects)\[(\d+)\]\.description(?:\[(\d+)\])?$/.exec(path);
@@ -62,10 +78,24 @@ function slot(cv: CvContent, path: string): Slot | null {
     const entry = cv[SECTIONS[bullet[1] as keyof typeof SECTIONS]][Number(bullet[2])];
     if (!entry) return null;
     if (bullet[3] === undefined) {
-      return { kind: "list", items: entry.bullets.map((b) => b.text), append: (v) => entry.bullets.push({ id: newId(), text: v }), set: () => {} };
+      return {
+        kind: "list",
+        items: entry.bullets.map((b) => b.text),
+        append: (v) => entry.bullets.push({ id: newId(), text: v }),
+        remove: (v) => (entry.bullets = withoutLast(entry.bullets, (b) => same(b.text, v))),
+        set: () => {},
+      };
     }
     const b = entry.bullets[Number(bullet[3])];
-    return b ? { kind: "text", get: () => b.text, set: (v) => (b.text = v) } : null;
+    if (!b) return null;
+    return {
+      kind: "text",
+      get: () => b.text,
+      set: (v) => {
+        b.text = v;
+        b.bold = keptBold(b.bold, v);
+      },
+    };
   }
 
   const detail = /^education\[(\d+)\]\.description\[(\d+)\]$/.exec(path);
@@ -78,7 +108,14 @@ function slot(cv: CvContent, path: string): Slot | null {
   const skills = /^skills\[(\d+)\]\.items$/.exec(path);
   if (skills) {
     const group = cv.skills[Number(skills[1])];
-    return group ? { kind: "list", items: group.items, append: (v) => group.items.push(v), set: (items) => (group.items = items) } : null;
+    if (!group) return null;
+    return {
+      kind: "list",
+      items: group.items,
+      append: (v) => group.items.push(v),
+      remove: (v) => (group.items = withoutLast(group.items, (item) => same(item, v))),
+      set: (items) => (group.items = items),
+    };
   }
   return null;
 }
@@ -101,6 +138,22 @@ function reordered(current: string[], proposed: string[], allowNew: (item: strin
   }
   for (const bucket of byKey.values()) out.push(...bucket);
   return out;
+}
+
+export function revertChange<T extends CvContent>(cv: T, change: ResumeChange): T | null {
+  const result = structuredClone(cv);
+  const target = slot(result, change.path);
+  if (typeof change.value !== "string" || !target) return null;
+  if (change.action === "replace" && target.kind === "text" && change.original !== null && same(target.get(), change.value)) {
+    target.set(change.original);
+    return result;
+  }
+  const added = change.action === "append" || change.action === "add_skill";
+  if (added && target.kind === "list" && target.items.some((item) => same(item, change.value as string))) {
+    target.remove(change.value);
+    return result;
+  }
+  return null;
 }
 
 export function applyDiffs(original: CvContent, changes: ResumeChange[], skillTargets: SkillTarget[], allowAppend: boolean) {
