@@ -28,6 +28,19 @@ export async function saveSettings(db: Db, userId: string, settings: Settings) {
     .onConflictDoUpdate({ target: userSettings.userId, set: values });
 }
 
+export async function weeklyGoalFor(db: Db, userId: string) {
+  const [row] = await db.select({ goal: userSettings.weeklyGoal }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
+  return row?.goal ?? null;
+}
+
+export function setWeeklyGoal(db: Db, userId: string, weeklyGoal: number | null) {
+  const updatedAt = new Date().toISOString();
+  return db
+    .insert(userSettings)
+    .values({ userId, weeklyGoal, updatedAt })
+    .onConflictDoUpdate({ target: userSettings.userId, set: { weeklyGoal, updatedAt } });
+}
+
 export async function isOnboarded(db: Db, userId: string) {
   const [row] = await db
     .select({ at: userSettings.onboardedAt })
