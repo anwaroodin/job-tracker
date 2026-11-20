@@ -13,7 +13,7 @@ export async function settleSavedJob(db: Db, userId: string, id: string, outcome
     outcome === "removed"
       ? await deleteSavedApplication(db, userId, id)
       : await updateSavedApplication(db, userId, id, {
-          ...clearBookmarkOnApply("saved", { status: "applied", manualStatusAt: now, appliedAt: now }),
+          ...clearBookmarkOnApply("saved", { status: "applied", manualStatusAt: now }),
           updatedAt: now,
         });
   if (!settled.length) return false;
