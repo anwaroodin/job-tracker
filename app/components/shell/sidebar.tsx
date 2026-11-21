@@ -41,7 +41,7 @@ const Icon = ({ icon, className }: { icon: IconSvgElement; className?: string })
 );
 
 const GROUPS: { title: string; links: string[] }[] = [
-  { title: "Job search", links: ["/overview", "/applications", "/interviews"] },
+  { title: "Job search", links: ["/overview", "/applications", "/apply", "/interviews"] },
   { title: "You", links: ["/cv", "/profile", "/usage", "/settings"] },
 ];
 
