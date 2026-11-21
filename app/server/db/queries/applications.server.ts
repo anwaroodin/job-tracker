@@ -99,6 +99,13 @@ export function savedJobs(db: Db, userId: string) {
     .orderBy(application.appliedAt);
 }
 
+export function appliedSince(db: Db, userId: string, since: string) {
+  return db
+    .select({ id: application.id, company: application.company, role: application.role, appliedAt: application.appliedAt })
+    .from(application)
+    .where(and(eq(application.userId, userId), ne(application.status, "saved"), gte(application.appliedAt, since)));
+}
+
 export function deleteSavedApplication(db: Db, userId: string, id: string) {
   return db
     .delete(application)

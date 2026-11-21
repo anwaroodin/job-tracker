@@ -37,6 +37,7 @@ export default [
   layout("routes/app/layout.tsx", [
     route("welcome", "routes/app/welcome.tsx"),
     route("overview", "routes/app/overview.tsx"),
+    route("apply", "routes/app/apply.tsx"),
     route("applications", "routes/app/applications/index.tsx"),
     route("applications/:id", "routes/app/applications/[id].tsx"),
     route("applications/:id/cv", "routes/app/applications/cv.tsx"),
