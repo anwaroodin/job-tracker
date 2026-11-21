@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useFetcher } from "react-router";
+import { Link, useFetcher } from "react-router";
 import { FireIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ListSection } from "~/components/applications/list-section";
@@ -120,6 +120,12 @@ export function WeeklyGoal({ progress, goal }: { progress: GoalProgress | null; 
             })}
           </ol>
         </div>
+
+        {!progress.hit && (
+          <Button asChild className="h-9 self-start px-3.5 text-[13.5px]">
+            <Link to="/apply">Start an apply session</Link>
+          </Button>
+        )}
       </div>
     </ListSection>
   );
