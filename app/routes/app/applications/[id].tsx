@@ -8,6 +8,7 @@ import { FlagToggle } from "~/components/applications/flag-toggle";
 import { DeleteApplication } from "~/components/application-detail/delete-application";
 import { EditDetails } from "~/components/application-detail/edit-details";
 import { ShareLink } from "~/components/application-detail/share-link";
+import { CopyPrompt } from "~/components/application-detail/copy-prompt";
 import { StatusPicker } from "~/components/application-detail/status-picker";
 import { BackToSaved, SavedActions } from "~/components/application-detail/saved-actions";
 import { stagger, PageTitle } from "~/components/ui/terminal";
@@ -244,6 +245,7 @@ function Application({ loaderData }: Pick<Route.ComponentProps, "loaderData">) {
                 </span>
                 <EditDetails job={row} />
                 <ShareLink {...loaderData.share} />
+                <CopyPrompt applicationId={row.id} />
                 {!saved && emails.length === 0 && <BackToSaved />}
               </div>
               <DeleteApplication company={row.company} role={row.role} />
