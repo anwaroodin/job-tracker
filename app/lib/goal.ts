@@ -63,7 +63,7 @@ export function goalNotice(weeks: Week[], goal: number | null, now = new Date())
   if (!goal) return null;
   const p = goalProgress(weeks, goal, now);
   if (p.hit) return { key: `hit-${week}`, title: "Weekly goal hit", body: p.streak > 1 ? `${p.streak} weeks in a row` : "Start of a new streak", href: "/overview" };
-  if (dayOfWeek === 6) return { key: `last-day-${week}`, title: "Last day for your weekly goal", body: `${plural(p.remaining, "more")} to hit ${goal}`, href: "/overview" };
-  if (dayOfWeek >= 3 && !p.onTrack) return { key: `behind-${week}`, title: "Behind on your weekly goal", body: `${p.thisWeek} of ${goal} with ${plural(p.daysLeft, "day")} left`, href: "/overview" };
+  if (dayOfWeek === 6) return { key: `last-day-${week}`, title: "Last day for your weekly goal", body: `${plural(p.remaining, "more")} to hit ${goal}`, href: "/apply" };
+  if (dayOfWeek >= 3 && !p.onTrack) return { key: `behind-${week}`, title: "Behind on your weekly goal", body: `${p.thisWeek} of ${goal} with ${plural(p.daysLeft, "day")} left`, href: "/apply" };
   return null;
 }

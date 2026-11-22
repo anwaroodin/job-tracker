@@ -25,6 +25,17 @@ export async function tailoredApplicationIds(db: Db, userId: string) {
   return new Set(rows.map((r) => r.id));
 }
 
+export function tailoringByApplication(db: Db, userId: string) {
+  return db
+    .select({
+      applicationId: tailoredCv.applicationId,
+      letterParagraphs: sql<number>`max(coalesce(json_array_length(json_extract(${tailoredCv.json}, '$.coverLetter.paragraphs')), 0))`,
+    })
+    .from(tailoredCv)
+    .where(eq(tailoredCv.userId, userId))
+    .groupBy(tailoredCv.applicationId);
+}
+
 export function insertTailoredCv(db: Db, userId: string, applicationId: string, version: number, cv: TailoredCv) {
   return db.insert(tailoredCv).values({
     id: crypto.randomUUID(),

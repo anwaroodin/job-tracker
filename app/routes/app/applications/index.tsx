@@ -22,6 +22,8 @@ import { userContext } from "~/server/auth/session.server";
 import { envContext } from "~/server/context.server";
 import { getDb } from "~/server/db/client.server";
 import { createApplication } from "~/server/db/queries/applications.server";
+import { jobDetails } from "~/server/extension/input.server";
+import { readJobPdf } from "~/server/services/applications/job-pdf.server";
 import { tailoredApplicationIds } from "~/server/db/queries/tailored-cv.server";
 import { listApplications } from "~/server/services/applications/list.server";
 import { applicationSuggestions } from "~/server/services/applications/suggestions.server";
@@ -58,6 +60,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   const intent = form.get("intent");
   if (intent === "sync") return { sync: await syncGmail(env, user.id, "manual") };
   const db = getDb(env.DB);
+  if (intent === "read-job-pdf") return readJobPdf(env, db, user.id, form.get("file"));
   const emailIds = String(form.get("emailIds") ?? "").split(",").filter(Boolean);
 
   if (intent === "saved-applied" || intent === "saved-remove") {
@@ -96,9 +99,10 @@ export async function action({ request, context }: Route.ActionArgs) {
   await createApplication(db, {
     id,
     userId: user.id,
+    autoFilled: false,
+    ...(intent === "create" ? jobDetails(Object.fromEntries([...form].filter(([, value]) => typeof value === "string"))) : {}),
     company,
     role,
-    autoFilled: false,
     ...(intent === "track" && !Number.isNaN(appliedAt.getTime()) ? { appliedAt: appliedAt.toISOString() } : {}),
   });
   if (intent === "create") return redirect(`/applications/${id}`);

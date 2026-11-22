@@ -5,6 +5,7 @@ import {
   DashboardSquare01Icon,
   File01Icon,
   Settings01Icon,
+  Target02Icon,
   UserCircleIcon,
 } from "@hugeicons/core-free-icons";
 import type { IconSvgElement } from "@hugeicons/react";
@@ -12,6 +13,7 @@ import type { IconSvgElement } from "@hugeicons/react";
 export const NAV: ReadonlyArray<{ to: string; label: string; short: string }> = [
   { to: "/overview", label: "Overview", short: "Overview" },
   { to: "/applications", label: "Applications", short: "Apps" },
+  { to: "/apply", label: "Apply session", short: "Apply" },
   { to: "/cv", label: "CV", short: "CV" },
   { to: "/interviews", label: "Interviews", short: "Prep" },
   { to: "/profile", label: "Profile", short: "Profile" },
@@ -22,6 +24,7 @@ export const NAV: ReadonlyArray<{ to: string; label: string; short: string }> = 
 export const NAV_ICONS: Record<string, IconSvgElement> = {
   "/overview": DashboardSquare01Icon,
   "/applications": Briefcase01Icon,
+  "/apply": Target02Icon,
   "/interviews": BubbleChatIcon,
   "/cv": File01Icon,
   "/profile": UserCircleIcon,

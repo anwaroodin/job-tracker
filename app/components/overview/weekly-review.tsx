@@ -66,6 +66,9 @@ export function WeeklyReview({ review }: { review: Review }) {
               <p className="text-[13.5px] text-text-secondary">
                 <span className="font-medium text-text-primary">{review.staleCount}</span> saved {review.staleCount === 1 ? "job has" : "jobs have"} waited over {STALE_SAVED_DAYS} days. Apply or drop them.
               </p>
+              <Link to="/apply" className="text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary">
+                Start an apply session
+              </Link>
             </div>
             <ul className={cn("-mx-3 flex flex-col", INSET_SEPARATORS)}>
               {review.stale.map((job) => (
