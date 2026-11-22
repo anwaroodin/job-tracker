@@ -179,6 +179,12 @@
     return { kind: "click", el: control };
   }
 
+  const PAY = String.raw`(?:\d+(?:\.\d+)?\s?[kK]\b|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{4,}(?:\.\d+)?)(?![\d,.]*\s?(?:million|billion|trillion|bn|[mMbB])\b)`;
+  const RATE = String.raw`\d+(?:\.\d+)?(?:\s?[-–]\s?[£$€]?\s?\d+(?:\.\d+)?)?\s?(?:per|\/|an?)\s?(?:hour|hr|day)\b`;
+  const SALARY = new RegExp(
+    String.raw`[£$€]\s?${PAY}(?:\s?(?:[-–]|to)\s?[£$€]?\s?${PAY})?(?:\s?(?:per|\/|a)\s?(?:year|annum|yr|month))?|[£$€]\s?${RATE}`,
+  );
+
   // Header facts are read from the adapter's header text first, since
   // descriptions often mention other roles' terms ("remote teams", "£ budget").
   const FACTS = [
@@ -186,7 +192,7 @@
     ["applicants", /\b(?:over\s+)?\d[\d,]*\+?\s+(?:applicants|people clicked apply)\b/i],
     ["workType", /\b(?:remote|hybrid|on-site|onsite)\b/i],
     ["employment", /\b(?:full-time|part-time|contract|internship|temporary|permanent)\b/i],
-    ["salary", /[£$€]\s?\d[\d,.]*\s?[kK]?(?:\s?[-–]\s?[£$€]?\s?\d[\d,.]*\s?[kK]?)?(?:\s?(?:per|\/|a)\s?(?:year|annum|yr|hour|hr|month))?/],
+    ["salary", SALARY],
   ];
 
   /**
