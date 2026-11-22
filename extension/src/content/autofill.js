@@ -86,18 +86,35 @@
     render();
   }
 
+  /** Same site and a path under the listing's, like Ashby's /jobs/123 → /jobs/123/application. */
+  function underListing(url) {
+    try {
+      const page = new URL(url);
+      const listing = new URL(state.sourceUrl);
+      const trim = (path) => path.replace(/\/+$/, "");
+      return page.origin === listing.origin && trim(page.pathname).startsWith(trim(listing.pathname));
+    } catch {
+      return false;
+    }
+  }
+
   function fillNow() {
     if (!state.active) return;
+    let dialogOnly = false;
     if (isTop && state.sourceUrl) {
-      // The listing tab stays pending for in-page apply dialogs; moving to another job ends that.
+      // The listing tab stays pending for in-page apply dialogs and for a form
+      // it opens in the same tab; moving to another job ends that.
+      const onForm = location.href !== state.sourceUrl && underListing(location.href);
       const job = JT.readJob();
-      if (job && job.url !== state.sourceUrl) return stop();
+      if (!onForm && job && job.url !== state.sourceUrl && !underListing(job.url)) return stop();
+      // On the listing itself only an apply dialog (LinkedIn Easy Apply) is
+      // filled, never the site's own search and filter boxes, unless the
+      // listing holds the form itself (Greenhouse).
+      dialogOnly = !onForm && JT.countFields() < MIN_FRAME_FIELDS;
     } else if (!isTop && JT.countFields() < MIN_FRAME_FIELDS) {
       return;
     }
-    // On the listing itself only an apply dialog (LinkedIn Easy Apply) is
-    // filled, never the site's own search and filter boxes.
-    const { filled } = JT.fillForm(state.values, { dialogOnly: isTop && Boolean(state.sourceUrl) });
+    const { filled } = JT.fillForm(state.values, { dialogOnly });
     if (!filled) return;
     if (isTop) addFilled(filled);
     else send({ type: "fill:progress", filled });
